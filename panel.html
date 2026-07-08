@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="panel.css" />
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <span class="logo-cs">CoStar</span>
+      <span class="logo-arrow">→</span>
+      <span class="logo-sv">Survey</span>
+    </div>
+    <div class="header-actions">
+      <button id="btnRefresh" class="icon-btn" title="Re-read the CoStar page">↻</button>
+      <button id="btnOpenApp" class="icon-btn" title="Open survey in master-app">↗</button>
+      <button id="btnPopout" class="icon-btn" title="Pop out into a window">⤢</button>
+      <button id="btnSettings" class="icon-btn" title="Settings">⚙</button>
+    </div>
+  </header>
+
+  <!-- Survey context bar -->
+  <div id="contextBar" class="context-bar hidden">
+    <div class="ctx-info">
+      <span class="ctx-label">Survey</span>
+      <span id="ctxSurveyName" class="ctx-name">No survey selected</span>
+    </div>
+    <button id="btnChangeSurvey" class="btn btn-ghost btn-sm">Change</button>
+  </div>
+
+  <!-- Tab bar: Push (CoStar form) / Survey (browse & edit) -->
+  <div id="tabBar" class="tab-bar hidden">
+    <button id="tabPush" class="tab-btn active">Push</button>
+    <button id="tabBrowse" class="tab-btn">Survey <span id="browseCount" class="count-badge hidden"></span></button>
+  </div>
+
+  <!-- Screen: sign in — email -->
+  <section id="screen-auth-email" class="screen hidden">
+    <h2>Sign in</h2>
+    <p class="hint">Use the email you log into <strong>sshteam.app</strong> with. We'll email you a 6-digit code.</p>
+    <div class="fld">
+      <span>Email</span>
+      <input id="authEmail" type="email" placeholder="max@rgcre.com" autocomplete="email" />
+    </div>
+    <button id="btnSendOtp" class="btn btn-primary mt">Send code</button>
+    <button id="btnHaveEmail" class="btn btn-ghost btn-sm mt6">I already have a sign-in email</button>
+    <div id="authEmailError" class="error hidden"></div>
+  </section>
+
+  <!-- Screen: sign in — code -->
+  <section id="screen-auth-code" class="screen hidden">
+    <h2>Enter your code</h2>
+    <p class="hint">We sent a 6-digit code to <strong id="authEmailShown"></strong>. It may take a minute.</p>
+    <div class="fld">
+      <span>6-digit code</span>
+      <input id="authCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" />
+    </div>
+    <button id="btnVerifyOtp" class="btn btn-primary mt">Verify &amp; sign in</button>
+    <div class="fld mt">
+      <span>No code in the email? Paste the "Log In" link instead</span>
+      <input id="authLink" placeholder="https://…supabase.co/auth/v1/verify?token=…" />
+    </div>
+    <button id="btnVerifyLink" class="btn btn-ghost btn-sm mt6">Sign in with link</button>
+    <div class="action-row-stack">
+      <button id="btnResendOtp" class="btn btn-ghost btn-sm">Resend code</button>
+      <button id="btnAuthBack" class="btn btn-ghost btn-sm">Use a different email</button>
+    </div>
+    <div id="authCodeError" class="error hidden"></div>
+  </section>
+
+  <!-- Screen: survey picker -->
+  <section id="screen-picker" class="screen hidden">
+    <h2>Choose a survey</h2>
+    <input id="pickerFilter" class="search-input" placeholder="Filter surveys…" />
+    <div class="tab-list mt6" id="surveyList" style="max-height:none"></div>
+
+    <div id="newSurveyForm" class="fieldset mt hidden">
+      <div class="fld"><span>Survey name *</span><input id="nsName" placeholder="e.g. Acme Mfg — Lease Survey" /></div>
+      <div class="fld"><span>Client</span><input id="nsClient" placeholder="Client name" /></div>
+      <div class="fld">
+        <span>Type</span>
+        <div class="seg" id="nsType">
+          <button data-v="lease" class="seg-btn active">Lease</button>
+          <button data-v="sale" class="seg-btn">Sale</button>
+          <button data-v="lease_and_sale" class="seg-btn">Both</button>
+        </div>
+      </div>
+      <button id="btnCreateSurvey" class="btn btn-primary">Create survey</button>
+    </div>
+    <div id="pickerError" class="error hidden"></div>
+    <button id="btnPickerBack" class="btn btn-ghost btn-sm mt hidden">Back</button>
+  </section>
+
+  <!-- Screen: property form (insert or update) -->
+  <section id="screen-form" class="screen hidden">
+    <div class="review-head">
+      <h2 id="formTitle">New property</h2>
+      <button id="btnSave" class="btn btn-primary btn-sm">Save</button>
+    </div>
+
+    <div id="modeBanner" class="banner hidden"></div>
+    <div id="dupChooser" class="hidden">
+      <div class="sugg">
+        <div class="sugg-txt" id="dupText"></div>
+      </div>
+      <div class="action-row-stack">
+        <button id="btnDupUpdate" class="btn btn-primary btn-sm">Update existing</button>
+        <button id="btnDupNew" class="btn btn-ghost btn-sm">Add as new property</button>
+      </div>
+    </div>
+
+    <div id="suggestions" class="hidden">
+      <div class="sugg-head"><span class="section-label">CoStar differs</span></div>
+      <div id="suggList"></div>
+    </div>
+
+    <div class="section-label mt-section">Address</div>
+    <div class="fieldset">
+      <div class="fld"><span>Address *</span><input id="fAddress" /></div>
+      <div class="fld two"><span>City</span><input id="fCity" /></div>
+      <div class="fld two"><span>State</span><input id="fState" /></div>
+      <div class="fld two"><span>Zip</span><input id="fZip" /></div>
+    </div>
+
+    <div class="section-label mt-section">Size</div>
+    <div class="fieldset">
+      <div class="fld two"><span>Building SF</span><input id="fBuildingSf" inputmode="decimal" /></div>
+      <div class="fld two"><span>Land (AC)</span><input id="fLandAc" inputmode="decimal" /></div>
+      <div class="fld"><span>Suite size</span><input id="fSuiteSize" placeholder='e.g. 6,500 - 15,000 SF' /></div>
+    </div>
+
+    <div class="section-label mt-section">Status</div>
+    <div class="fieldset">
+      <label class="chk"><input type="checkbox" id="fForSale" /><span>For Sale</span></label>
+      <label class="chk"><input type="checkbox" id="fForLease" /><span>For Lease</span></label>
+      <div class="fld"><span>Availability</span><select id="fAvailability"></select></div>
+      <div class="fld"><span>Internal status <small>(hidden from client)</small></span><select id="fInternalStatus"></select></div>
+    </div>
+
+    <div id="leaseBlock">
+      <div class="section-label mt-section">Lease</div>
+      <div class="fieldset">
+        <div class="fld two"><span>Lease rate ($/SF)</span><input id="fLeaseRate" inputmode="decimal" /></div>
+        <div class="fld two"><span>Lease type</span><select id="fLeaseType"></select></div>
+        <div class="fld two"><span>Date available</span><input id="fDateAvailable" placeholder="e.g. Now / 8/1" /></div>
+      </div>
+    </div>
+
+    <div id="saleBlock">
+      <div class="section-label mt-section">Sale</div>
+      <div class="fieldset">
+        <div class="fld two"><span>Sale price ($)</span><input id="fSalePrice" inputmode="decimal" /></div>
+        <div class="fld two"><span>Cap rate (%)</span><input id="fCapRate" inputmode="decimal" /></div>
+      </div>
+    </div>
+
+    <div class="section-label mt-section">Building</div>
+    <div class="fieldset">
+      <div class="fld two"><span>Zoning</span><input id="fZoning" /></div>
+      <div class="fld two"><span>Power</span><input id="fPower" placeholder="e.g. 2,000A 277/480V" /></div>
+      <div class="fld two"><span>Loading</span><input id="fLoading" placeholder='e.g. 4 docks, 2 GL' /></div>
+      <div class="fld two"><span>Clear height</span><input id="fClearHeight" placeholder="e.g. 24'" /></div>
+      <label class="chk"><input type="checkbox" id="fYardArea" /><span>Yard area</span></label>
+    </div>
+
+    <div class="section-label mt-section">Flyer</div>
+    <div class="fieldset">
+      <button id="btnAttachFlyer" class="btn btn-ghost btn-sm" type="button">📎 Attach open CoStar flyer (PDF)</button>
+      <div class="fld"><span>Flyer URL</span><input id="fFlyerUrl" placeholder="uploaded flyer link — or paste one" /></div>
+    </div>
+
+    <div class="section-label mt-section">Notes</div>
+    <div class="fieldset">
+      <div class="fld"><span>Notes <small>(client-visible)</small></span><textarea id="fNotes" rows="2"></textarea></div>
+      <div class="fld"><span>Internal notes <small>(hidden from client)</small></span><textarea id="fInternalNotes" rows="3"></textarea></div>
+    </div>
+
+    <details class="more mt-section">
+      <summary>More fields</summary>
+      <div class="fieldset mt6">
+        <div class="fld two"><span>Tenancy</span><select id="fTenancy"><option value="">—</option><option>ST</option><option>MT</option></select></div>
+        <div class="fld two"><span>Private offices</span><input id="fOffices" inputmode="numeric" /></div>
+        <div class="fld two"><span>Monthly base rent</span><input id="fMonthlyBase" inputmode="decimal" /></div>
+        <div class="fld two"><span>Monthly opex $/SF</span><input id="fOpexPsf" inputmode="decimal" /></div>
+        <div class="fld two"><span>Total monthly opex</span><input id="fOpexTotal" inputmode="decimal" /></div>
+        <div class="fld two"><span>Total lease rate</span><input id="fTotalLeaseRate" inputmode="decimal" /></div>
+        <div class="fld"><span>Photo URL</span><input id="fPhotoUrl" /></div>
+        <label class="chk"><input type="checkbox" id="fFeatured" /><span>Featured</span></label>
+      </div>
+    </details>
+
+    <button id="btnSaveBottom" class="btn btn-primary mt">Save</button>
+    <div id="formError" class="error hidden"></div>
+  </section>
+
+  <!-- Screen: survey browser -->
+  <section id="screen-browse" class="screen hidden">
+    <div class="review-head">
+      <h2 id="browseTitle">Survey properties</h2>
+      <button id="btnBrowseRefresh" class="btn btn-ghost btn-sm">↻ Refresh</button>
+    </div>
+    <div id="browseList" class="prop-list"></div>
+    <div id="browseEmpty" class="hint hidden">No properties in this survey yet. Open a CoStar page and push one.</div>
+    <div id="browseError" class="error hidden"></div>
+  </section>
+
+  <!-- Screen: no costar / idle -->
+  <section id="screen-idle" class="screen hidden">
+    <h2>Ready</h2>
+    <p class="hint">Open a CoStar property's Summary page, then click <strong>Read CoStar page</strong> — or use the <strong>Survey</strong> tab to update statuses.</p>
+    <button id="btnRead" class="btn btn-primary">Read CoStar page</button>
+    <div id="idleError" class="error hidden"></div>
+  </section>
+
+  <!-- Screen: settings -->
+  <section id="screen-settings" class="screen hidden">
+    <h2>Settings</h2>
+    <div class="setting-row">
+      <div><div style="font-weight:600" id="authStatusLabel">…</div><div style="font-size:11px;color:#888">Supabase (master-app)</div></div>
+      <button id="btnDisconnect" class="btn btn-danger btn-sm">Sign out</button>
+    </div>
+    <button id="btnBack" class="btn btn-ghost mt">Back</button>
+  </section>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="config.js"></script>
+  <script src="panel.js"></script>
+</body>
+</html>
