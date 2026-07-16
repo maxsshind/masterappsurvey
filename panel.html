@@ -122,11 +122,18 @@
       <div class="fld two"><span>Zip</span><input id="fZip" /></div>
     </div>
 
+    <div class="section-label mt-section">Tenancy</div>
+    <div class="fieldset">
+      <div class="fld"><span>Tenancy</span><select id="fTenancy"><option value="">—</option><option value="ST">Single Tenant (ST)</option><option value="MT">Multi Tenant (MT)</option></select></div>
+    </div>
+
     <div class="section-label mt-section">Size</div>
     <div class="fieldset">
-      <div class="fld two"><span>Building SF</span><input id="fBuildingSf" inputmode="decimal" /></div>
+      <div class="fld two" id="rowSuiteNumber"><span>Suite #</span><input id="fSuiteNumber" placeholder="e.g. 101" /></div>
+      <div class="fld two" id="rowOfficeSf"><span>Office SF</span><input id="fOfficeSf" inputmode="decimal" /></div>
+      <div class="fld" id="rowSuiteSize"><span>Suite size</span><input id="fSuiteSize" placeholder='e.g. 6,500 - 15,000 SF' /></div>
+      <div class="fld two" id="rowBuildingSf"><span id="lblBuildingSf">Building SF</span><input id="fBuildingSf" inputmode="decimal" /></div>
       <div class="fld two"><span>Land (AC)</span><input id="fLandAc" inputmode="decimal" /></div>
-      <div class="fld"><span>Suite size</span><input id="fSuiteSize" placeholder='e.g. 6,500 - 15,000 SF' /></div>
     </div>
 
     <div class="section-label mt-section">Status</div>
@@ -178,7 +185,6 @@
     <details class="more mt-section">
       <summary>More fields</summary>
       <div class="fieldset mt6">
-        <div class="fld two"><span>Tenancy</span><select id="fTenancy"><option value="">—</option><option>ST</option><option>MT</option></select></div>
         <div class="fld two"><span>Private offices</span><input id="fOffices" inputmode="numeric" /></div>
         <div class="fld two"><span>Monthly base rent</span><input id="fMonthlyBase" inputmode="decimal" /></div>
         <div class="fld two"><span>Monthly opex $/SF</span><input id="fOpexPsf" inputmode="decimal" /></div>

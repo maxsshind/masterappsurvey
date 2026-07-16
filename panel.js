@@ -503,6 +503,8 @@ const FIELDS = {
   building_sf: ["fBuildingSf", "num"],
   land_area_ac: ["fLandAc", "num"],
   suite_size: ["fSuiteSize", "text"],
+  suite_number: ["fSuiteNumber", "text"],
+  office_sf: ["fOfficeSf", "num"],
   sale_price: ["fSalePrice", "num"],
   cap_rate: ["fCapRate", "num"],
   zoning: ["fZoning", "text"],
@@ -565,9 +567,22 @@ function fillForm(row) {
 function updateBlockVisibility() {
   $("saleBlock").classList.toggle("hidden", !$("fForSale").checked);
   $("leaseBlock").classList.toggle("hidden", !$("fForLease").checked);
+  // Tenancy-aware size fields on pure lease surveys:
+  // ST hides suite fields; MT makes Building SF optional and shows suite fields.
+  // Hidden inputs keep their values — toggling never wipes data.
+  const surveyType = state.survey ? state.survey.survey_type : null;
+  const leaseOnly = surveyType === "lease";
+  const tenancy = $("fTenancy").value;
+  const isST = leaseOnly && tenancy === "ST";
+  const isMT = leaseOnly && tenancy === "MT";
+  $("rowSuiteNumber").classList.toggle("hidden", isST);
+  $("rowOfficeSf").classList.toggle("hidden", isST);
+  $("rowSuiteSize").classList.toggle("hidden", isST);
+  $("lblBuildingSf").textContent = isMT ? "Building SF (optional)" : "Building SF";
 }
 $("fForSale").addEventListener("change", updateBlockVisibility);
 $("fForLease").addEventListener("change", updateBlockVisibility);
+$("fTenancy").addEventListener("change", updateBlockVisibility);
 
 function scrapeInternalNotes(d) {
   const parts = [];
