@@ -262,20 +262,41 @@
       <div class="fld two"><span>State</span><input id="comp_state" /></div>
       <div class="fld two"><span>Zip</span><input id="comp_zip" /></div>
       <div class="fld two"><span>Submarket</span><input id="comp_sub_market" /></div>
-      <div class="fld two"><span>Cluster</span><input id="comp_submarket_cluster" /></div>
+    </div>
+
+    <div class="section-label mt-section">Property Type</div>
+    <div class="fieldset">
+      <div id="comp_ptypes" class="check-grid">
+        <label><input type="checkbox" value="ISF" /> ISF</label>
+        <label><input type="checkbox" value="IOS" /> IOS</label>
+        <label><input type="checkbox" value="Class A" /> Class A</label>
+        <label><input type="checkbox" value="Class B" /> Class B</label>
+        <label><input type="checkbox" value="Class C" /> Class C</label>
+        <label><input type="checkbox" value="Flex" /> Flex</label>
+        <label><input type="checkbox" value="Land" /> Land</label>
+        <label><input type="checkbox" value="Vintage" /> Vintage</label>
+        <label><input type="checkbox" value="Cold Storage" /> Cold Storage</label>
+      </div>
     </div>
 
     <div class="section-label mt-section">Size</div>
     <div class="fieldset">
       <div class="fld two"><span>Building SF</span><input id="comp_building_sf" inputmode="decimal" /></div>
       <div class="fld two"><span>Land (acres)</span><input id="comp_land_area" inputmode="decimal" /></div>
-      <div class="fld two"><span>Year Built</span><input id="comp_year_built" inputmode="numeric" /></div>
     </div>
 
     <div class="section-label mt-section">Pricing</div>
     <div class="fieldset">
       <div class="fld two"><span>Asking Price ($)</span><input id="comp_sale_price" inputmode="decimal" /></div>
       <div class="fld two"><span>Cap Rate (%)</span><input id="comp_cap_rate" inputmode="decimal" /></div>
+      <div class="fld" id="comp_sale_types_wrap">
+        <span>Deal Type (sale)</span>
+        <div id="comp_sale_types" class="check-grid">
+          <label><input type="checkbox" value="Owner User" /> Owner User</label>
+          <label><input type="checkbox" value="Investment" /> Investment</label>
+          <label><input type="checkbox" value="Sale Leaseback" /> Sale Leaseback</label>
+        </div>
+      </div>
       <div class="fld two"><span>Asking Rent ($/SF/mo)</span><input id="comp_rent_psf" inputmode="decimal" /></div>
       <div class="fld two">
         <span>Lease Format</span>

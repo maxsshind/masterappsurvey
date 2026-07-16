@@ -198,3 +198,8 @@ h2 { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: #8B1538; }
 /* Comp-mode status line: green for success, red when .err is set */
 .comp-msg { font-size: 11px; margin-top: 8px; line-height: 1.4; color: #2e7d32; }
 .comp-msg.err { color: #c0392b; }
+
+/* Comp-mode checkbox grids (property type, sale deal type) */
+.check-grid { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 2px 0; }
+.check-grid label { display: flex; align-items: center; gap: 5px; font-size: 12px; color: #333; cursor: pointer; white-space: nowrap; }
+.check-grid input[type="checkbox"] { margin: 0; }

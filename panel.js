@@ -901,11 +901,28 @@ const comp = {
 
 const COMP_INPUT_IDS = [
   "comp_status", "comp_address", "comp_city", "comp_state", "comp_zip",
-  "comp_sub_market", "comp_submarket_cluster", "comp_building_sf", "comp_land_area",
-  "comp_year_built", "comp_sale_price", "comp_cap_rate", "comp_rent_psf",
+  "comp_sub_market", "comp_building_sf", "comp_land_area",
+  "comp_sale_price", "comp_cap_rate", "comp_rent_psf",
   "comp_lease_format", "comp_listing_brokerage", "comp_listing_agent",
   "comp_listing_agent_phone", "comp_listing_agent_email", "comp_list_date", "comp_notes",
 ];
+
+// Checked values of a .check-grid container (property types, sale deal types).
+function compChecked(containerId) {
+  const box = $(containerId);
+  if (!box) return [];
+  return Array.from(box.querySelectorAll("input[type=checkbox]:checked")).map((c) => c.value);
+}
+function compClearChecks(containerId) {
+  const box = $(containerId);
+  if (box) box.querySelectorAll("input[type=checkbox]").forEach((c) => { c.checked = false; });
+}
+
+// "73040" → "73,040" for display; parseNum() strips the commas back out on save.
+function fmtThousands(v) {
+  const n = parseNum(v);
+  return n == null ? "" : n.toLocaleString("en-US");
+}
 
 // Address normalizer ported from master-app src/lib/comp-extraction.ts (dedup score 80).
 const COMP_STREET_TYPE_MAP = {
@@ -1003,6 +1020,8 @@ function resetCompForm() {
   comp.pendingMatch = null;
   hideCompMatch();
   COMP_INPUT_IDS.forEach((id) => { const n = $(id); if (n) n.value = ""; });
+  compClearChecks("comp_ptypes");
+  compClearChecks("comp_sale_types");
 }
 
 async function fillCompForm(d) {
@@ -1021,27 +1040,45 @@ async function fillCompForm(d) {
   setCompField("comp_state", d.state || "AZ");
   setCompField("comp_zip", d.zip);
   setCompField("comp_sub_market", d.submarket);
-  const cluster = (d.submarket && typeof SUBMARKET_TO_CLUSTER !== "undefined")
-    ? (SUBMARKET_TO_CLUSTER[d.submarket] || "") : "";
-  setCompField("comp_submarket_cluster", cluster);
-  setCompField("comp_building_sf", d.rba);
+  setCompField("comp_building_sf", fmtThousands(d.rba));
   setCompField("comp_land_area", d.acLot);
-  setCompField("comp_year_built", d.yearBuilt);
-  setCompField("comp_sale_price", d.salePrice);
+  setCompField("comp_sale_price", fmtThousands(d.salePrice));
   setCompField("comp_cap_rate", d.capRate);
   setCompField("comp_rent_psf", d.leaseRate); // already $/SF/month for Phoenix industrial
   setCompField("comp_lease_format", mapLeaseFormat(d.leaseType));
   setCompField("comp_status", defaultCompStatus(d));
   setCompField("comp_list_date", todayISO());
 
-  // Notes carry the CoStar-ID stamp (the dedup key) unless the user already typed notes.
-  const notesNode = $("comp_notes");
-  if (notesNode && notesNode.value.trim() === "") {
-    notesNode.value = `CoStar ID: ${d.costarId || ""}\n${d.sourceUrl || ""}`.trim();
-    comp.lastFilled["comp_notes"] = notesNode.value;
-  }
+  // Notes stay blank — Max adds his own. (Dedup relies on address matching and the
+  // CoStar-ID stamps that older comps carry in notes; new comps aren't stamped.)
 
+  syncCompFieldVisibility();
   await runCompDedup(d);
+}
+
+// Show only the economics that match the status: FOR SALE hides the lease fields,
+// FOR LEASE hides the sale fields; FOR SALE/LEASE and PENDING show both.
+function compStatusShows() {
+  const status = ($("comp_status") && $("comp_status").value) || "FOR SALE";
+  const showSale = status !== "FOR LEASE";
+  const showLease = status === "FOR LEASE" || status === "FOR SALE/LEASE" || status === "PENDING";
+  return { status, showSale, showLease };
+}
+
+function syncCompFieldVisibility() {
+  const { showSale, showLease } = compStatusShows();
+  const toggle = (id, show) => {
+    const el = $(id);
+    if (!el) return;
+    const wrap = el.closest(".fld") || el;
+    wrap.classList.toggle("hidden", !show);
+  };
+  toggle("comp_sale_price", showSale);
+  toggle("comp_cap_rate", showSale);
+  toggle("comp_rent_psf", showLease);
+  toggle("comp_lease_format", showLease);
+  const saleTypes = $("comp_sale_types_wrap");
+  if (saleTypes) saleTypes.classList.toggle("hidden", !showSale);
 }
 
 // ─── Scrape ──────────────────────────────────────────────────────────────────────
@@ -1145,23 +1182,27 @@ function compFormRecord() {
   const num = (id) => { const n = $(id); return n ? parseNum(n.value) : null; };
   const txt = (id) => { const n = $(id); return n ? (n.value.trim() || null) : null; };
   const buildingSf = num("comp_building_sf");
-  const salePrice = num("comp_sale_price");
-  const status = ($("comp_status") && $("comp_status").value) || "FOR SALE";
+  const { status, showSale, showLease } = compStatusShows();
+  // Hidden economics never get pushed (e.g. a scraped rent on a FOR SALE save).
+  const salePrice = showSale ? num("comp_sale_price") : null;
   const rec = {
     address: ($("comp_address") && $("comp_address").value.trim()) || "",
     city: txt("comp_city"),
     state: txt("comp_state") || "AZ",
     zip: txt("comp_zip"),
     sub_market: txt("comp_sub_market"),
-    submarket_cluster: txt("comp_submarket_cluster"),
+    // Cluster is derived, never typed: recomputed from whatever submarket is on the form.
+    submarket_cluster: (typeof SUBMARKET_TO_CLUSTER !== "undefined" &&
+      SUBMARKET_TO_CLUSTER[(txt("comp_sub_market") || "")]) || null,
+    property_type: compChecked("comp_ptypes").join(", ") || null,
     building_sf: buildingSf,
     land_area: num("comp_land_area"),
-    year_built: num("comp_year_built"),
     sale_price: salePrice,
     price_psf: (salePrice != null && buildingSf) ? Math.round((salePrice / buildingSf) * 100) / 100 : null,
-    cap_rate: num("comp_cap_rate"),
-    rent_psf: num("comp_rent_psf"),
-    lease_format: (($("comp_lease_format") && $("comp_lease_format").value) || null),
+    cap_rate: showSale ? num("comp_cap_rate") : null,
+    sale_type: showSale ? (compChecked("comp_sale_types").join(", ") || null) : null,
+    rent_psf: showLease ? num("comp_rent_psf") : null,
+    lease_format: showLease ? (($("comp_lease_format") && $("comp_lease_format").value) || null) : null,
     status,
     type: status === "FOR LEASE" ? "lease" : "sale",
     internal_deal: false,
@@ -1211,10 +1252,24 @@ async function saveComp() {
   if (handleAuthFailure(res)) return;
   if (!res || !res.ok) return setCompMsg((res && res.error) || "Save failed.", true);
 
-  if (comp.mode === "update") {
-    setCompMsg("Comp updated ✓ (re-verified today)");
-  } else {
-    setCompMsg("Comp saved ✓");
+  const savedId = (res.comp && res.comp.id) || (comp.mode === "update" ? comp.updateId : null);
+  const label = comp.mode === "update" ? "Comp updated ✓ (re-verified today)" : "Comp saved ✓";
+  setCompMsg(label);
+  // Append a "View comp" link that opens the saved record in the app.
+  if (savedId) {
+    const n = $("compMsg");
+    if (n) {
+      const a = document.createElement("a");
+      a.href = "#";
+      a.textContent = "View comp →";
+      a.style.marginLeft = "8px";
+      a.style.fontWeight = "600";
+      a.addEventListener("click", (e) => {
+        e.preventDefault();
+        chrome.tabs.create({ url: `${CONFIG.APP_URL}/comps/${savedId}` });
+      });
+      n.appendChild(a);
+    }
   }
   // Clear update state either way (contract: a fresh insert leaves nothing pending).
   comp.mode = "insert";
@@ -1232,6 +1287,13 @@ function initCompMode() {
   }
   const save = $("compSave"); if (save) save.addEventListener("click", saveComp);
   const rescan = $("compRescan"); if (rescan) rescan.addEventListener("click", () => scanComp());
+  const statusSel = $("comp_status");
+  if (statusSel) statusSel.addEventListener("change", syncCompFieldVisibility);
+  // Keep big numbers readable: re-format with thousands separators when typing ends.
+  ["comp_building_sf", "comp_sale_price"].forEach((id) => {
+    const n = $(id);
+    if (n) n.addEventListener("blur", () => { if (n.value.trim()) n.value = fmtThousands(n.value); });
+  });
   const flyer = $("compFlyer");
   if (flyer) flyer.addEventListener("click", async () => {
     setLoading(flyer, true);
