@@ -133,10 +133,16 @@ async function readCoStar() {
       const cr = txt.match(/Cap Rate\s*\n?\s*([\d.]+)\s*%/i);
       if (cr) capRate = cr[1];
 
+      // ---- year built : a 4-digit year near a "Built" label ----
+      let yearBuilt = "";
+      const yb = txt.match(/Year Built\s*\n?\s*((?:19|20)\d{2})/i) ||   // "Year Built\n1998"
+                 txt.match(/\b((?:19|20)\d{2})\s*\n?\s*(?:Year )?Built\b/i); // "1998 Built" / "1998 Year Built"
+      if (yb) yearBuilt = yb[1];
+
       // Diagnostic: sample of the text actually seen, so we can tell whether the
       // scraper hit the right frame/tab when a scrape comes back empty.
       const _debug = { textLen: txt.length, sample: txt.slice(0, 400) };
-      return { street, city, state, zip, submarket, rba, acLot, salePrice, leaseRate, leaseType, capRate, _debug };
+      return { street, city, state, zip, submarket, rba, acLot, salePrice, leaseRate, leaseType, capRate, yearBuilt, _debug };
     },
   });
 
@@ -186,12 +192,13 @@ async function findFlyerTab() {
   return cands.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))[0];
 }
 
-async function attachFlyer(surveyId) {
+// Download the open CoStar flyer PDF → { blob, name }. Shared by survey + comp flyers.
+async function downloadOpenFlyer() {
   const tab = await findFlyerTab();
   if (!tab) {
     throw new Error("No open flyer PDF found. In CoStar, click the flyer/brochure so its PDF opens in a tab, then try again.");
   }
-  // Download the PDF (signed CDN URL; include credentials in case it needs the CoStar session).
+  // Signed CDN URL; include credentials in case it needs the CoStar session.
   const resp = await fetch(tab.url, { credentials: "include" });
   if (!resp.ok) throw new Error(`Couldn't download the flyer (${resp.status}). Make sure the PDF tab is fully loaded.`);
   const blob = await resp.blob();
@@ -199,9 +206,11 @@ async function attachFlyer(surveyId) {
   let name = "flyer.pdf";
   try { name = decodeURIComponent((new URL(tab.url).pathname.split("/").pop()) || name); } catch { /* keep default */ }
   if (!/\.pdf$/i.test(name)) name += ".pdf";
-  const safe = name.replace(/[^a-zA-Z0-9.-]/g, "_");
-  const path = `flyers/${surveyId}/${Date.now()}_${safe}`;
+  return { blob, name };
+}
 
+// Upload a blob to the survey-files storage bucket at `path` → public URL.
+async function uploadToSurveyFiles(path, blob) {
   const session = await sbGetSession();
   const up = await fetch(`${CONFIG.SUPABASE_URL}/storage/v1/object/survey-files/${path}`, {
     method: "POST",
@@ -217,10 +226,21 @@ async function attachFlyer(surveyId) {
     const t = await up.text().catch(() => "");
     throw new Error(`Upload failed: ${t.slice(0, 160) || up.status}`);
   }
-  return {
-    url: `${CONFIG.SUPABASE_URL}/storage/v1/object/public/survey-files/${path}`,
-    name,
-  };
+  return `${CONFIG.SUPABASE_URL}/storage/v1/object/public/survey-files/${path}`;
+}
+
+async function attachFlyer(surveyId) {
+  const { blob, name } = await downloadOpenFlyer();
+  const safe = name.replace(/[^a-zA-Z0-9.-]/g, "_");
+  const url = await uploadToSurveyFiles(`flyers/${surveyId}/${Date.now()}_${safe}`, blob);
+  return { url, name };
+}
+
+async function attachCompFlyer() {
+  const { blob, name } = await downloadOpenFlyer();
+  const safe = name.replace(/[^a-zA-Z0-9.-]/g, "_");
+  const url = await uploadToSurveyFiles(`comps/flyers/${Date.now()}_${safe}`, blob);
+  return { url, name };
 }
 
 function listSurveyProperties(surveyId) {
@@ -228,6 +248,37 @@ function listSurveyProperties(surveyId) {
     "survey_properties",
     `select=*&survey_id=eq.${encodeURIComponent(surveyId)}&order=created_at.asc`
   );
+}
+
+// ─── Comps (master-app `comps` table) ────────────────────────────────────────────
+
+const COMP_COLS =
+  "id,address,city,zip,status,type,sale_price,rent_psf,cap_rate,building_sf,land_area,sub_market,submarket_cluster,last_verified_at,list_date,notes";
+
+// Find existing comps that likely match the CoStar listing, so the panel can offer
+// "update" instead of a duplicate insert. PostgREST ilike wildcard is a literal `*`
+// (never percent-encoded); the user-supplied text is encoded, then the `*` re-added.
+// sbSelect appends the query string raw, so spaces in a pattern must be %20.
+async function searchComps({ streetNumber, streetToken, costarId }) {
+  const byId = new Map();
+
+  // CoStar-ID matches first — most precise (we stamp "CoStar ID: <n>" into notes).
+  if (costarId) {
+    const pat = `*CoStar ID: ${encodeURIComponent(costarId)}*`.replace(/ /g, "%20");
+    const rows = await sbSelect("comps", `select=${COMP_COLS}&notes=ilike.${pat}&limit=5`);
+    for (const r of rows) byId.set(r.id, r);
+  }
+
+  // Then street-number prefix (e.g. "4645*" → "4645 S 35th Ave").
+  if (streetNumber) {
+    const rows = await sbSelect(
+      "comps",
+      `select=${COMP_COLS}&address=ilike.${encodeURIComponent(streetNumber)}*&limit=20`
+    );
+    for (const r of rows) if (!byId.has(r.id)) byId.set(r.id, r);
+  }
+
+  return Array.from(byId.values()).slice(0, 20);
 }
 
 // ─── Side panel: open on toolbar-icon click ──────────────────────────────────────
@@ -296,6 +347,26 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
     case "UPDATE_PROPERTY":
       reply(sbUpdate("survey_properties", msg.id, msg.patch || {}).then((property) => ({ property })));
+      return true;
+
+    case "SEARCH_COMPS":
+      reply(searchComps({
+        streetNumber: msg.streetNumber || "",
+        streetToken: msg.streetToken || "",
+        costarId: msg.costarId || "",
+      }).then((comps) => ({ comps })));
+      return true;
+
+    case "INSERT_COMP":
+      reply(sbInsert("comps", msg.record || {}).then((comp) => ({ comp })));
+      return true;
+
+    case "UPDATE_COMP":
+      reply(sbUpdate("comps", msg.id, msg.patch || {}).then((comp) => ({ comp })));
+      return true;
+
+    case "ATTACH_COMP_FLYER":
+      reply(attachCompFlyer().then((r) => r));
       return true;
 
     default:

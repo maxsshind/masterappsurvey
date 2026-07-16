@@ -38,6 +38,10 @@ header {
 .ctx-label { display: block; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: #8B1538; opacity: 0.6; }
 .ctx-name { display: block; font-weight: 700; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+/* ── Mode toggle (Survey vs Comp) ── */
+.mode-bar { padding: 8px 14px; background: #fff; border-bottom: 1px solid #e6e6f0; }
+.mode-seg { gap: 6px; }
+
 /* ── Tabs ── */
 .tab-bar { display: flex; background: #fff; border-bottom: 1px solid #e6e6f0; }
 .tab-btn {
@@ -73,6 +77,8 @@ h2 { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: #8B1538; }
 }
 .banner.new { background: #dde6ff; color: #0a2463; }
 .banner.update { background: #c8e6c9; color: #1b5e20; }
+.banner.match { background: #fffbe6; color: #8a6d0a; border: 1px solid #e8d874; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.banner.match .btn { width: auto; flex-shrink: 0; }
 
 /* ── Field set ── */
 .fieldset {
@@ -188,3 +194,7 @@ h2 { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: #8B1538; }
 /* ── Loading ── */
 .btn.loading { opacity: 0.6; pointer-events: none; }
 .btn.loading::after { content: " …"; }
+
+/* Comp-mode status line: green for success, red when .err is set */
+.comp-msg { font-size: 11px; margin-top: 8px; line-height: 1.4; color: #2e7d32; }
+.comp-msg.err { color: #c0392b; }

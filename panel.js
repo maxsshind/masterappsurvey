@@ -51,6 +51,7 @@ const state = {
   pendingDup: null,  // possible-match row awaiting the user's update-vs-new choice
   screen: "idle",
   tab: "push",
+  appMode: "survey", // 'survey' (push into a survey) | 'comp' (push into comps table)
 };
 
 // ─── Messaging: send to the service worker, retrying on MV3 cold start ──────────
@@ -97,11 +98,18 @@ function handleAuthFailure(res) {
 const SCREENS = ["auth-email", "auth-code", "picker", "form", "browse", "idle", "settings"];
 function showScreen(name) {
   state.screen = name;
-  SCREENS.forEach((s) => $("screen-" + s).classList.toggle("hidden", s !== name));
+  // "comp" is not a survey SCREEN — it's the Comp-mode takeover of the content area.
+  const isComp = name === "comp";
+  SCREENS.forEach((s) => $("screen-" + s).classList.toggle("hidden", isComp || s !== name));
+  const compScreen = $("screen-comp");
+  if (compScreen) compScreen.classList.toggle("hidden", !isComp);
   const inApp = state.authed && !["auth-email", "auth-code"].includes(name);
-  $("contextBar").classList.toggle("hidden", !inApp || name === "settings");
-  $("tabBar").classList.toggle("hidden", !inApp || !state.survey || ["picker", "settings"].includes(name));
+  const modeToggle = $("modeToggle");
+  if (modeToggle) modeToggle.classList.toggle("hidden", !inApp || name === "settings");
+  $("contextBar").classList.toggle("hidden", !inApp || name === "settings" || isComp);
+  $("tabBar").classList.toggle("hidden", !inApp || !state.survey || ["picker", "settings", "comp"].includes(name));
   $("btnOpenApp").classList.toggle("hidden", !state.survey);
+  syncModeToggle();
 }
 
 function setTab(tab) {
@@ -135,6 +143,11 @@ async function init() {
   fillSelect($("fInternalStatus"), INTERNAL_STATUS_OPTIONS, "—");
   fillSelect($("fLeaseType"), LEASE_TYPES, "—");
 
+  const storedMode = await chrome.storage.local.get(["mode"]);
+  state.appMode = storedMode.mode === "comp" ? "comp" : "survey";
+  initCompMode();
+  syncModeToggle();
+
   const status = await bg("AUTH_STATUS");
   if (status.ok && status.connected) {
     state.authed = true;
@@ -148,6 +161,7 @@ async function init() {
 }
 
 async function onAuthed() {
+  syncModeToggle();
   // Restore last-used survey (verify it still exists), else prompt to pick.
   const stored = await chrome.storage.local.get(["last_survey_id"]);
   if (stored.last_survey_id) {
@@ -155,6 +169,8 @@ async function onAuthed() {
     if (handleAuthFailure(res)) return;
     if (res.ok && res.survey) {
       await selectSurvey(res.survey, { silent: true });
+      // Comp mode is independent of surveys — land there once context is restored.
+      if (state.appMode === "comp") { enterCompMode(); return; }
       // If a CoStar record is on screen, read it right away.
       const tab = (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0];
       if (tab && costarRecordKey(tab.url)) doRead();
@@ -163,6 +179,7 @@ async function onAuthed() {
     }
     chrome.storage.local.remove(["last_survey_id"]);
   }
+  if (state.appMode === "comp") { enterCompMode(); return; }
   openPicker({ noBack: true });
 }
 
@@ -863,6 +880,394 @@ $("btnBrowseRefresh").addEventListener("click", async () => {
   await reloadProps();
   renderBrowse();
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// COMP MODE — push a CoStar listing into the master-app `comps` table.
+// Parallel to the survey flow above; shares bg()/helpers but its own screen + state.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const comp = {
+  scrape: null,       // last READ_COSTAR data object
+  costarId: null,     // dedup stamp key for the current record
+  sourceUrl: null,    // CoStar detail URL for the current record
+  flyerUrl: null,     // uploaded flyer (survives until the record changes)
+  flyerName: null,
+  mode: "insert",     // 'insert' | 'update'
+  updateId: null,     // comps.id being updated
+  baseline: null,     // DB row backing the form in update mode (dirty-diff base)
+  pendingMatch: null, // best dedup candidate awaiting the user's choice
+  lastFilled: {},     // input id → last auto-filled value (protects user edits on re-scan)
+};
+
+const COMP_INPUT_IDS = [
+  "comp_status", "comp_address", "comp_city", "comp_state", "comp_zip",
+  "comp_sub_market", "comp_submarket_cluster", "comp_building_sf", "comp_land_area",
+  "comp_year_built", "comp_sale_price", "comp_cap_rate", "comp_rent_psf",
+  "comp_lease_format", "comp_listing_brokerage", "comp_listing_agent",
+  "comp_listing_agent_phone", "comp_listing_agent_email", "comp_list_date", "comp_notes",
+];
+
+// Address normalizer ported from master-app src/lib/comp-extraction.ts (dedup score 80).
+const COMP_STREET_TYPE_MAP = {
+  st: "street", rd: "road", ave: "avenue", av: "avenue", blvd: "boulevard", dr: "drive",
+  ln: "lane", pkwy: "parkway", hwy: "highway", ct: "court", cir: "circle", pl: "place",
+  ter: "terrace", way: "way", n: "north", s: "south", e: "east", w: "west",
+  ne: "northeast", nw: "northwest", se: "southeast", sw: "southwest",
+};
+function normalizeCompAddress(input) {
+  if (!input) return "";
+  return String(input)
+    .toLowerCase()
+    .replace(/[.,#]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .map((tok) => COMP_STREET_TYPE_MAP[tok] ?? tok)
+    .join(" ");
+}
+
+function todayISO() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+// CoStar leaseType → comps `lease_format` (comps only has NNN / Gross / Modified Gross).
+function mapLeaseFormat(leaseType) {
+  switch (leaseType) {
+    case "NNN": return "NNN";
+    case "Modified Gross": return "Modified Gross";
+    case "Full Service Gross": return "Gross";
+    case "Industrial Gross": return "Gross";
+    default: return "";
+  }
+}
+
+function hasVal(v) { return v !== null && v !== undefined && String(v).trim() !== ""; }
+
+function defaultCompStatus(d) {
+  const sale = hasVal(d.salePrice);
+  const lease = hasVal(d.leaseRate);
+  if (sale && lease) return "FOR SALE/LEASE";
+  if (sale) return "FOR SALE";
+  if (lease) return "FOR LEASE";
+  return "FOR SALE";
+}
+
+// ─── Mode toggle (survey ↔ comp) ─────────────────────────────────────────────────
+
+function syncModeToggle() {
+  const tg = $("modeToggle");
+  if (!tg) return;
+  tg.querySelectorAll("button[data-mode]").forEach((b) =>
+    b.classList.toggle("active", b.dataset.mode === state.appMode));
+}
+
+function setAppMode(mode) {
+  if (mode !== "comp" && mode !== "survey") return;
+  state.appMode = mode;
+  chrome.storage.local.set({ mode });
+  syncModeToggle();
+  if (!state.authed) return; // auth screens win; mode is applied after sign-in via onAuthed()
+  if (mode === "comp") enterCompMode();
+  else setTab(state.tab); // back to the survey flow's natural screen
+}
+
+// Show the comp screen and (re)scan the current CoStar record into the form.
+function enterCompMode() {
+  showScreen("comp");
+  scanComp();
+}
+
+// ─── Field fill (never clobber a value the user edited) ──────────────────────────
+
+function setCompField(id, value) {
+  const node = $(id);
+  if (!node) return;
+  const v = value == null ? "" : String(value);
+  const prev = comp.lastFilled[id] ?? "";
+  const cur = node.value;
+  if (cur !== "" && cur !== prev) return;      // user edited this field — leave it
+  if (v === "" && cur !== "") return;          // don't wipe a prior auto-value with an empty scrape
+  node.value = v;
+  comp.lastFilled[id] = v;
+}
+
+function resetCompForm() {
+  comp.lastFilled = {};
+  comp.mode = "insert";
+  comp.updateId = null;
+  comp.baseline = null;
+  comp.flyerUrl = null;
+  comp.flyerName = null;
+  comp.pendingMatch = null;
+  hideCompMatch();
+  COMP_INPUT_IDS.forEach((id) => { const n = $(id); if (n) n.value = ""; });
+}
+
+async function fillCompForm(d) {
+  d = d || {};
+  // Navigating to a genuinely different CoStar record → clear the form and update state.
+  const newKey = d.costarId || normalizeCompAddress(d.street || "");
+  const oldKey = comp.costarId || normalizeCompAddress((comp.scrape && comp.scrape.street) || "");
+  if (comp.scrape && newKey && newKey !== oldKey) resetCompForm();
+
+  comp.scrape = d;
+  comp.costarId = d.costarId || null;
+  comp.sourceUrl = d.sourceUrl || null;
+
+  setCompField("comp_address", d.street);
+  setCompField("comp_city", d.city);
+  setCompField("comp_state", d.state || "AZ");
+  setCompField("comp_zip", d.zip);
+  setCompField("comp_sub_market", d.submarket);
+  const cluster = (d.submarket && typeof SUBMARKET_TO_CLUSTER !== "undefined")
+    ? (SUBMARKET_TO_CLUSTER[d.submarket] || "") : "";
+  setCompField("comp_submarket_cluster", cluster);
+  setCompField("comp_building_sf", d.rba);
+  setCompField("comp_land_area", d.acLot);
+  setCompField("comp_year_built", d.yearBuilt);
+  setCompField("comp_sale_price", d.salePrice);
+  setCompField("comp_cap_rate", d.capRate);
+  setCompField("comp_rent_psf", d.leaseRate); // already $/SF/month for Phoenix industrial
+  setCompField("comp_lease_format", mapLeaseFormat(d.leaseType));
+  setCompField("comp_status", defaultCompStatus(d));
+  setCompField("comp_list_date", todayISO());
+
+  // Notes carry the CoStar-ID stamp (the dedup key) unless the user already typed notes.
+  const notesNode = $("comp_notes");
+  if (notesNode && notesNode.value.trim() === "") {
+    notesNode.value = `CoStar ID: ${d.costarId || ""}\n${d.sourceUrl || ""}`.trim();
+    comp.lastFilled["comp_notes"] = notesNode.value;
+  }
+
+  await runCompDedup(d);
+}
+
+// ─── Scrape ──────────────────────────────────────────────────────────────────────
+
+async function scanComp(opts = {}) {
+  setCompMsg("Reading CoStar…");
+  // As in the survey flow: CoStar's SPA updates the URL before the content re-renders,
+  // so on a record change we retry until the street is non-empty and has actually changed.
+  const awaitChange = opts.awaitChangeFromStreet || null;
+  let d = null;
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const res = await bg("READ_COSTAR");
+    if (!res || !res.ok) { setCompMsg((res && res.error) || "Couldn't read the CoStar page.", true); return; }
+    d = res.data || {};
+    if (!awaitChange) break;
+    if (d.street && d.street !== awaitChange) break;
+    await sleep(300);
+  }
+  await fillCompForm(d);
+  if (!($("comp_address") && $("comp_address").value.trim())) {
+    setCompMsg("Couldn't read an address off the CoStar page — check the fields.", true);
+  } else {
+    setCompMsg("");
+  }
+}
+
+// ─── Dedup (client-side scoring against SEARCH_COMPS candidates) ──────────────────
+
+async function runCompDedup(d) {
+  hideCompMatch();
+  const street = d.street || "";
+  const streetNumber = (street.match(/^\s*(\d+)/) || ["", ""])[1];
+  const afterNum = street.replace(/^\s*\d+[\s-]*/, "");
+  const streetToken = (afterNum.match(/[A-Za-z0-9]+/) || [""])[0];
+  if (!streetNumber && !streetToken && !d.costarId) return;
+
+  const res = await bg("SEARCH_COMPS", { streetNumber, streetToken, costarId: d.costarId || null });
+  if (!res || !res.ok) return;
+  const target = normalizeCompAddress(street);
+  const token = streetToken.toLowerCase();
+
+  let best = null, bestScore = 0;
+  for (const c of (res.comps || [])) {
+    const addrNorm = normalizeCompAddress(c.address);
+    let score = 0;
+    if (d.costarId && (c.notes || "").includes(`CoStar ID: ${d.costarId}`)) score = 100;
+    else if (target && addrNorm === target) score = 80;
+    else if (streetNumber && token && addrNorm.startsWith(streetNumber) && addrNorm.includes(token)) score = 55;
+    if (score > bestScore) { bestScore = score; best = c; }
+  }
+  if (best && bestScore >= 55) showCompMatch(best);
+  else comp.pendingMatch = null;
+}
+
+function showCompMatch(candidate) {
+  comp.pendingMatch = candidate;
+  const banner = $("compMatch");
+  if (!banner) return;
+  banner.innerHTML =
+    `<span class="comp-match-txt">Looks like an existing comp: ` +
+    `<strong>${esc(candidate.address)}</strong> (${esc(candidate.status || "")})</span>` +
+    `<span class="comp-match-actions">` +
+    `<button type="button" id="compMatchUpdate">Update existing</button>` +
+    `<button type="button" id="compMatchNew">Create new anyway</button>` +
+    `</span>`;
+  banner.classList.remove("hidden");
+  const upd = $("compMatchUpdate"), neu = $("compMatchNew");
+  if (upd) upd.addEventListener("click", () => enterCompUpdate(candidate));
+  if (neu) neu.addEventListener("click", () => {
+    comp.mode = "insert";
+    comp.updateId = null;
+    comp.baseline = null;
+    hideCompMatch();
+  });
+}
+
+function hideCompMatch() {
+  const b = $("compMatch");
+  if (b) { b.classList.add("hidden"); b.innerHTML = ""; }
+}
+
+function enterCompUpdate(candidate) {
+  comp.mode = "update";
+  comp.updateId = candidate.id;
+  comp.baseline = candidate;
+  hideCompMatch();
+  setCompMsg(`Updating existing comp: ${candidate.address}`);
+}
+
+// ─── Save ──────────────────────────────────────────────────────────────────────
+
+function setCompMsg(msg, isErr = false) {
+  const n = $("compMsg");
+  if (!n) return;
+  n.textContent = msg || "";
+  n.classList.toggle("err", !!isErr);
+  n.classList.toggle("hidden", !msg);
+}
+
+function compFormRecord() {
+  const num = (id) => { const n = $(id); return n ? parseNum(n.value) : null; };
+  const txt = (id) => { const n = $(id); return n ? (n.value.trim() || null) : null; };
+  const buildingSf = num("comp_building_sf");
+  const salePrice = num("comp_sale_price");
+  const status = ($("comp_status") && $("comp_status").value) || "FOR SALE";
+  const rec = {
+    address: ($("comp_address") && $("comp_address").value.trim()) || "",
+    city: txt("comp_city"),
+    state: txt("comp_state") || "AZ",
+    zip: txt("comp_zip"),
+    sub_market: txt("comp_sub_market"),
+    submarket_cluster: txt("comp_submarket_cluster"),
+    building_sf: buildingSf,
+    land_area: num("comp_land_area"),
+    year_built: num("comp_year_built"),
+    sale_price: salePrice,
+    price_psf: (salePrice != null && buildingSf) ? Math.round((salePrice / buildingSf) * 100) / 100 : null,
+    cap_rate: num("comp_cap_rate"),
+    rent_psf: num("comp_rent_psf"),
+    lease_format: (($("comp_lease_format") && $("comp_lease_format").value) || null),
+    status,
+    type: status === "FOR LEASE" ? "lease" : "sale",
+    internal_deal: false,
+    source: "costar",
+    listing_brokerage: txt("comp_listing_brokerage"),
+    listing_agent: txt("comp_listing_agent"),
+    listing_agent_phone: txt("comp_listing_agent_phone"),
+    listing_agent_email: txt("comp_listing_agent_email"),
+    list_date: txt("comp_list_date"),
+    notes: txt("comp_notes"),
+    last_verified_at: new Date().toISOString(),
+  };
+  if (comp.flyerUrl) rec.flyer_url = comp.flyerUrl;
+  return rec;
+}
+
+// Update PATCH: only non-empty form values that differ from the DB row, never a blank-out.
+// Always re-verify (last_verified_at); include flyer_url only if newly attached.
+function compUpdatePatch(rec) {
+  const base = comp.baseline || {};
+  const skip = new Set(["last_verified_at", "flyer_url", "internal_deal", "source"]);
+  const patch = {};
+  for (const [k, v] of Object.entries(rec)) {
+    if (skip.has(k)) continue;
+    if (v === null || v === undefined || v === "") continue; // never blank out a DB value
+    if (String(base[k] ?? "") !== String(v)) patch[k] = v;
+  }
+  patch.last_verified_at = rec.last_verified_at;
+  if (comp.flyerUrl) patch.flyer_url = comp.flyerUrl;
+  return patch;
+}
+
+async function saveComp() {
+  const rec = compFormRecord();
+  if (!rec.address) return setCompMsg("Address is required.", true);
+  setCompMsg("");
+  setLoading($("compSave"), true);
+
+  let res;
+  if (comp.mode === "update" && comp.updateId) {
+    res = await bg("UPDATE_COMP", { id: comp.updateId, patch: compUpdatePatch(rec) }, { write: true });
+  } else {
+    res = await bg("INSERT_COMP", { record: rec }, { write: true });
+  }
+
+  setLoading($("compSave"), false);
+  if (handleAuthFailure(res)) return;
+  if (!res || !res.ok) return setCompMsg((res && res.error) || "Save failed.", true);
+
+  if (comp.mode === "update") {
+    setCompMsg("Comp updated ✓ (re-verified today)");
+  } else {
+    setCompMsg("Comp saved ✓");
+  }
+  // Clear update state either way (contract: a fresh insert leaves nothing pending).
+  comp.mode = "insert";
+  comp.updateId = null;
+  comp.baseline = null;
+}
+
+// ─── Comp-mode wiring (guarded — panel.html owns these elements) ──────────────────
+
+function initCompMode() {
+  const tg = $("modeToggle");
+  if (tg) {
+    tg.querySelectorAll("button[data-mode]").forEach((b) =>
+      b.addEventListener("click", () => setAppMode(b.dataset.mode)));
+  }
+  const save = $("compSave"); if (save) save.addEventListener("click", saveComp);
+  const rescan = $("compRescan"); if (rescan) rescan.addEventListener("click", () => scanComp());
+  const flyer = $("compFlyer");
+  if (flyer) flyer.addEventListener("click", async () => {
+    setLoading(flyer, true);
+    const res = await bg("ATTACH_COMP_FLYER", {}, { write: true });
+    setLoading(flyer, false);
+    if (handleAuthFailure(res)) return;
+    if (!res || !res.ok) return setCompMsg((res && res.error) || "Flyer attach failed.", true);
+    comp.flyerUrl = res.url;
+    comp.flyerName = res.name;
+    setCompMsg(`Flyer attached: ${res.name}`);
+  });
+}
+
+// ─── Comp-mode SPA auto-re-scan (parallel to maybeReReadOnNav) ────────────────────
+
+let lastCompNavKey = null;
+let compNavBusy = false;
+async function maybeReScanCompOnNav() {
+  if (state.appMode !== "comp" || !state.authed) return;
+  if (state.screen !== "comp") return;
+  if (compNavBusy) return;
+  let tab;
+  try { tab = (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0]; }
+  catch { return; }
+  const key = costarRecordKey(tab && tab.url);
+  if (!key) return;
+  if (comp.sourceUrl && key === costarRecordKey(comp.sourceUrl)) return;
+  if (key === lastCompNavKey) return;
+  lastCompNavKey = key;
+  compNavBusy = true;
+  const fromStreet = (comp.scrape && comp.scrape.street) || null;
+  try { await scanComp({ awaitChangeFromStreet: fromStreet }); } finally { compNavBusy = false; }
+}
+chrome.tabs.onUpdated.addListener((_id, changeInfo) => { if (changeInfo.url) maybeReScanCompOnNav(); });
+chrome.tabs.onActivated.addListener(() => maybeReScanCompOnNav());
+setInterval(maybeReScanCompOnNav, 1000);
 
 // ─── Go ────────────────────────────────────────────────────────────────────────
 

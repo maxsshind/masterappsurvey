@@ -19,6 +19,14 @@
     </div>
   </header>
 
+  <!-- Mode toggle: Survey (push to survey) / Comp (push to comps DB) -->
+  <div id="modeToggle" class="mode-bar hidden">
+    <div class="seg mode-seg">
+      <button type="button" data-mode="survey" class="seg-btn active">Survey</button>
+      <button type="button" data-mode="comp" class="seg-btn">Comp</button>
+    </div>
+  </div>
+
   <!-- Survey context bar -->
   <div id="contextBar" class="context-bar hidden">
     <div class="ctx-info">
@@ -226,6 +234,80 @@
       <button id="btnDisconnect" class="btn btn-danger btn-sm">Sign out</button>
     </div>
     <button id="btnBack" class="btn btn-ghost mt">Back</button>
+  </section>
+
+  <!-- Screen: comp entry (push to comps DB) -->
+  <section id="screen-comp" class="screen hidden">
+    <h2>New comp</h2>
+
+    <div id="compMatch" class="banner match hidden"></div>
+
+    <div class="section-label mt-section">Status</div>
+    <div class="fieldset">
+      <div class="fld">
+        <span>Status</span>
+        <select id="comp_status">
+          <option value="FOR SALE">FOR SALE</option>
+          <option value="FOR LEASE">FOR LEASE</option>
+          <option value="FOR SALE/LEASE">FOR SALE/LEASE</option>
+          <option value="PENDING">PENDING</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section-label mt-section">Address</div>
+    <div class="fieldset">
+      <div class="fld"><span>Address</span><input id="comp_address" /></div>
+      <div class="fld two"><span>City</span><input id="comp_city" /></div>
+      <div class="fld two"><span>State</span><input id="comp_state" /></div>
+      <div class="fld two"><span>Zip</span><input id="comp_zip" /></div>
+      <div class="fld two"><span>Submarket</span><input id="comp_sub_market" /></div>
+      <div class="fld two"><span>Cluster</span><input id="comp_submarket_cluster" /></div>
+    </div>
+
+    <div class="section-label mt-section">Size</div>
+    <div class="fieldset">
+      <div class="fld two"><span>Building SF</span><input id="comp_building_sf" inputmode="decimal" /></div>
+      <div class="fld two"><span>Land (acres)</span><input id="comp_land_area" inputmode="decimal" /></div>
+      <div class="fld two"><span>Year Built</span><input id="comp_year_built" inputmode="numeric" /></div>
+    </div>
+
+    <div class="section-label mt-section">Pricing</div>
+    <div class="fieldset">
+      <div class="fld two"><span>Asking Price ($)</span><input id="comp_sale_price" inputmode="decimal" /></div>
+      <div class="fld two"><span>Cap Rate (%)</span><input id="comp_cap_rate" inputmode="decimal" /></div>
+      <div class="fld two"><span>Asking Rent ($/SF/mo)</span><input id="comp_rent_psf" inputmode="decimal" /></div>
+      <div class="fld two">
+        <span>Lease Format</span>
+        <select id="comp_lease_format">
+          <option value=""></option>
+          <option value="NNN">NNN</option>
+          <option value="Gross">Gross</option>
+          <option value="Modified Gross">Modified Gross</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section-label mt-section">Listing Contact</div>
+    <div class="fieldset">
+      <div class="fld"><span>Listing Brokerage</span><input id="comp_listing_brokerage" /></div>
+      <div class="fld"><span>Listing Agent</span><input id="comp_listing_agent" /></div>
+      <div class="fld two"><span>Agent Phone</span><input id="comp_listing_agent_phone" /></div>
+      <div class="fld two"><span>Agent Email</span><input id="comp_listing_agent_email" /></div>
+      <div class="fld two"><span>List Date</span><input id="comp_list_date" type="date" /></div>
+    </div>
+
+    <div class="section-label mt-section">Notes</div>
+    <div class="fieldset">
+      <div class="fld"><span>Notes</span><textarea id="comp_notes" rows="3"></textarea></div>
+    </div>
+
+    <div class="action-row-stack">
+      <button id="compFlyer" type="button" class="btn btn-ghost btn-sm">📎 Attach Flyer PDF</button>
+      <button id="compRescan" type="button" class="btn btn-ghost btn-sm">↻ Re-read CoStar</button>
+      <button id="compSave" type="button" class="btn btn-primary">Save Comp</button>
+    </div>
+    <div id="compMsg" class="comp-msg hidden"></div>
   </section>
 
   <div id="toast" class="toast hidden"></div>
