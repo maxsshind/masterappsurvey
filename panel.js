@@ -906,6 +906,7 @@ const comp = {
   unmappedSubmarket: null,
   saleHighlights: "",
   saleNotes: "",
+  importedBlocks: { highlights: null, notes: null }, // exact text each checkbox dropped into Notes
 };
 
 const COMP_INPUT_IDS = [
@@ -1057,18 +1058,37 @@ function renderCompContentImport() {
   if (!hasNotes && notesCheck) notesCheck.checked = false;
 }
 
+// We save exactly what's in the Notes field — CoStar highlights/notes are dropped
+// into that field when their box is checked (see applyCompImport), so they're editable.
 function compNotesValue() {
-  const manual = (($("comp_notes") && $("comp_notes").value) || "").trim();
-  const parts = [];
-  if ($("compIncludeHighlights") && $("compIncludeHighlights").checked && comp.saleHighlights) {
-    parts.push(`Sale Highlights\n${comp.saleHighlights}`);
+  const v = (($("comp_notes") && $("comp_notes").value) || "").trim();
+  return v || null;
+}
+
+function compImportBlock(which) {
+  if (which === "highlights") return comp.saleHighlights ? `Sale Highlights\n${comp.saleHighlights}` : "";
+  return comp.saleNotes ? `Sale Notes\n${comp.saleNotes}` : "";
+}
+
+// Checking a box drops the CoStar text into the editable Notes field; unchecking pulls
+// that block back out (unless it was edited). What you see is what gets saved.
+function applyCompImport(which, checked) {
+  const ta = $("comp_notes");
+  if (!ta) return;
+  const block = compImportBlock(which);
+  if (!block) return;
+  let text = ta.value;
+  const prev = comp.importedBlocks[which];
+  if (checked) {
+    if (!text.includes(block)) text = text.trim() ? `${text.trimEnd()}\n\n${block}` : block;
+    comp.importedBlocks[which] = block;
+  } else {
+    const target = prev && text.includes(prev) ? prev : text.includes(block) ? block : null;
+    if (target) text = text.split(target).join("").replace(/\n{3,}/g, "\n\n").trim();
+    comp.importedBlocks[which] = null;
   }
-  if ($("compIncludeSaleNotes") && $("compIncludeSaleNotes").checked && comp.saleNotes) {
-    parts.push(`Sale Notes\n${comp.saleNotes}`);
-  }
-  // Imported sections follow the user's own notes so manual context stays first.
-  // Dedupe protects update/rescan flows if the text was already pasted manually.
-  return [manual, ...parts.filter((part) => !manual.includes(part))].filter(Boolean).join("\n\n") || null;
+  ta.value = text;
+  syncCompImportSelection();
 }
 
 // Address normalizer ported from master-app src/lib/comp-extraction.ts (dedup score 80).
@@ -1182,6 +1202,7 @@ function resetCompForm() {
   comp.unmappedSubmarket = null;
   comp.saleHighlights = "";
   comp.saleNotes = "";
+  comp.importedBlocks = { highlights: null, notes: null };
   hideCompMatch();
   COMP_INPUT_IDS.forEach((id) => {
     const n = $(id);
@@ -1632,9 +1653,10 @@ function initCompMode() {
     const node = $(containerId);
     if (node) node.addEventListener("change", syncCompReviewState);
   });
-  ["compIncludeHighlights", "compIncludeSaleNotes"].forEach((id) => {
+  const IMPORT_TOGGLES = { compIncludeHighlights: "highlights", compIncludeSaleNotes: "notes" };
+  Object.entries(IMPORT_TOGGLES).forEach(([id, which]) => {
     const node = $(id);
-    if (node) node.addEventListener("change", syncCompImportSelection);
+    if (node) node.addEventListener("change", () => applyCompImport(which, node.checked));
   });
   // Keep big numbers readable: re-format with thousands separators when typing ends.
   ["comp_building_sf", "comp_sale_price"].forEach((id) => {
