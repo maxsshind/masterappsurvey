@@ -299,6 +299,15 @@
       </div>
     </div>
 
+    <!-- Key numbers first: size and headline pricing, right under the address. -->
+    <div class="section-label mt-section">Size &amp; pricing</div>
+    <div class="fieldset">
+      <div class="fld two"><span>Building SF</span><input id="comp_building_sf" inputmode="decimal" /></div>
+      <div class="fld two"><span>Land (acres)</span><input id="comp_land_area" inputmode="decimal" /></div>
+      <div class="fld two"><span>Asking Price ($)</span><input id="comp_sale_price" inputmode="decimal" /></div>
+      <div class="fld two"><span>Asking Rent ($/SF/mo)</span><input id="comp_rent_psf" inputmode="decimal" /></div>
+    </div>
+
     <div class="section-label mt-section">Property type</div>
     <div class="fieldset">
       <!-- Display text is abbreviated to fit one row; the saved value keeps the full name. -->
@@ -315,25 +324,9 @@
       </div>
     </div>
 
-    <div class="section-label mt-section">Size</div>
+    <div class="section-label mt-section">Deal details</div>
     <div class="fieldset">
-      <div class="fld two"><span>Building SF</span><input id="comp_building_sf" inputmode="decimal" /></div>
-      <div class="fld two"><span>Land (acres)</span><input id="comp_land_area" inputmode="decimal" /></div>
-    </div>
-
-    <div class="section-label mt-section">Pricing</div>
-    <div class="fieldset">
-      <div class="fld two"><span>Asking Price ($)</span><input id="comp_sale_price" inputmode="decimal" /></div>
       <div class="fld two"><span>Cap Rate (%)</span><input id="comp_cap_rate" inputmode="decimal" /></div>
-      <div class="fld" id="comp_sale_types_wrap">
-        <span>Deal Type (sale)</span>
-        <div id="comp_sale_types" class="check-grid chip-grid">
-          <label><input type="checkbox" value="Owner User" /> Owner User</label>
-          <label><input type="checkbox" value="Investment" /> Investment</label>
-          <label><input type="checkbox" value="Sale Leaseback" /> Sale Leaseback</label>
-        </div>
-      </div>
-      <div class="fld two"><span>Asking Rent ($/SF/mo)</span><input id="comp_rent_psf" inputmode="decimal" /></div>
       <div class="fld two">
         <span>Lease Format</span>
         <select id="comp_lease_format">
@@ -342,6 +335,14 @@
           <option value="Gross">Gross</option>
           <option value="Modified Gross">Modified Gross</option>
         </select>
+      </div>
+      <div class="fld" id="comp_sale_types_wrap">
+        <span>Deal Type (sale)</span>
+        <div id="comp_sale_types" class="check-grid chip-grid">
+          <label><input type="checkbox" value="Owner User" /> Owner User</label>
+          <label><input type="checkbox" value="Investment" /> Investment</label>
+          <label><input type="checkbox" value="Sale Leaseback" /> Sale Leaseback</label>
+        </div>
       </div>
     </div>
 
