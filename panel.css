@@ -223,10 +223,12 @@ h2 { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: #8B1538; }
 #comp_ptypes.chip-grid input[type="checkbox"],
 #comp_sale_types.chip-grid input[type="checkbox"] { position: absolute; opacity: 0; pointer-events: none; }
 
-/* Property type: single row — abbreviated labels, chips share the width. */
-#comp_ptypes.chip-grid { flex-wrap: nowrap; gap: 3px; }
+/* Property type: even grid of pills — wraps to ~2 tidy rows, never crowded. */
+#comp_ptypes.chip-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 5px;
+}
 #comp_ptypes.chip-grid label {
-  flex: 1 1 auto; min-width: 0; padding: 6px 2px; font-size: 10.5px;
+  min-width: 0; justify-content: center; padding: 6px 4px; font-size: 11px;
 }
 
 /* Deal type: keep all three on one line (chips share the width). */
