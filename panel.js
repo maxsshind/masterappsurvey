@@ -22,6 +22,8 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const IS_EXTENSION_CONTEXT =
+  typeof chrome !== "undefined" && Boolean(chrome.runtime && chrome.runtime.id);
 
 function showError(node, msg) { node.textContent = msg; node.classList.remove("hidden"); }
 function hideError(node) { node.classList.add("hidden"); }
@@ -271,9 +273,11 @@ $("btnOpenApp").addEventListener("click", () => {
   if (state.survey) chrome.tabs.create({ url: `${CONFIG.APP_URL}/surveys/${state.survey.id}` });
 });
 
-chrome.windows.getCurrent((win) => {
-  if (win && win.type === "popup") $("btnPopout").classList.add("hidden"); // already detached
-});
+if (IS_EXTENSION_CONTEXT) {
+  chrome.windows.getCurrent((win) => {
+    if (win && win.type === "popup") $("btnPopout").classList.add("hidden"); // already detached
+  });
+}
 $("btnPopout").addEventListener("click", () => {
   chrome.windows.create({ url: "panel.html", type: "popup", width: 420, height: 760 }, () => {
     window.close();
@@ -459,9 +463,11 @@ async function maybeReReadOnNav() {
   const fromStreet = (state.scraped && state.scraped.street) || null;
   try { await doRead({ awaitChangeFromStreet: fromStreet }); } finally { navBusy = false; }
 }
-chrome.tabs.onUpdated.addListener((_id, changeInfo) => { if (changeInfo.url) maybeReReadOnNav(); });
-chrome.tabs.onActivated.addListener(() => maybeReReadOnNav());
-setInterval(maybeReReadOnNav, 1000);
+if (IS_EXTENSION_CONTEXT) {
+  chrome.tabs.onUpdated.addListener((_id, changeInfo) => { if (changeInfo.url) maybeReReadOnNav(); });
+  chrome.tabs.onActivated.addListener(() => maybeReReadOnNav());
+  setInterval(maybeReReadOnNav, 1000);
+}
 
 // ─── Address matching (duplicate detection within the survey) ────────────────────
 
@@ -897,6 +903,9 @@ const comp = {
   baseline: null,     // DB row backing the form in update mode (dirty-diff base)
   pendingMatch: null, // best dedup candidate awaiting the user's choice
   lastFilled: {},     // input id → last auto-filled value (protects user edits on re-scan)
+  unmappedSubmarket: null,
+  saleHighlights: "",
+  saleNotes: "",
 };
 
 const COMP_INPUT_IDS = [
@@ -906,6 +915,41 @@ const COMP_INPUT_IDS = [
   "comp_lease_format", "comp_listing_brokerage", "comp_listing_agent",
   "comp_listing_agent_phone", "comp_listing_agent_email", "comp_list_date", "comp_notes",
 ];
+
+const COMP_FIELD_LABELS = {
+  status: "status",
+  address: "address",
+  city: "city",
+  state: "state",
+  zip: "ZIP",
+  sub_market: "submarket",
+  submarket_cluster: "submarket cluster",
+  property_type: "property type",
+  building_sf: "building SF",
+  land_area: "land acres",
+  sale_price: "asking price",
+  price_psf: "price/SF",
+  cap_rate: "cap rate",
+  sale_type: "deal type",
+  rent_psf: "asking rent",
+  lease_format: "lease format",
+  listing_brokerage: "brokerage",
+  listing_agent: "listing agent",
+  listing_agent_phone: "agent phone",
+  listing_agent_email: "agent email",
+  list_date: "list date",
+  notes: "notes",
+  flyer_url: "flyer",
+};
+
+const COMP_DIRECTION_WORDS = new Set([
+  "n", "s", "e", "w", "ne", "nw", "se", "sw",
+  "north", "south", "east", "west", "northeast", "northwest", "southeast", "southwest",
+]);
+const COMP_STREET_TYPE_WORDS = new Set([
+  "street", "road", "avenue", "boulevard", "drive", "lane", "parkway",
+  "highway", "court", "circle", "place", "terrace", "way",
+]);
 
 // Checked values of a .check-grid container (property types, sale deal types).
 function compChecked(containerId) {
@@ -922,6 +966,109 @@ function compClearChecks(containerId) {
 function fmtThousands(v) {
   const n = parseNum(v);
   return n == null ? "" : n.toLocaleString("en-US");
+}
+
+function populateCompSubmarkets() {
+  const select = $("comp_sub_market");
+  if (!select || typeof SUBMARKET_TO_CLUSTER === "undefined") return;
+  const current = select.value;
+  select.innerHTML = `<option value="">Select a submarket</option>`;
+  for (const submarket of Object.keys(SUBMARKET_TO_CLUSTER).sort()) {
+    const option = document.createElement("option");
+    option.value = submarket;
+    option.textContent = submarket;
+    select.appendChild(option);
+  }
+  if (current && SUBMARKET_TO_CLUSTER[current]) select.value = current;
+}
+
+function officialCompSubmarket(value) {
+  const raw = String(value || "").trim();
+  if (!raw || typeof SUBMARKET_TO_CLUSTER === "undefined") return "";
+  if (SUBMARKET_TO_CLUSTER[raw]) return raw;
+  const lower = raw.toLowerCase();
+  return Object.keys(SUBMARKET_TO_CLUSTER).find((name) => name.toLowerCase() === lower) || "";
+}
+
+function setCompFieldSource(id, source) {
+  const node = $(id);
+  const label = node && node.closest(".fld") && node.closest(".fld").querySelector(":scope > span");
+  if (!label) return;
+  let badge = label.querySelector(".field-source");
+  if (!source) {
+    if (badge) badge.remove();
+    return;
+  }
+  if (!badge) {
+    badge = document.createElement("small");
+    badge.className = "field-source";
+    label.appendChild(badge);
+  }
+  badge.textContent = source;
+  badge.classList.toggle("edited", source === "Edited");
+  badge.classList.toggle("derived", source === "Derived" || source === "Today");
+}
+
+function setCompSubmarket(value) {
+  const select = $("comp_sub_market");
+  const hint = $("compSubmarketHint");
+  if (!select) return;
+  const priorAutoValue = comp.lastFilled.comp_sub_market ?? "";
+  if (select.value && select.value !== priorAutoValue) return;
+  const official = officialCompSubmarket(value);
+  comp.unmappedSubmarket = value && !official ? String(value).trim() : null;
+  setCompField("comp_sub_market", official, official ? "CoStar" : null);
+  if (hint) {
+    if (comp.unmappedSubmarket) {
+      hint.textContent = `CoStar reported “${comp.unmappedSubmarket}.” Choose an official submarket.`;
+      hint.classList.add("warning");
+      hint.classList.remove("hidden");
+    } else {
+      hint.textContent = "";
+      hint.classList.remove("warning");
+      hint.classList.add("hidden");
+    }
+  }
+}
+
+function renderCompContentImport() {
+  const card = $("compContentImport");
+  const highlightsOption = $("compHighlightsOption");
+  const notesOption = $("compNotesOption");
+  const highlightsPreview = $("compHighlightsPreview");
+  const notesPreview = $("compSaleNotesPreview");
+  const count = $("compImportCount");
+  const highlightsCheck = $("compIncludeHighlights");
+  const notesCheck = $("compIncludeSaleNotes");
+  const hasHighlights = hasVal(comp.saleHighlights);
+  const hasNotes = hasVal(comp.saleNotes);
+  if (!card) return;
+
+  card.classList.toggle("hidden", !hasHighlights && !hasNotes);
+  if (highlightsOption) highlightsOption.classList.toggle("hidden", !hasHighlights);
+  if (notesOption) notesOption.classList.toggle("hidden", !hasNotes);
+  if (highlightsPreview) highlightsPreview.textContent = comp.saleHighlights;
+  if (notesPreview) notesPreview.textContent = comp.saleNotes;
+  if (count) {
+    const available = Number(hasHighlights) + Number(hasNotes);
+    count.textContent = `${available} found`;
+  }
+  if (!hasHighlights && highlightsCheck) highlightsCheck.checked = false;
+  if (!hasNotes && notesCheck) notesCheck.checked = false;
+}
+
+function compNotesValue() {
+  const manual = (($("comp_notes") && $("comp_notes").value) || "").trim();
+  const parts = [];
+  if ($("compIncludeHighlights") && $("compIncludeHighlights").checked && comp.saleHighlights) {
+    parts.push(`Sale Highlights\n${comp.saleHighlights}`);
+  }
+  if ($("compIncludeSaleNotes") && $("compIncludeSaleNotes").checked && comp.saleNotes) {
+    parts.push(`Sale Notes\n${comp.saleNotes}`);
+  }
+  // Imported sections follow the user's own notes so manual context stays first.
+  // Dedupe protects update/rescan flows if the text was already pasted manually.
+  return [manual, ...parts.filter((part) => !manual.includes(part))].filter(Boolean).join("\n\n") || null;
 }
 
 // Address normalizer ported from master-app src/lib/comp-extraction.ts (dedup score 80).
@@ -941,6 +1088,17 @@ function normalizeCompAddress(input) {
     .split(" ")
     .map((tok) => COMP_STREET_TYPE_MAP[tok] ?? tok)
     .join(" ");
+}
+
+function compAddressParts(input) {
+  const normalized = normalizeCompAddress(input);
+  const tokens = normalized.split(" ").filter(Boolean);
+  const streetNumber = /^\d+[a-z]?$/.test(tokens[0] || "") ? tokens.shift() : "";
+  while (tokens.length && COMP_DIRECTION_WORDS.has(tokens[0])) tokens.shift();
+  const streetName = tokens
+    .filter((tok) => !COMP_DIRECTION_WORDS.has(tok) && !COMP_STREET_TYPE_WORDS.has(tok))
+    .join(" ");
+  return { normalized, streetNumber, streetName };
 }
 
 function todayISO() {
@@ -982,6 +1140,7 @@ function syncModeToggle() {
 
 function setAppMode(mode) {
   if (mode !== "comp" && mode !== "survey") return;
+  if (!IS_EXTENSION_CONTEXT) return;
   state.appMode = mode;
   chrome.storage.local.set({ mode });
   syncModeToggle();
@@ -998,16 +1157,18 @@ function enterCompMode() {
 
 // ─── Field fill (never clobber a value the user edited) ──────────────────────────
 
-function setCompField(id, value) {
+function setCompField(id, value, source = "CoStar") {
   const node = $(id);
   if (!node) return;
   const v = value == null ? "" : String(value);
   const prev = comp.lastFilled[id] ?? "";
   const cur = node.value;
-  if (cur !== "" && cur !== prev) return;      // user edited this field — leave it
+  const wasAutoFilled = Object.prototype.hasOwnProperty.call(comp.lastFilled, id);
+  if (wasAutoFilled && cur !== "" && cur !== prev) return; // user edited this field — leave it
   if (v === "" && cur !== "") return;          // don't wipe a prior auto-value with an empty scrape
   node.value = v;
   comp.lastFilled[id] = v;
+  setCompFieldSource(id, v ? source : null);
 }
 
 function resetCompForm() {
@@ -1018,10 +1179,29 @@ function resetCompForm() {
   comp.flyerUrl = null;
   comp.flyerName = null;
   comp.pendingMatch = null;
+  comp.unmappedSubmarket = null;
+  comp.saleHighlights = "";
+  comp.saleNotes = "";
   hideCompMatch();
-  COMP_INPUT_IDS.forEach((id) => { const n = $(id); if (n) n.value = ""; });
+  COMP_INPUT_IDS.forEach((id) => {
+    const n = $(id);
+    if (n) n.value = "";
+    setCompFieldSource(id, null);
+    const wrap = n && n.closest(".fld");
+    if (wrap) wrap.classList.remove("needs-review");
+  });
   compClearChecks("comp_ptypes");
   compClearChecks("comp_sale_types");
+  const includeHighlights = $("compIncludeHighlights");
+  const includeSaleNotes = $("compIncludeSaleNotes");
+  if (includeHighlights) includeHighlights.checked = false;
+  if (includeSaleNotes) includeSaleNotes.checked = false;
+  renderCompContentImport();
+  const hint = $("compSubmarketHint");
+  if (hint) { hint.textContent = ""; hint.classList.add("hidden"); }
+  const flyerState = $("compFlyerState");
+  if (flyerState) flyerState.textContent = "No flyer attached";
+  syncCompModeUI();
 }
 
 async function fillCompForm(d) {
@@ -1034,26 +1214,30 @@ async function fillCompForm(d) {
   comp.scrape = d;
   comp.costarId = d.costarId || null;
   comp.sourceUrl = d.sourceUrl || null;
+  comp.saleHighlights = d.saleHighlights || "";
+  comp.saleNotes = d.saleNotes || "";
 
   setCompField("comp_address", d.street);
   setCompField("comp_city", d.city);
   setCompField("comp_state", d.state || "AZ");
   setCompField("comp_zip", d.zip);
-  setCompField("comp_sub_market", d.submarket);
+  setCompSubmarket(d.submarket);
   setCompField("comp_building_sf", fmtThousands(d.rba));
   setCompField("comp_land_area", d.acLot);
   setCompField("comp_sale_price", fmtThousands(d.salePrice));
   setCompField("comp_cap_rate", d.capRate);
   setCompField("comp_rent_psf", d.leaseRate); // already $/SF/month for Phoenix industrial
   setCompField("comp_lease_format", mapLeaseFormat(d.leaseType));
-  setCompField("comp_status", defaultCompStatus(d));
-  setCompField("comp_list_date", todayISO());
+  setCompField("comp_status", defaultCompStatus(d), "Derived");
+  setCompField("comp_list_date", todayISO(), "Today");
 
   // Notes stay blank — Max adds his own. (Dedup relies on address matching and the
   // CoStar-ID stamps that older comps carry in notes; new comps aren't stamped.)
 
+  renderCompContentImport();
   syncCompFieldVisibility();
   await runCompDedup(d);
+  syncCompReviewState();
 }
 
 // Show only the economics that match the status: FOR SALE hides the lease fields,
@@ -1079,6 +1263,115 @@ function syncCompFieldVisibility() {
   toggle("comp_lease_format", showLease);
   const saleTypes = $("comp_sale_types_wrap");
   if (saleTypes) saleTypes.classList.toggle("hidden", !showSale);
+  syncCompReviewState();
+}
+
+function setCompNeedsReview(id, needsReview) {
+  const node = $(id);
+  const wrap = node && node.closest(".fld");
+  if (!wrap) return;
+  wrap.classList.toggle("needs-review", !!needsReview);
+  if (needsReview) node.setAttribute("aria-invalid", "true");
+  else node.removeAttribute("aria-invalid");
+}
+
+function compMissingFields() {
+  const missing = [];
+  const { showSale, showLease } = compStatusShows();
+  const value = (id) => {
+    const node = $(id);
+    return node ? String(node.value || "").trim() : "";
+  };
+  if (!value("comp_address")) missing.push({ id: "comp_address", label: "address" });
+  if (!value("comp_sub_market")) missing.push({ id: "comp_sub_market", label: "submarket" });
+  if (!value("comp_building_sf") && !value("comp_land_area")) {
+    missing.push({ id: "comp_building_sf", label: "building SF or land acres" });
+  }
+  if (showSale && !value("comp_sale_price")) missing.push({ id: "comp_sale_price", label: "asking price" });
+  if (showLease && !value("comp_rent_psf")) missing.push({ id: "comp_rent_psf", label: "asking rent" });
+  return missing;
+}
+
+function compChangedFieldLabels() {
+  if (comp.mode !== "update" || !comp.baseline) return [];
+  const patch = compUpdatePatch(compFormRecord());
+  return Object.keys(patch)
+    .filter((key) => key !== "last_verified_at")
+    .map((key) => COMP_FIELD_LABELS[key] || key.replaceAll("_", " "));
+}
+
+function syncCompModeUI() {
+  const title = $("compTitle");
+  const save = $("compSave");
+  const note = $("compModeNote");
+  const isUpdate = comp.mode === "update" && comp.updateId;
+  if (title) title.textContent = isUpdate ? "Update comp" : "New comp";
+  if (save) save.textContent = isUpdate ? "Update comp" : "Save comp";
+  if (!note) return;
+  if (!isUpdate) {
+    note.classList.add("hidden");
+    note.textContent = "";
+    return;
+  }
+  const changed = compChangedFieldLabels();
+  note.innerHTML = `<strong>Updating ${esc((comp.baseline && comp.baseline.address) || "existing comp")}</strong><br>` +
+    (changed.length
+      ? `Will change: ${esc(changed.join(", "))}.`
+      : "No field changes yet; saving will refresh the verified date.");
+  note.classList.remove("hidden");
+}
+
+function syncCompReviewState() {
+  const tracked = ["comp_address", "comp_sub_market", "comp_building_sf", "comp_sale_price", "comp_rent_psf"];
+  tracked.forEach((id) => setCompNeedsReview(id, false));
+  const missing = compMissingFields();
+  missing.forEach((item) => setCompNeedsReview(item.id, true));
+  const summary = $("compCompleteness");
+  if (summary) {
+    summary.classList.toggle("ready", missing.length === 0);
+    summary.classList.toggle("warning", missing.length > 0);
+    summary.textContent = missing.length === 0
+      ? "Ready to save"
+      : `${missing.length} field${missing.length === 1 ? "" : "s"} to review`;
+    summary.title = missing.length ? `Missing ${missing.map((item) => item.label).join(", ")}` : "";
+  }
+  const save = $("compSave");
+  const blocksSave = missing.some((item) => item.id === "comp_address" || item.id === "comp_sub_market");
+  if (save) {
+    save.disabled = blocksSave || !IS_EXTENSION_CONTEXT;
+    save.title = !IS_EXTENSION_CONTEXT
+      ? "Open this panel from the installed extension to save a comp"
+      : blocksSave ? "Address and an official submarket are required" : "";
+  }
+  syncCompModeUI();
+}
+
+function markCompFieldEdited(id) {
+  const node = $(id);
+  if (!node) return;
+  if (id === "comp_notes") {
+    syncCompImportSelection();
+    return;
+  }
+  setCompFieldSource(id, String(node.value || "").trim() ? "Edited" : null);
+  if (id === "comp_sub_market") {
+    comp.unmappedSubmarket = null;
+    const hint = $("compSubmarketHint");
+    if (hint) { hint.textContent = ""; hint.classList.add("hidden"); }
+  }
+  syncCompReviewState();
+}
+
+function syncCompImportSelection() {
+  const manual = (($("comp_notes") && $("comp_notes").value) || "").trim();
+  const importsSelected =
+    ($("compIncludeHighlights") && $("compIncludeHighlights").checked) ||
+    ($("compIncludeSaleNotes") && $("compIncludeSaleNotes").checked);
+  const source = manual && importsSelected
+    ? "Edited + CoStar"
+    : importsSelected ? "CoStar selected" : manual ? "Edited" : null;
+  setCompFieldSource("comp_notes", source);
+  syncCompReviewState();
 }
 
 // ─── Scrape ──────────────────────────────────────────────────────────────────────
@@ -1110,48 +1403,78 @@ async function scanComp(opts = {}) {
 async function runCompDedup(d) {
   hideCompMatch();
   const street = d.street || "";
-  const streetNumber = (street.match(/^\s*(\d+)/) || ["", ""])[1];
-  const afterNum = street.replace(/^\s*\d+[\s-]*/, "");
-  const streetToken = (afterNum.match(/[A-Za-z0-9]+/) || [""])[0];
+  const targetParts = compAddressParts(street);
+  const streetNumber = targetParts.streetNumber;
+  const streetToken = (targetParts.streetName.split(" ")[0] || "").trim();
   if (!streetNumber && !streetToken && !d.costarId) return;
 
   const res = await bg("SEARCH_COMPS", { streetNumber, streetToken, costarId: d.costarId || null });
   if (!res || !res.ok) return;
-  const target = normalizeCompAddress(street);
-  const token = streetToken.toLowerCase();
 
-  let best = null, bestScore = 0;
+  let best = null, bestScore = 0, bestReason = "";
   for (const c of (res.comps || [])) {
-    const addrNorm = normalizeCompAddress(c.address);
+    const candidateParts = compAddressParts(c.address);
+    const cityConflict = d.city && c.city && d.city.trim().toLowerCase() !== c.city.trim().toLowerCase();
+    const zipConflict = d.zip && c.zip && String(d.zip).trim() !== String(c.zip).trim();
+    const locationConflict = cityConflict || zipConflict;
+    const cityMatch = d.city && c.city && d.city.trim().toLowerCase() === c.city.trim().toLowerCase();
+    const zipMatch = d.zip && c.zip && String(d.zip).trim() === String(c.zip).trim();
     let score = 0;
-    if (d.costarId && (c.notes || "").includes(`CoStar ID: ${d.costarId}`)) score = 100;
-    else if (target && addrNorm === target) score = 80;
-    else if (streetNumber && token && addrNorm.startsWith(streetNumber) && addrNorm.includes(token)) score = 55;
-    if (score > bestScore) { bestScore = score; best = c; }
+    let reason = "";
+    if (d.costarId && (c.notes || "").includes(`CoStar ID: ${d.costarId}`)) {
+      score = 100;
+      reason = "Same CoStar property ID";
+    } else if (!locationConflict && targetParts.normalized &&
+      candidateParts.normalized === targetParts.normalized) {
+      score = zipMatch || cityMatch ? 96 : 92;
+      reason = zipMatch ? "Exact address and ZIP match" : "Exact normalized address match";
+    } else if (!locationConflict && streetNumber && targetParts.streetName &&
+      candidateParts.streetNumber === streetNumber &&
+      candidateParts.streetName === targetParts.streetName) {
+      score = zipMatch || cityMatch ? 86 : 76;
+      reason = zipMatch ? "Same street address and ZIP" : "Same street number and name";
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      best = c;
+      bestReason = reason;
+    }
   }
-  if (best && bestScore >= 55) showCompMatch(best);
+  if (best && bestScore >= 76) showCompMatch(best, { score: bestScore, reason: bestReason });
   else comp.pendingMatch = null;
 }
 
-function showCompMatch(candidate) {
+function showCompMatch(candidate, match = {}) {
   comp.pendingMatch = candidate;
   const banner = $("compMatch");
   if (!banner) return;
+  const status = candidate.status
+    ? `<span class="comp-match-status">${esc(candidate.status)}</span>`
+    : "";
   banner.innerHTML =
-    `<span class="comp-match-txt">Looks like an existing comp: ` +
-    `<strong>${esc(candidate.address)}</strong> (${esc(candidate.status || "")})</span>` +
-    `<span class="comp-match-actions">` +
-    `<button type="button" id="compMatchUpdate">Update existing</button>` +
-    `<button type="button" id="compMatchNew">Create new anyway</button>` +
-    `</span>`;
+    `<div class="comp-match-head">` +
+      `<div class="comp-match-copy">` +
+        `<span class="comp-match-kicker">Possible existing comp</span>` +
+        `<strong class="comp-match-address">${esc(candidate.address)}</strong>` +
+        `<span class="comp-match-reason">${esc(match.reason || "Address match")} · match score ${Number(match.score || 0)}</span>` +
+      `</div>${status}` +
+    `</div>` +
+    `<div class="comp-match-actions">` +
+      `<button type="button" id="compMatchView">View existing</button>` +
+      `<button type="button" id="compMatchUpdate" class="primary">Update this comp</button>` +
+      `<button type="button" id="compMatchNew">Keep as new</button>` +
+    `</div>`;
   banner.classList.remove("hidden");
-  const upd = $("compMatchUpdate"), neu = $("compMatchNew");
+  const view = $("compMatchView"), upd = $("compMatchUpdate"), neu = $("compMatchNew");
+  if (view) view.addEventListener("click", () =>
+    chrome.tabs.create({ url: `${CONFIG.APP_URL}/comps/${candidate.id}` }));
   if (upd) upd.addEventListener("click", () => enterCompUpdate(candidate));
   if (neu) neu.addEventListener("click", () => {
     comp.mode = "insert";
     comp.updateId = null;
     comp.baseline = null;
     hideCompMatch();
+    syncCompReviewState();
   });
 }
 
@@ -1165,7 +1488,8 @@ function enterCompUpdate(candidate) {
   comp.updateId = candidate.id;
   comp.baseline = candidate;
   hideCompMatch();
-  setCompMsg(`Updating existing comp: ${candidate.address}`);
+  setCompMsg("");
+  syncCompReviewState();
 }
 
 // ─── Save ──────────────────────────────────────────────────────────────────────
@@ -1212,7 +1536,7 @@ function compFormRecord() {
     listing_agent_phone: txt("comp_listing_agent_phone"),
     listing_agent_email: txt("comp_listing_agent_email"),
     list_date: txt("comp_list_date"),
-    notes: txt("comp_notes"),
+    notes: compNotesValue(),
     last_verified_at: new Date().toISOString(),
   };
   if (comp.flyerUrl) rec.flyer_url = comp.flyerUrl;
@@ -1238,6 +1562,9 @@ function compUpdatePatch(rec) {
 async function saveComp() {
   const rec = compFormRecord();
   if (!rec.address) return setCompMsg("Address is required.", true);
+  if (!rec.sub_market || !SUBMARKET_TO_CLUSTER[rec.sub_market]) {
+    return setCompMsg("Choose an official submarket before saving.", true);
+  }
   setCompMsg("");
   setLoading($("compSave"), true);
 
@@ -1275,11 +1602,13 @@ async function saveComp() {
   comp.mode = "insert";
   comp.updateId = null;
   comp.baseline = null;
+  syncCompReviewState();
 }
 
 // ─── Comp-mode wiring (guarded — panel.html owns these elements) ──────────────────
 
 function initCompMode() {
+  populateCompSubmarkets();
   const tg = $("modeToggle");
   if (tg) {
     tg.querySelectorAll("button[data-mode]").forEach((b) =>
@@ -1288,7 +1617,25 @@ function initCompMode() {
   const save = $("compSave"); if (save) save.addEventListener("click", saveComp);
   const rescan = $("compRescan"); if (rescan) rescan.addEventListener("click", () => scanComp());
   const statusSel = $("comp_status");
-  if (statusSel) statusSel.addEventListener("change", syncCompFieldVisibility);
+  if (statusSel) statusSel.addEventListener("change", () => {
+    markCompFieldEdited("comp_status");
+    syncCompFieldVisibility();
+  });
+  COMP_INPUT_IDS.forEach((id) => {
+    if (id === "comp_status") return;
+    const node = $(id);
+    if (!node) return;
+    const eventName = node.tagName === "SELECT" ? "change" : "input";
+    node.addEventListener(eventName, () => markCompFieldEdited(id));
+  });
+  ["comp_ptypes", "comp_sale_types"].forEach((containerId) => {
+    const node = $(containerId);
+    if (node) node.addEventListener("change", syncCompReviewState);
+  });
+  ["compIncludeHighlights", "compIncludeSaleNotes"].forEach((id) => {
+    const node = $(id);
+    if (node) node.addEventListener("change", syncCompImportSelection);
+  });
   // Keep big numbers readable: re-format with thousands separators when typing ends.
   ["comp_building_sf", "comp_sale_price"].forEach((id) => {
     const n = $(id);
@@ -1303,8 +1650,15 @@ function initCompMode() {
     if (!res || !res.ok) return setCompMsg((res && res.error) || "Flyer attach failed.", true);
     comp.flyerUrl = res.url;
     comp.flyerName = res.name;
+    const flyerState = $("compFlyerState");
+    if (flyerState) {
+      flyerState.textContent = `Flyer: ${res.name}`;
+      flyerState.title = res.name;
+    }
     setCompMsg(`Flyer attached: ${res.name}`);
+    syncCompReviewState();
   });
+  syncCompReviewState();
 }
 
 // ─── Comp-mode SPA auto-re-scan (parallel to maybeReReadOnNav) ────────────────────
@@ -1327,10 +1681,82 @@ async function maybeReScanCompOnNav() {
   const fromStreet = (comp.scrape && comp.scrape.street) || null;
   try { await scanComp({ awaitChangeFromStreet: fromStreet }); } finally { compNavBusy = false; }
 }
-chrome.tabs.onUpdated.addListener((_id, changeInfo) => { if (changeInfo.url) maybeReScanCompOnNav(); });
-chrome.tabs.onActivated.addListener(() => maybeReScanCompOnNav());
-setInterval(maybeReScanCompOnNav, 1000);
+if (IS_EXTENSION_CONTEXT) {
+  chrome.tabs.onUpdated.addListener((_id, changeInfo) => { if (changeInfo.url) maybeReScanCompOnNav(); });
+  chrome.tabs.onActivated.addListener(() => maybeReScanCompOnNav());
+  setInterval(maybeReScanCompOnNav, 1000);
+}
 
 // ─── Go ────────────────────────────────────────────────────────────────────────
 
-init();
+function initLocalPreview() {
+  fillSelect($("fAvailability"), AVAILABILITY_OPTIONS, "—");
+  fillSelect($("fInternalStatus"), INTERNAL_STATUS_OPTIONS, "—");
+  fillSelect($("fLeaseType"), LEASE_TYPES, "—");
+
+  state.authed = true;
+  state.appMode = "comp";
+  initCompMode();
+  showScreen("comp");
+
+  const sample = {
+    street: "128 W Boxelder",
+    city: "Chandler",
+    state: "AZ",
+    zip: "85225",
+    submarket: "Chandler N/Gilbert",
+    rba: "14157",
+    acLot: "0.86",
+    salePrice: "3140000",
+    leaseRate: "1.50",
+    leaseType: "Modified Gross",
+    saleHighlights:
+      "• Two leased suites generating $4,660 monthly income\n" +
+      "• Immediate occupancy available for ±10,157 SF\n" +
+      "• Six grade-level doors and 18′ clear height",
+    saleNotes:
+      "Built in 1986, the property features six grade-level doors, separately metered power, and flexible industrial suites.",
+  };
+
+  comp.scrape = sample;
+  comp.saleHighlights = sample.saleHighlights;
+  comp.saleNotes = sample.saleNotes;
+  setCompField("comp_address", sample.street);
+  setCompField("comp_city", sample.city);
+  setCompField("comp_state", sample.state);
+  setCompField("comp_zip", sample.zip);
+  setCompSubmarket(sample.submarket);
+  setCompField("comp_building_sf", fmtThousands(sample.rba));
+  setCompField("comp_land_area", sample.acLot);
+  setCompField("comp_sale_price", fmtThousands(sample.salePrice));
+  setCompField("comp_rent_psf", sample.leaseRate);
+  setCompField("comp_lease_format", mapLeaseFormat(sample.leaseType));
+  setCompField("comp_status", defaultCompStatus(sample), "Derived");
+  setCompField("comp_list_date", todayISO(), "Today");
+
+  const propertyTypes = $("comp_ptypes");
+  if (propertyTypes) {
+    propertyTypes.querySelectorAll("input").forEach((input) => {
+      input.checked = input.value === "ISF" || input.value === "Class C";
+    });
+  }
+  const ownerUser = $("comp_sale_types")?.querySelector('input[value="Owner User"]');
+  if (ownerUser) ownerUser.checked = true;
+
+  renderCompContentImport();
+  syncCompFieldVisibility();
+  syncCompReviewState();
+
+  const headerActions = document.querySelector(".header-actions");
+  if (headerActions) headerActions.classList.add("hidden");
+  $("modeToggle")?.querySelectorAll("button").forEach((button) => { button.disabled = true; });
+  const save = $("compSave");
+  if (save) {
+    save.disabled = true;
+    save.textContent = "Preview only";
+    save.title = "Open this panel from the installed extension to save a comp";
+  }
+}
+
+if (IS_EXTENSION_CONTEXT) init();
+else initLocalPreview();

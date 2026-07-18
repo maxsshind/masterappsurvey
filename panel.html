@@ -237,13 +237,45 @@
   </section>
 
   <!-- Screen: comp entry (push to comps DB) -->
-  <section id="screen-comp" class="screen hidden">
-    <h2>New comp</h2>
+  <section id="screen-comp" class="screen comp-screen hidden">
+    <div class="comp-toolbar">
+      <div>
+        <span class="eyebrow">Market comps</span>
+        <h2 id="compTitle">New comp</h2>
+      </div>
+      <button id="compRescan" type="button" class="btn btn-ghost btn-sm comp-rescan" title="Re-read the active CoStar property">↻ Re-read</button>
+    </div>
 
     <div id="compMatch" class="banner match hidden"></div>
+    <div id="compModeNote" class="comp-mode-note hidden"></div>
 
-    <div class="section-label mt-section">Status</div>
-    <div class="fieldset">
+    <section id="compContentImport" class="comp-import-card hidden" aria-labelledby="compImportTitle">
+      <div class="comp-import-head">
+        <div>
+          <span class="eyebrow">Optional</span>
+          <h3 id="compImportTitle">Add CoStar description?</h3>
+        </div>
+        <span id="compImportCount" class="count-badge"></span>
+      </div>
+      <p>Choose what should be appended to this comp’s Notes field.</p>
+      <label id="compHighlightsOption" class="comp-import-option hidden">
+        <input id="compIncludeHighlights" type="checkbox" />
+        <span>
+          <strong>Include Sale Highlights</strong>
+          <small id="compHighlightsPreview"></small>
+        </span>
+      </label>
+      <label id="compNotesOption" class="comp-import-option hidden">
+        <input id="compIncludeSaleNotes" type="checkbox" />
+        <span>
+          <strong>Include Sale Notes</strong>
+          <small id="compSaleNotesPreview"></small>
+        </span>
+      </label>
+    </section>
+
+    <div class="section-label mt-section">Property</div>
+    <div class="fieldset comp-essential">
       <div class="fld">
         <span>Status</span>
         <select id="comp_status">
@@ -253,20 +285,22 @@
           <option value="PENDING">PENDING</option>
         </select>
       </div>
-    </div>
-
-    <div class="section-label mt-section">Address</div>
-    <div class="fieldset">
       <div class="fld"><span>Address</span><input id="comp_address" /></div>
       <div class="fld two"><span>City</span><input id="comp_city" /></div>
       <div class="fld two"><span>State</span><input id="comp_state" /></div>
       <div class="fld two"><span>Zip</span><input id="comp_zip" /></div>
-      <div class="fld two"><span>Submarket</span><input id="comp_sub_market" /></div>
+      <div class="fld">
+        <span>Submarket</span>
+        <select id="comp_sub_market">
+          <option value="">Select a submarket</option>
+        </select>
+        <small id="compSubmarketHint" class="field-hint hidden"></small>
+      </div>
     </div>
 
-    <div class="section-label mt-section">Property Type</div>
+    <div class="section-label mt-section">Property type</div>
     <div class="fieldset">
-      <div id="comp_ptypes" class="check-grid">
+      <div id="comp_ptypes" class="check-grid chip-grid">
         <label><input type="checkbox" value="ISF" /> ISF</label>
         <label><input type="checkbox" value="IOS" /> IOS</label>
         <label><input type="checkbox" value="Class A" /> Class A</label>
@@ -291,7 +325,7 @@
       <div class="fld two"><span>Cap Rate (%)</span><input id="comp_cap_rate" inputmode="decimal" /></div>
       <div class="fld" id="comp_sale_types_wrap">
         <span>Deal Type (sale)</span>
-        <div id="comp_sale_types" class="check-grid">
+        <div id="comp_sale_types" class="check-grid chip-grid">
           <label><input type="checkbox" value="Owner User" /> Owner User</label>
           <label><input type="checkbox" value="Investment" /> Investment</label>
           <label><input type="checkbox" value="Sale Leaseback" /> Sale Leaseback</label>
@@ -309,26 +343,39 @@
       </div>
     </div>
 
-    <div class="section-label mt-section">Listing Contact</div>
-    <div class="fieldset">
-      <div class="fld"><span>Listing Brokerage</span><input id="comp_listing_brokerage" /></div>
-      <div class="fld"><span>Listing Agent</span><input id="comp_listing_agent" /></div>
-      <div class="fld two"><span>Agent Phone</span><input id="comp_listing_agent_phone" /></div>
-      <div class="fld two"><span>Agent Email</span><input id="comp_listing_agent_email" /></div>
-      <div class="fld two"><span>List Date</span><input id="comp_list_date" type="date" /></div>
-    </div>
+    <details id="compAdditional" class="comp-disclosure">
+      <summary>
+        <span>Additional details</span>
+        <small>Contact, date, and notes</small>
+      </summary>
+      <div class="comp-disclosure-body">
+        <div class="section-label">Listing contact</div>
+        <div class="fieldset">
+          <div class="fld"><span>Listing Brokerage</span><input id="comp_listing_brokerage" /></div>
+          <div class="fld"><span>Listing Agent</span><input id="comp_listing_agent" /></div>
+          <div class="fld two"><span>Agent Phone</span><input id="comp_listing_agent_phone" /></div>
+          <div class="fld two"><span>Agent Email</span><input id="comp_listing_agent_email" /></div>
+          <div class="fld"><span>List Date</span><input id="comp_list_date" type="date" /></div>
+        </div>
 
-    <div class="section-label mt-section">Notes</div>
-    <div class="fieldset">
-      <div class="fld"><span>Notes</span><textarea id="comp_notes" rows="3"></textarea></div>
-    </div>
+        <div class="section-label mt-section">Notes</div>
+        <div class="fieldset">
+          <div class="fld"><span>Notes</span><textarea id="comp_notes" rows="3"></textarea></div>
+        </div>
+      </div>
+    </details>
 
-    <div class="action-row-stack">
-      <button id="compFlyer" type="button" class="btn btn-ghost btn-sm">📎 Attach Flyer PDF</button>
-      <button id="compRescan" type="button" class="btn btn-ghost btn-sm">↻ Re-read CoStar</button>
-      <button id="compSave" type="button" class="btn btn-primary">Save Comp</button>
+    <div class="comp-sticky-footer">
+      <div class="comp-footer-meta">
+        <span id="compCompleteness">Reviewing fields…</span>
+        <span id="compFlyerState">No flyer attached</span>
+      </div>
+      <div class="comp-footer-actions">
+        <button id="compFlyer" type="button" class="btn btn-ghost btn-sm">📎 Flyer</button>
+        <button id="compSave" type="button" class="btn btn-primary">Save comp</button>
+      </div>
+      <div id="compMsg" class="comp-msg hidden"></div>
     </div>
-    <div id="compMsg" class="comp-msg hidden"></div>
   </section>
 
   <div id="toast" class="toast hidden"></div>

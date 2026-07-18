@@ -139,10 +139,46 @@ async function readCoStar() {
                  txt.match(/\b((?:19|20)\d{2})\s*\n?\s*(?:Year )?Built\b/i); // "1998 Built" / "1998 Year Built"
       if (yb) yearBuilt = yb[1];
 
+      // ---- optional descriptive content: Sale Highlights / Sale Notes ----
+      // These are returned separately and are NEVER saved automatically. The panel
+      // asks the user which sections, if any, should be appended to comp notes.
+      const sectionLines = (heading, stopHeadings) => {
+        const headingKey = (line) => line.replace(/\s*>{1,2}\s*$/, "").replace(/:$/, "").trim().toLowerCase();
+        const start = lines.findIndex((line) => headingKey(line) === heading.toLowerCase());
+        if (start < 0) return [];
+        const stops = new Set(stopHeadings.map((line) => line.toLowerCase()));
+        const out = [];
+        for (let i = start + 1; i < lines.length; i++) {
+          if (stops.has(headingKey(lines[i]))) break;
+          out.push(lines[i]);
+        }
+        return out;
+      };
+      const saleHighlightLines = sectionLines("Sale Highlights", [
+        "Sale Notes", "Documents", "Sale Contacts", "Building", "For Lease",
+      ]);
+      const saleNoteLines = sectionLines("Sale Notes", [
+        "Documents", "Sale Contacts", "Building", "For Lease", "Lease Highlights", "Lease Notes",
+      ]);
+      const saleHighlights = saleHighlightLines
+        .map((line) => line.replace(/^[•·▪◦*-]\s*/, "").trim())
+        .filter(Boolean)
+        .map((line) => `• ${line}`)
+        .join("\n")
+        .slice(0, 6000);
+      const saleNotes = saleNoteLines
+        .join(" ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 6000);
+
       // Diagnostic: sample of the text actually seen, so we can tell whether the
       // scraper hit the right frame/tab when a scrape comes back empty.
       const _debug = { textLen: txt.length, sample: txt.slice(0, 400) };
-      return { street, city, state, zip, submarket, rba, acLot, salePrice, leaseRate, leaseType, capRate, yearBuilt, _debug };
+      return {
+        street, city, state, zip, submarket, rba, acLot, salePrice, leaseRate,
+        leaseType, capRate, yearBuilt, saleHighlights, saleNotes, _debug,
+      };
     },
   });
 
@@ -253,7 +289,10 @@ function listSurveyProperties(surveyId) {
 // ─── Comps (master-app `comps` table) ────────────────────────────────────────────
 
 const COMP_COLS =
-  "id,address,city,zip,status,type,sale_price,rent_psf,cap_rate,building_sf,land_area,sub_market,submarket_cluster,last_verified_at,list_date,notes";
+  "id,address,city,state,zip,status,type,property_type,sale_type,sale_price,price_psf," +
+  "rent_psf,lease_format,cap_rate,building_sf,land_area,sub_market,submarket_cluster," +
+  "listing_brokerage,listing_agent,listing_agent_phone,listing_agent_email," +
+  "last_verified_at,list_date,notes,flyer_url";
 
 // Find existing comps that likely match the CoStar listing, so the panel can offer
 // "update" instead of a duplicate insert. PostgREST ilike wildcard is a literal `*`
