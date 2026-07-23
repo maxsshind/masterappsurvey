@@ -59,22 +59,35 @@ const state = {
 // ─── Messaging: send to the service worker, retrying on MV3 cold start ──────────
 // Writes never speculatively re-send on a slow reply (would risk a duplicate insert).
 
+// A CoStar scrape reads the whole page's text — firing a second one while the first
+// is still running piles CPU onto the CoStar tab, so concurrent reads share one promise.
+let pendingRead = null;
 function bg(type, extra = {}, opts = {}, attempt = 0) {
+  if (type === "READ_COSTAR" && attempt === 0) {
+    if (pendingRead) return pendingRead;
+    pendingRead = bgSend(type, extra, opts, 0);
+    pendingRead.finally(() => { pendingRead = null; });
+    return pendingRead;
+  }
+  return bgSend(type, extra, opts, attempt);
+}
+
+function bgSend(type, extra = {}, opts = {}, attempt = 0) {
   const isWrite = opts.write === true;
   return new Promise((resolve) => {
     let settled = false;
     const finish = (v) => { if (!settled) { settled = true; resolve(v); } };
-    const timeoutMs = isWrite ? 60000 : (attempt === 0 ? 300 : 1500);
+    const timeoutMs = isWrite ? 60000 : (attempt === 0 ? 2000 : 3000);
     const timeoutId = setTimeout(async () => {
       if (settled) return;
-      if (!isWrite && attempt < 2) finish(await bg(type, extra, opts, attempt + 1));
+      if (!isWrite && attempt < 1) finish(await bgSend(type, extra, opts, attempt + 1));
       else finish({ ok: false, error: "Background script not responding. Click the extension icon again." });
     }, timeoutMs);
     try {
       chrome.runtime.sendMessage({ type, ...extra }, (resp) => {
         clearTimeout(timeoutId);
         if (chrome.runtime.lastError) {
-          if (attempt < 2) setTimeout(async () => finish(await bg(type, extra, opts, attempt + 1)), 50);
+          if (attempt < 2) setTimeout(async () => finish(await bgSend(type, extra, opts, attempt + 1)), 50);
           else finish({ ok: false, error: chrome.runtime.lastError.message });
           return;
         }
@@ -411,13 +424,13 @@ async function doRead(opts = {}) {
   // the scraped street is non-empty AND differs from what we had loaded.
   const awaitChange = opts.awaitChangeFromStreet || null;
   let d = null;
-  for (let attempt = 0; attempt < 10; attempt++) {
+  for (let attempt = 0; attempt < 5; attempt++) {
     const res = await bg("READ_COSTAR");
     if (!res.ok) { showScreen("idle"); showError($("idleError"), res.error); return; }
     d = res.data || {};
     if (!awaitChange) break;
     if (d.street && d.street !== awaitChange) break;
-    await sleep(300);
+    await sleep(600);
   }
 
   state.scraped = d;
@@ -429,7 +442,8 @@ $("btnRead").addEventListener("click", () => doRead());
 
 // ─── Detect navigation to a NEW CoStar record ──────────────────────────────────
 // The side panel stays open across navigation; CoStar is a SPA so tab events fire
-// unreliably. A 1-second poll of the active tab URL is the reliable backstop.
+// unreliably. A slow shared poll of the active tab URL (registered at the bottom of
+// this file, alongside the comp-mode poller) is the reliable backstop.
 
 function costarRecordKey(url) {
   try {
@@ -466,7 +480,6 @@ async function maybeReReadOnNav() {
 if (IS_EXTENSION_CONTEXT) {
   chrome.tabs.onUpdated.addListener((_id, changeInfo) => { if (changeInfo.url) maybeReReadOnNav(); });
   chrome.tabs.onActivated.addListener(() => maybeReReadOnNav());
-  setInterval(maybeReReadOnNav, 1000);
 }
 
 // ─── Address matching (duplicate detection within the survey) ────────────────────
@@ -1403,13 +1416,13 @@ async function scanComp(opts = {}) {
   // so on a record change we retry until the street is non-empty and has actually changed.
   const awaitChange = opts.awaitChangeFromStreet || null;
   let d = null;
-  for (let attempt = 0; attempt < 10; attempt++) {
+  for (let attempt = 0; attempt < 5; attempt++) {
     const res = await bg("READ_COSTAR");
     if (!res || !res.ok) { setCompMsg((res && res.error) || "Couldn't read the CoStar page.", true); return; }
     d = res.data || {};
     if (!awaitChange) break;
     if (d.street && d.street !== awaitChange) break;
-    await sleep(300);
+    await sleep(600);
   }
   await fillCompForm(d);
   if (!($("comp_address") && $("comp_address").value.trim())) {
@@ -1706,7 +1719,9 @@ async function maybeReScanCompOnNav() {
 if (IS_EXTENSION_CONTEXT) {
   chrome.tabs.onUpdated.addListener((_id, changeInfo) => { if (changeInfo.url) maybeReScanCompOnNav(); });
   chrome.tabs.onActivated.addListener(() => maybeReScanCompOnNav());
-  setInterval(maybeReScanCompOnNav, 1000);
+  // One shared safety-net poll for both modes; the tab listeners above are the fast
+  // path, so this only has to catch SPA navigations that never touch the URL events.
+  setInterval(() => { maybeReReadOnNav(); maybeReScanCompOnNav(); }, 2500);
 }
 
 // ─── Go ────────────────────────────────────────────────────────────────────────
