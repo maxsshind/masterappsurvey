@@ -533,6 +533,7 @@ function findMatch(scraped) {
 // DB column → form element + type. 'num' strips $ , % /SF etc.
 const FIELDS = {
   address: ["fAddress", "text"],
+  property_name: ["fPropertyName", "text"],
   city: ["fCity", "text"],
   state: ["fState", "text"],
   zip: ["fZip", "text"],
@@ -598,7 +599,25 @@ function fillForm(row) {
   $("fForSale").checked = fsl.includes("sale");
   $("fForLease").checked = fsl.includes("lease");
   updateBlockVisibility();
+  syncNameToggle("togglePropName", "fldPropertyName", "fPropertyName", "fAddress");
 }
+
+// ─── "+ Name" expander (Property Name, both forms) ─────────────────────────────
+// Collapsed by default; auto-opens when the saved name differs from the address.
+
+function setNameToggle(toggleId, rowId, open) {
+  $(rowId).classList.toggle("hidden", !open);
+  $(toggleId).textContent = open ? "– Name" : "+ Name";
+}
+function syncNameToggle(toggleId, rowId, inputId, addressId) {
+  const v = $(inputId).value.trim();
+  setNameToggle(toggleId, rowId, !!v && v !== $(addressId).value.trim());
+}
+[["togglePropName", "fldPropertyName"], ["toggleCompPropName", "fldCompPropertyName"]]
+  .forEach(([toggleId, rowId]) => {
+    $(toggleId).addEventListener("click", () =>
+      setNameToggle(toggleId, rowId, $(rowId).classList.contains("hidden")));
+  });
 
 function updateBlockVisibility() {
   $("saleBlock").classList.toggle("hidden", !$("fForSale").checked);
@@ -633,6 +652,7 @@ function recordFromScrape(d) {
   const surveyType = state.survey ? state.survey.survey_type : "lease";
   return {
     address: d.street || "",
+    property_name: d.street || "",
     city: d.city || null,
     state: d.state || "AZ",
     zip: d.zip || null,
@@ -923,7 +943,7 @@ const comp = {
 };
 
 const COMP_INPUT_IDS = [
-  "comp_status", "comp_address", "comp_city", "comp_state", "comp_zip",
+  "comp_status", "comp_address", "comp_property_name", "comp_city", "comp_state", "comp_zip",
   "comp_sub_market", "comp_building_sf", "comp_land_area",
   "comp_sale_price", "comp_cap_rate", "comp_rent_psf",
   "comp_lease_format", "comp_listing_brokerage", "comp_listing_agent",
@@ -933,6 +953,7 @@ const COMP_INPUT_IDS = [
 const COMP_FIELD_LABELS = {
   status: "status",
   address: "address",
+  property_name: "property name",
   city: "city",
   state: "state",
   zip: "ZIP",
@@ -1224,6 +1245,7 @@ function resetCompForm() {
     const wrap = n && n.closest(".fld");
     if (wrap) wrap.classList.remove("needs-review");
   });
+  setNameToggle("toggleCompPropName", "fldCompPropertyName", false);
   compClearChecks("comp_ptypes");
   compClearChecks("comp_sale_types");
   const includeHighlights = $("compIncludeHighlights");
@@ -1252,6 +1274,7 @@ async function fillCompForm(d) {
   comp.saleNotes = d.saleNotes || "";
 
   setCompField("comp_address", d.street);
+  setCompField("comp_property_name", d.street); // default = address; Max renames as needed
   setCompField("comp_city", d.city);
   setCompField("comp_state", d.state || "AZ");
   setCompField("comp_zip", d.zip);
@@ -1268,6 +1291,7 @@ async function fillCompForm(d) {
   // Notes stay blank — Max adds his own. (Dedup relies on address matching and the
   // CoStar-ID stamps that older comps carry in notes; new comps aren't stamped.)
 
+  syncNameToggle("toggleCompPropName", "fldCompPropertyName", "comp_property_name", "comp_address");
   renderCompContentImport();
   syncCompFieldVisibility();
   await runCompDedup(d);
@@ -1521,6 +1545,13 @@ function enterCompUpdate(candidate) {
   comp.mode = "update";
   comp.updateId = candidate.id;
   comp.baseline = candidate;
+  // Keep the comp's saved name — otherwise the scrape default (the address) would
+  // look "changed" vs the baseline and the patch would overwrite a custom name.
+  if (candidate.property_name) {
+    const nameInput = $("comp_property_name");
+    if (nameInput) { nameInput.value = candidate.property_name; setCompFieldSource("comp_property_name", null); }
+    syncNameToggle("toggleCompPropName", "fldCompPropertyName", "comp_property_name", "comp_address");
+  }
   hideCompMatch();
   setCompMsg("");
   syncCompReviewState();
@@ -1545,6 +1576,7 @@ function compFormRecord() {
   const salePrice = showSale ? num("comp_sale_price") : null;
   const rec = {
     address: ($("comp_address") && $("comp_address").value.trim()) || "",
+    property_name: txt("comp_property_name"),
     city: txt("comp_city"),
     state: txt("comp_state") || "AZ",
     zip: txt("comp_zip"),

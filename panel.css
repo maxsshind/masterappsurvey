@@ -88,6 +88,10 @@ h2 { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: #8B1538; }
 .fld { display: flex; flex-direction: column; gap: 3px; width: 100%; }
 .fld.two { width: calc(50% - 4px); }
 .fld > span { font-size: 11px; font-weight: 650; color: #5f6170; letter-spacing: 0.05px; }
+/* "+ Name" expander sitting in the Address label — costs no space until clicked. */
+/* float covers the survey label (plain span); margin-left:auto covers the comp label (flex). */
+.name-toggle { float: right; margin-left: auto; font-size: 10px; font-weight: 650; color: #7a7d90; cursor: pointer; user-select: none; }
+.name-toggle:hover { color: #40435a; text-decoration: underline; }
 .fld input, .fld select {
   width: 100%; min-height: 38px; padding: 8px 9px; border: 1px solid #d9d9e5; border-radius: 6px;
   font-size: 13px; color: #1a1a2e; background: #fff; outline: none; transition: border-color 0.15s, box-shadow 0.15s;
