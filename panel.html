@@ -122,38 +122,46 @@
       <div id="suggList"></div>
     </div>
 
-    <div class="section-label mt-section">Address</div>
-    <div class="fieldset">
-      <div class="fld"><span>Address * <a id="togglePropName" class="name-toggle">+ Name</a></span><input id="fAddress" /></div>
-      <div class="fld hidden" id="fldPropertyName"><span>Property Name</span><input id="fPropertyName" /></div>
-      <div class="fld two"><span>City</span><input id="fCity" /></div>
-      <div class="fld two"><span>State</span><input id="fState" /></div>
-      <div class="fld two"><span>Zip</span><input id="fZip" /></div>
+    <div class="sec" data-sec="address">
+      <div class="section-label mt-section">Address</div>
+      <div class="fieldset">
+        <div class="fld"><span>Address * <a id="togglePropName" class="name-toggle">+ Name</a></span><input id="fAddress" /></div>
+        <div class="fld hidden" id="fldPropertyName"><span>Property Name</span><input id="fPropertyName" /></div>
+        <div class="fld two"><span>City</span><input id="fCity" /></div>
+        <div class="fld two"><span>State</span><input id="fState" /></div>
+        <div class="fld two"><span>Zip</span><input id="fZip" /></div>
+      </div>
     </div>
 
-    <div class="section-label mt-section">Tenancy</div>
-    <div class="fieldset">
-      <div class="fld"><span>Tenancy</span><select id="fTenancy"><option value="">—</option><option value="ST">Single Tenant (ST)</option><option value="MT">Multi Tenant (MT)</option></select></div>
+    <div class="sec" data-sec="tenancy">
+      <div class="section-label mt-section">Tenancy</div>
+      <div class="fieldset">
+        <div class="fld"><span>Tenancy</span><select id="fTenancy"><option value="">—</option><option value="ST">Single Tenant (ST)</option><option value="MT">Multi Tenant (MT)</option></select></div>
+      </div>
     </div>
 
-    <div class="section-label mt-section">Size</div>
-    <div class="fieldset">
-      <div class="fld two" id="rowSuiteNumber"><span>Suite #</span><input id="fSuiteNumber" placeholder="e.g. 101" /></div>
-      <div class="fld two" id="rowOfficeSf"><span>Office SF</span><input id="fOfficeSf" inputmode="decimal" /></div>
-      <div class="fld" id="rowSuiteSize"><span>Suite size</span><input id="fSuiteSize" placeholder='e.g. 6,500 - 15,000 SF' /></div>
-      <div class="fld two" id="rowBuildingSf"><span id="lblBuildingSf">Building SF</span><input id="fBuildingSf" inputmode="decimal" /></div>
-      <div class="fld two"><span>Land (AC)</span><input id="fLandAc" inputmode="decimal" /></div>
+    <div class="sec" data-sec="size">
+      <div class="section-label mt-section">Size</div>
+      <div class="fieldset">
+        <div class="fld two" id="rowSuiteNumber"><span>Suite #</span><input id="fSuiteNumber" placeholder="e.g. 101" /></div>
+        <div class="fld two" id="rowOfficeSf"><span>Office SF</span><input id="fOfficeSf" inputmode="decimal" /></div>
+        <div class="fld" id="rowSuiteSize"><span>Suite size</span><input id="fSuiteSize" placeholder='e.g. 6,500 - 15,000 SF' /></div>
+        <div class="fld two" id="rowBuildingSf"><span id="lblBuildingSf">Building SF</span><input id="fBuildingSf" inputmode="decimal" /></div>
+        <div class="fld two"><span>Land (AC)</span><input id="fLandAc" inputmode="decimal" /></div>
+      </div>
     </div>
 
-    <div class="section-label mt-section">Status</div>
-    <div class="fieldset">
-      <label class="chk"><input type="checkbox" id="fForSale" /><span>For Sale</span></label>
-      <label class="chk"><input type="checkbox" id="fForLease" /><span>For Lease</span></label>
-      <div class="fld"><span>Availability</span><select id="fAvailability"></select></div>
-      <div class="fld"><span>Internal status <small>(hidden from client)</small></span><select id="fInternalStatus"></select></div>
+    <div class="sec" data-sec="status">
+      <div class="section-label mt-section">Status</div>
+      <div class="fieldset">
+        <label class="chk"><input type="checkbox" id="fForSale" /><span>For Sale</span></label>
+        <label class="chk"><input type="checkbox" id="fForLease" /><span>For Lease</span></label>
+        <div class="fld"><span>Availability</span><select id="fAvailability"></select></div>
+        <div class="fld"><span>Internal status <small>(hidden from client)</small></span><select id="fInternalStatus"></select></div>
+      </div>
     </div>
 
-    <div id="leaseBlock">
+    <div id="leaseBlock" class="sec" data-sec="lease">
       <div class="section-label mt-section">Lease</div>
       <div class="fieldset">
         <div class="fld two"><span>Lease rate ($/SF)</span><input id="fLeaseRate" inputmode="decimal" /></div>
@@ -162,7 +170,7 @@
       </div>
     </div>
 
-    <div id="saleBlock">
+    <div id="saleBlock" class="sec" data-sec="sale">
       <div class="section-label mt-section">Sale</div>
       <div class="fieldset">
         <div class="fld two"><span>Sale price ($)</span><input id="fSalePrice" inputmode="decimal" /></div>
@@ -170,28 +178,34 @@
       </div>
     </div>
 
-    <div class="section-label mt-section">Building</div>
-    <div class="fieldset">
-      <div class="fld two"><span>Zoning</span><input id="fZoning" /></div>
-      <div class="fld two"><span>Power</span><input id="fPower" placeholder="e.g. 2,000A 277/480V" /></div>
-      <div class="fld two"><span>Loading</span><input id="fLoading" placeholder='e.g. 4 docks, 2 GL' /></div>
-      <div class="fld two"><span>Clear height</span><input id="fClearHeight" placeholder="e.g. 24'" /></div>
-      <label class="chk"><input type="checkbox" id="fYardArea" /><span>Yard area</span></label>
+    <div class="sec" data-sec="building">
+      <div class="section-label mt-section">Building</div>
+      <div class="fieldset">
+        <div class="fld two"><span>Zoning</span><input id="fZoning" /></div>
+        <div class="fld two"><span>Power</span><input id="fPower" placeholder="e.g. 2,000A 277/480V" /></div>
+        <div class="fld two"><span>Loading</span><input id="fLoading" placeholder='e.g. 4 docks, 2 GL' /></div>
+        <div class="fld two"><span>Clear height</span><input id="fClearHeight" placeholder="e.g. 24'" /></div>
+        <label class="chk"><input type="checkbox" id="fYardArea" /><span>Yard area</span></label>
+      </div>
     </div>
 
-    <div class="section-label mt-section">Flyer</div>
-    <div class="fieldset">
-      <button id="btnAttachFlyer" class="btn btn-ghost btn-sm" type="button">📎 Attach open CoStar flyer (PDF)</button>
-      <div class="fld"><span>Flyer URL</span><input id="fFlyerUrl" placeholder="uploaded flyer link — or paste one" /></div>
+    <div class="sec" data-sec="flyer">
+      <div class="section-label mt-section">Flyer</div>
+      <div class="fieldset">
+        <button id="btnAttachFlyer" class="btn btn-ghost btn-sm" type="button">📎 Attach open CoStar flyer (PDF)</button>
+        <div class="fld"><span>Flyer URL</span><input id="fFlyerUrl" placeholder="uploaded flyer link — or paste one" /></div>
+      </div>
     </div>
 
-    <div class="section-label mt-section">Notes</div>
-    <div class="fieldset">
-      <div class="fld"><span>Notes <small>(client-visible)</small></span><textarea id="fNotes" rows="2"></textarea></div>
-      <div class="fld"><span>Internal notes <small>(hidden from client)</small></span><textarea id="fInternalNotes" rows="3"></textarea></div>
+    <div class="sec" data-sec="notes">
+      <div class="section-label mt-section">Notes</div>
+      <div class="fieldset">
+        <div class="fld"><span>Notes <small>(client-visible)</small></span><textarea id="fNotes" rows="2"></textarea></div>
+        <div class="fld"><span>Internal notes <small>(hidden from client)</small></span><textarea id="fInternalNotes" rows="3"></textarea></div>
+      </div>
     </div>
 
-    <details class="more mt-section">
+    <details class="more mt-section" data-sec="more">
       <summary>More fields</summary>
       <div class="fieldset mt6">
         <div class="fld two"><span>Private offices</span><input id="fOffices" inputmode="numeric" /></div>
@@ -234,6 +248,21 @@
       <div><div style="font-weight:600" id="authStatusLabel">…</div><div style="font-size:11px;color:#888">Supabase (master-app)</div></div>
       <button id="btnDisconnect" class="btn btn-danger btn-sm">Sign out</button>
     </div>
+    <div class="setting-row">
+      <div><div style="font-weight:600">Density</div><div style="font-size:11px;color:#888">Form spacing</div></div>
+      <div class="seg" id="densitySeg">
+        <button type="button" data-v="comfortable" class="seg-btn">Comfy</button>
+        <button type="button" data-v="compact" class="seg-btn">Compact</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div><div style="font-weight:600">Customize layout</div><div style="font-size:11px;color:#888">Reorder, hide, move fields</div></div>
+      <div class="layout-btn-row">
+        <button id="btnCustomizeSurvey" class="btn btn-ghost btn-sm">Survey</button>
+        <button id="btnCustomizeComp" class="btn btn-ghost btn-sm">Comp</button>
+      </div>
+    </div>
+    <button id="btnLayoutReset" class="btn btn-ghost btn-sm">Reset layout to default</button>
     <button id="btnBack" class="btn btn-ghost mt">Back</button>
   </section>
 
@@ -275,6 +304,7 @@
       </label>
     </section>
 
+    <div class="sec" data-sec="property">
     <div class="section-label mt-section">Property</div>
     <div class="fieldset comp-essential">
       <div class="fld">
@@ -300,8 +330,10 @@
         <small id="compSubmarketHint" class="field-hint hidden"></small>
       </div>
     </div>
+    </div>
 
     <!-- Key numbers first: size and headline pricing, right under the address. -->
+    <div class="sec" data-sec="sizing">
     <div class="section-label mt-section">Size &amp; pricing</div>
     <div class="fieldset">
       <div class="fld two"><span>Building SF</span><input id="comp_building_sf" inputmode="decimal" /></div>
@@ -309,7 +341,9 @@
       <div class="fld two"><span>Asking Price ($)</span><input id="comp_sale_price" inputmode="decimal" /></div>
       <div class="fld two"><span>Asking Rent ($/SF/mo)</span><input id="comp_rent_psf" inputmode="decimal" /></div>
     </div>
+    </div>
 
+    <div class="sec" data-sec="ptype">
     <div class="section-label mt-section">Property type</div>
     <div class="fieldset">
       <!-- Display text is abbreviated to fit one row; the saved value keeps the full name. -->
@@ -325,7 +359,9 @@
         <label title="Cold Storage"><input type="checkbox" value="Cold Storage" /> Cold</label>
       </div>
     </div>
+    </div>
 
+    <div class="sec" data-sec="deal">
     <div class="section-label mt-section">Deal details</div>
     <div class="fieldset">
       <div class="fld two"><span>Cap Rate (%)</span><input id="comp_cap_rate" inputmode="decimal" /></div>
@@ -347,14 +383,17 @@
         </div>
       </div>
     </div>
+    </div>
 
     <!-- Notes kept visible (out of the Additional details disclosure) by request. -->
+    <div class="sec" data-sec="notes">
     <div class="section-label mt-section">Notes</div>
     <div class="fieldset">
       <div class="fld"><span>Notes</span><textarea id="comp_notes" rows="3"></textarea></div>
     </div>
+    </div>
 
-    <details id="compAdditional" class="comp-disclosure">
+    <details id="compAdditional" class="comp-disclosure" data-sec="additional">
       <summary>
         <span>Additional details</span>
         <small>Listing contact and date</small>
@@ -386,7 +425,22 @@
 
   <div id="toast" class="toast hidden"></div>
 
+  <!-- Layout customization bar (only visible while editing a form's layout) -->
+  <div id="layoutBar" class="hidden">
+    <div class="lb-row">
+      <span id="lbSelected">Tap a field to hide or move it</span>
+      <select id="lbMoveTo"><option value="">Move to…</option></select>
+      <button id="lbHide" class="btn btn-ghost btn-sm" type="button">Hide</button>
+    </div>
+    <div class="lb-row">
+      <input id="lbSecName" class="hidden" placeholder="New section name" />
+      <button id="lbAddSec" class="btn btn-ghost btn-sm" type="button">+ Section</button>
+      <button id="lbDone" class="btn btn-primary btn-sm" type="button">Done</button>
+    </div>
+  </div>
+
   <script src="config.js"></script>
+  <script src="layout.js"></script>
   <script src="panel.js"></script>
 </body>
 </html>

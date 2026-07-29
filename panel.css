@@ -433,6 +433,52 @@ h2 { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: #8B1538; }
 }
 .comp-msg.err { background: #fbeaec; }
 
+/* ── Customizable layout ── */
+/* User-hidden (layout prefs) is a separate class from .hidden (app logic) so the
+   two systems never fight — an element shows only when NEITHER class is present. */
+.u-hidden { display: none !important; }
+
+/* Click a section header to collapse it. */
+.sec > .section-label { cursor: pointer; }
+.sec > .section-label::after { content: "▾"; margin-left: auto; font-size: 9px; opacity: 0.45; }
+.sec.sec-collapsed > .section-label::after { content: "▸"; }
+.sec.sec-collapsed > .fieldset { display: none; }
+
+/* Compact density */
+body.density-compact .fieldset { gap: 5px; padding: 6px 8px; }
+body.density-compact .fld { gap: 2px; }
+body.density-compact .fld input, body.density-compact .fld select { min-height: 29px; padding: 4px 8px; font-size: 12.5px; }
+body.density-compact .fld textarea { min-height: 36px; font-size: 12.5px; }
+body.density-compact .mt-section { margin-top: 8px; }
+body.density-compact .section-label { margin-bottom: 4px; }
+body.density-compact .comp-screen .mt-section { margin-top: 7px; }
+
+/* Layout edit mode */
+.sec-ctl { display: none; margin-left: auto; gap: 3px; }
+body.layout-editing .sec-ctl { display: inline-flex; }
+.sec-ctl button { border: 1px solid #d8b8c2; background: #fff; color: #8B1538; border-radius: 4px; font-size: 11px; width: 24px; height: 20px; padding: 0; line-height: 1; cursor: pointer; }
+.sec-ctl button:hover { background: #fdf5f7; }
+body.layout-editing { padding-bottom: 96px; }
+body.layout-editing .fld, body.layout-editing .chk { outline: 1px dashed #d0b0bb; outline-offset: 2px; border-radius: 4px; cursor: pointer; }
+body.layout-editing .fld.fld-selected, body.layout-editing .chk.fld-selected { outline: 2px solid #8B1538; background: #fdf5f7; }
+body.layout-editing .fld input, body.layout-editing .fld select, body.layout-editing .fld textarea, body.layout-editing .chk input { pointer-events: none; opacity: 0.65; }
+/* Hidden things show ghosted while editing so they can be un-hidden. */
+body.layout-editing .fld.u-hidden, body.layout-editing .chk.u-hidden { display: flex !important; opacity: 0.4; }
+body.layout-editing .sec.u-hidden, body.layout-editing details.u-hidden { display: block !important; opacity: 0.5; }
+body.layout-editing #btnSave, body.layout-editing #btnSaveBottom, body.layout-editing #compSave,
+body.layout-editing #compFlyer, body.layout-editing #compRescan, body.layout-editing #btnAttachFlyer { pointer-events: none; opacity: 0.4; }
+#layoutBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; background: #fff; border-top: 2px solid #8B1538; padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 -6px 18px rgba(0,0,0,0.15); }
+.lb-row { display: flex; align-items: center; gap: 6px; }
+#lbSelected { flex: 1; min-width: 0; font-size: 11px; font-weight: 600; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#lbMoveTo { font-size: 11px; padding: 4px; border: 1px solid #dde; border-radius: 5px; max-width: 150px; font-family: inherit; }
+#lbSecName { flex: 1; min-width: 0; font-size: 12px; padding: 5px 8px; border: 1px solid #dde; border-radius: 5px; font-family: inherit; outline: none; }
+.layout-btn-row { display: flex; gap: 6px; }
+#densitySeg { width: auto; }
+#densitySeg .seg-btn { flex: none; padding: 5px 10px; }
+#btnLayoutReset { width: 100%; margin-bottom: 8px; }
+/* Empty custom section hint */
+.sec-custom .fieldset:empty::after { content: "Tap a field, then pick this section in the bar below"; font-size: 10.5px; color: #999; }
+
 @media (max-width: 359px) {
   .screen { padding-left: 10px; padding-right: 10px; }
   .comp-screen { padding-left: 10px; padding-right: 10px; }

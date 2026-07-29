@@ -125,6 +125,9 @@ function showScreen(name) {
   $("tabBar").classList.toggle("hidden", !inApp || !state.survey || ["picker", "settings", "comp"].includes(name));
   $("btnOpenApp").classList.toggle("hidden", !state.survey);
   syncModeToggle();
+  // Apply the user's saved layout prefs (order/hide/collapse/density) to form screens.
+  if (name === "form") window.Layout?.apply("survey");
+  if (isComp) window.Layout?.apply("comp");
 }
 
 function setTab(tab) {
