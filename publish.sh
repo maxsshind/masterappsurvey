@@ -14,7 +14,7 @@ ZIP="masterappsurvey-v${VERSION}.zip"
 
 echo "→ Packaging v${VERSION}"
 rm -f "$ZIP"
-zip -rq "$ZIP" manifest.json config.js supabase.js background.js panel.html panel.js panel.css icons -x '*.DS_Store'
+zip -rq "$ZIP" manifest.json config.js supabase.js background.js panel.html panel.js panel.css layout.js icons -x '*.DS_Store'
 
 CID=$(python3 -c "import json;print(json.load(open('$SECRETS'))['client_id'])")
 CSEC=$(python3 -c "import json;print(json.load(open('$SECRETS'))['client_secret'])")
