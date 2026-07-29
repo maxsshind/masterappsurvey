@@ -1301,12 +1301,12 @@ async function fillCompForm(d) {
   syncCompReviewState();
 }
 
-// Show only the economics that match the status: FOR SALE hides the lease fields,
-// FOR LEASE hides the sale fields; FOR SALE/LEASE and PENDING show both.
+// Show only the economics that match the status: sale statuses hide the lease
+// fields, lease statuses hide the sale fields; FOR SALE/LEASE shows both.
 function compStatusShows() {
   const status = ($("comp_status") && $("comp_status").value) || "FOR SALE";
-  const showSale = status !== "FOR LEASE";
-  const showLease = status === "FOR LEASE" || status === "FOR SALE/LEASE" || status === "PENDING";
+  const showSale = status !== "FOR LEASE" && status !== "PENDING LEASE";
+  const showLease = status === "FOR LEASE" || status === "FOR SALE/LEASE" || status === "PENDING LEASE";
   return { status, showSale, showLease };
 }
 
@@ -1597,7 +1597,6 @@ function compFormRecord() {
     rent_psf: showLease ? num("comp_rent_psf") : null,
     lease_format: showLease ? (($("comp_lease_format") && $("comp_lease_format").value) || null) : null,
     status,
-    type: status === "FOR LEASE" ? "lease" : "sale",
     internal_deal: false,
     source: "costar",
     listing_brokerage: txt("comp_listing_brokerage"),
