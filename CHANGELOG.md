@@ -1,10 +1,13 @@
 # CoStar → Survey Pusher changelog
 
-## 1.3.3 — 2026-09-10 — Property linking on save (prepared)
+## 1.3.3 — 2026-09-10 — Property linking on save
 
-**Prepared only. Do not upload/publish until the main app's `save_comp_with_property`
-database function is released and verified.** The active unpacked installation is
-untouched. This branch includes the submitted 1.3.2 commit `ba55959`.
+**Submitted to the Chrome Web Store on 2026-09-10** after the main-app owner verified
+the production save function and execution permissions. Exactly one upload returned
+HTTP 200 / `SUCCESS`; the draft verified 1.3.3 before exactly one publication returned
+HTTP 200 / `OK`; post-publication draft remains 1.3.3. Public Version field still **1.3.2** at 2026-09-10 21:23:40 Arizona; public availability of 1.3.3 remains unverified.
+The active unpacked installation is untouched. Code and privacy changes were pushed
+to `main` at `84fa2eb`, including the previously submitted 1.3.2 commit `ba55959`.
 
 - Comp saves now use the same atomic property-and-deal save service as Master App.
   A confident address/alias match links the existing building/site; no match creates

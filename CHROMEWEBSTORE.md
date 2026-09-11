@@ -6,13 +6,13 @@ Last updated: 2026-09-10
 
 - Item: `hohikcikmjiopimpigebcbdileipbhhc`
 - [Store listing](https://chromewebstore.google.com/detail/hohikcikmjiopimpigebcbdileipbhhc)
-- Next package: `masterappsurvey-v1.3.3.zip` — **prepared only; not uploaded or published**.
+- Package: `masterappsurvey-v1.3.3.zip` — **submitted successfully to the Chrome Web Store**.
 - Scope: automatic property linking on comp save, explicit skip, ambiguous choice, Open Property, retained existing links, safe retry recovery, and suite/portion controls. Retains 1.3.2 Yard included behavior.
-- Release dependency: main app `save_comp_with_property` must be live and verified before this package is submitted. Old raw comp-write fallback is intentionally absent. The main property-linking task owns the backend rollout and final extension publication.
-- Read-only release recheck on 2026-09-10: Store draft API returned `crxVersion: 1.3.2`, and the public listing's **Version** field reads **1.3.2**. No 1.3.3 upload, publication, review cancellation, or installation change was performed.
+- Backend release dependency satisfied before submission: the owning main-app task verified production migrations `atomic_comp_property_save` (20260911041809) and `restrict_property_rpc_execution` (20260911042055), authenticated-only execution, approval/RLS guard, and a live alias read. No production comp writes were used as tests. Old raw comp-write fallback remains absent.
+- Submission on 2026-09-10: preflight draft/public version 1.3.2; exactly one upload returned HTTP 200 / `SUCCESS`, draft verified 1.3.3, exactly one publication returned HTTP 200 / `status: ["OK"]`; post-publication draft remains **1.3.3**. Public Version field still **1.3.2** at 2026-09-10 21:23:40 Arizona; public availability of 1.3.3 remains unverified. No review cancellation or installation change was performed.
 - Isolated source: `/Users/maxschumacher/.codex/worktrees/df90/masterappsurvey`, branch `codex/property-linking-extension`, based on 1.3.2 commit `ba55959`. The original checkout and active unpacked installation remain untouched.
 - Prior installed Chrome runtime mismatch (1.3.0 runtime vs 1.3.1 loaded manifest) remains unresolved and was not altered by this work. A Store release does not replace that unpacked installation.
-- [Technical release notes](/Users/maxschumacher/.codex/worktrees/df90/masterappsurvey/CHANGELOG.md). Permissions, hosts, store distribution, and authentication method are unchanged. Privacy documentation is updated and must be pushed to its existing hosted URL before submission.
+- [Technical release notes](/Users/maxschumacher/.codex/worktrees/df90/masterappsurvey/CHANGELOG.md). Permissions, hosts, store distribution, and authentication method are unchanged. Code and factual privacy changes were pushed to `main` at `84fa2ebd45f6ba6f292742959f64d7f9965334ab`; the existing hosted privacy-policy URL served the updated disclosure before submission. No privacy hosting/location change was made.
 
 ## Store listing and purpose
 
@@ -24,7 +24,7 @@ Purpose: review the open CoStar property's details and save or update that prope
 
 Comp features: save each deal under its building/site, choose among possible property matches, intentionally skip a link, and open the linked Property page. Keep new suites and subsequent sales/leases as separate deals. Recover a pending save safely after a lost connection. Record Suite, Portion of site, Multi-tenant building, and Yard included as explicit deal information; preserve Unknown values and deliberate edits when re-reading CoStar. Notes hold yard details and differences between sale and lease offers.
 
-Existing listing copy, category (Workflow & Planning), English language, and unlisted distribution were documented in `STORE_LISTING.md`; they are historical metadata, not verified dashboard settings. No new listing copy is being submitted in this release. Contact: max@rgcre.com. Homepage: https://www.sshteam.app.
+Existing listing copy, category (Workflow & Planning), English language, and unlisted distribution were documented in `STORE_LISTING.md`; they are historical metadata, not verified dashboard settings. No new store listing copy or screenshot was submitted in this release. Contact: max@rgcre.com. Homepage: https://www.sshteam.app.
 
 ## Permissions and data use
 
@@ -51,9 +51,11 @@ Data includes the user's sign-in email/session, selected property details and li
 - **40 real extension-to-PostgREST checks passed** on source and extracted ZIP against a separate disposable local database using the final migration. Actual form/request builders and authenticated transport covered exact/alias/new/ambiguous/skip, all five statuses, site totals, rollback/no orphan, original-ID conflicts, committed-response loss, same-request and separate-suite concurrency, and session refresh. The fixture setup also passed the main-app's 151 database assertions. This was synthetic loopback data, not a production save. Run `node tests/property-linking-roundtrip.cjs http://127.0.0.1:8894` with the main-app disposable fixture/proxy; the test refuses non-loopback hosts.
 - Existing `store-screenshot.jpg` remains historical. The property card and suite controls should be included in a future listing screenshot refresh; local fixture screenshots are not automatically uploaded.
 - Package verified: **61,659 bytes**, SHA-256 `bcc2150f0f1444298992947d87a5aa08a76b1d4656ec3b35bf3824849d21a065`; archive integrity passed and all 11 runtime/icon files byte-match source. The extracted package passed the same 22 Node checks and 19 mounted browser scenarios. JavaScript syntax and diff whitespace checks passed.
-- **Release still held:** backend production rollout verification and final publication belong to the main property-linking task. No live save or extension installation is claimed from these mock tests.
+- Optional read-only verification through the existing signed-in extension was unavailable: Chrome DevTools could not connect because no DevToolsActivePort was present. Chrome was not restarted and its unpacked installation was not modified. Main-app production checks and the real local extension roundtrip establish the released interface; no production save or new installed runtime is claimed.
 
 ## Submission evidence and API behavior
+
+The 1.3.3 release used exactly one guarded upload and publication. Upload HTTP 200 / `SUCCESS`; draft 1.3.3 verified before publication; publication HTTP 200 / `status: ["OK"]`, `statusDetail: ["OK."]`; post-publication draft 1.3.3. Public Version field still **1.3.2** at 2026-09-10 21:23:40 Arizona; public availability of 1.3.3 remains unverified. Credential-free evidence: `/tmp/masterappsurvey-cws-1.3.3-result.json`. The existing `publish.sh` was not used because it does not gate publication on upload success. [Google's current API reference](https://developer.chrome.com/docs/webstore/api/v1) still supports V1 for this September release; it documents the October 15, 2026 sunset for future release planning.
 
 The 1.3.2 release used a checked submission path rather than `publish.sh`, which does not gate publication on upload success. Exactly one upload returned HTTP 200 / `SUCCESS`; a subsequent draft read returned `crxVersion: 1.3.2`. Exactly one publication request then returned HTTP 200, `status: ["OK"]`, `statusDetail: ["OK."]`; the final draft read still confirms 1.3.2. The GET response's `uploadState: NOT_FOUND` tracks only uploads that initially returned `IN_PROGRESS`, so it does not contradict this synchronous upload's success. See [Google's v1 resource reference](https://developer.chrome.com/docs/webstore/api/v1). Local credential-free responses are in `/tmp/masterappsurvey-cws-1.3.2-result.json`. No review cancellation, duplicate upload, or duplicate publication was performed.
 
@@ -61,7 +63,7 @@ The 1.3.2 release used a checked submission path rather than `publish.sh`, which
 
 | Version | Date | Change | Status |
 |---|---|---|---|
-| 1.3.3 | 2026-09-10 | Atomic property linking, visible skip/link states, save recovery, suite/portion controls | Prepared only; backend verification and publication held |
+| 1.3.3 | 2026-09-10 | Atomic property linking, visible skip/link states, save recovery, suite/portion controls | Submitted: upload SUCCESS, publication OK, draft 1.3.3; public 1.3.2 |
 | 1.3.2 | 2026-09-10 | Yard included tri-state comp field | Public Version field and draft API verified 1.3.2 on 2026-09-10 |
 | 1.3.1 | 2026-09-10 | Repair comp schema compatibility | Public listing verified 1.3.1; local runtime mismatch unresolved |
 | 1.3.0 | 2026-07-28 | Customizable form layout | Installed in Chrome and returned by Web Store API on 2026-09-10 |
