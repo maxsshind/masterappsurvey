@@ -188,6 +188,23 @@ async function sbSelect(table, query) {
   return sbJson(await sbFetch(`/${table}?${query}`), `Load ${table}`);
 }
 
+// Database functions execute the property decision and deal write in one transaction.
+// Validation/authorization errors confirm a rejection. Gateway/server errors and
+// lost responses stay retryable with the same ID: the write may have committed.
+async function sbRpc(name, args) {
+  const resp = await sbFetch(`/rpc/${name}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(args),
+  });
+  try {
+    return await sbJson(resp, "Save comp");
+  } catch (error) {
+    if ([400, 401, 403, 404, 405, 409, 422].includes(resp.status)) error.saveRejected = true;
+    throw error;
+  }
+}
+
 async function sbInsert(table, record) {
   const rows = await sbJson(
     await sbFetch(`/${table}`, {

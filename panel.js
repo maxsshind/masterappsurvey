@@ -180,6 +180,7 @@ async function init() {
 
 async function onAuthed() {
   syncModeToggle();
+  await restorePendingCompSave();
   // Restore last-used survey (verify it still exists), else prompt to pick.
   const stored = await chrome.storage.local.get(["last_survey_id"]);
   if (stored.last_survey_id) {
@@ -938,6 +939,16 @@ const comp = {
   updateId: null,     // comps.id being updated
   baseline: null,     // DB row backing the form in update mode (dirty-diff base)
   yardEdited: false,  // distinguishes intentional Unknown from an omitted scrape value
+  siteFieldsEdited: {},
+  propertyMode: "auto",
+  propertyId: null,
+  originalPropertyId: null,
+  propertyChoiceBase: null,
+  propertyCandidates: [],
+  requestId: null,
+  pendingSave: null,
+  saving: false,
+  lookupSequence: 0,
   pendingMatch: null, // best dedup candidate awaiting the user's choice
   lastFilled: {},     // input id → last auto-filled value (protects user edits on re-scan)
   unmappedSubmarket: null,
@@ -949,6 +960,7 @@ const comp = {
 const COMP_INPUT_IDS = [
   "comp_status", "comp_address", "comp_property_name", "comp_city", "comp_state", "comp_zip",
   "comp_sub_market", "comp_building_sf", "comp_land_area", "comp_yard_included",
+  "comp_suite", "comp_partial_site_override", "comp_multi_tenant",
   "comp_sale_price", "comp_cap_rate", "comp_rent_psf",
   "comp_lease_format", "comp_listing_brokerage", "comp_listing_agent",
   "comp_listing_agent_phone", "comp_listing_agent_email", "comp_list_date", "comp_notes",
@@ -967,6 +979,9 @@ const COMP_FIELD_LABELS = {
   building_sf: "building SF",
   land_area: "land acres",
   yard_included: "yard included",
+  suite: "suite",
+  partial_site_override: "portion of site",
+  multi_tenant: "multi-tenant building",
   sale_price: "asking price",
   price_psf: "price/SF",
   cap_rate: "cap rate",
@@ -1211,6 +1226,10 @@ function setAppMode(mode) {
 // Show the comp screen and (re)scan the current CoStar record into the form.
 function enterCompMode() {
   showScreen("comp");
+  if (comp.pendingSave) {
+    syncCompReviewState();
+    return;
+  }
   scanComp();
 }
 
@@ -1231,11 +1250,20 @@ function setCompField(id, value, source = "CoStar") {
 }
 
 function resetCompForm() {
+  if (comp.pendingSave || comp.saving) return;
   comp.lastFilled = {};
   comp.mode = "insert";
   comp.updateId = null;
   comp.baseline = null;
   comp.yardEdited = false;
+  comp.siteFieldsEdited = {};
+  comp.propertyMode = "auto";
+  comp.propertyId = null;
+  comp.originalPropertyId = null;
+  comp.propertyChoiceBase = null;
+  comp.propertyCandidates = [];
+  comp.requestId = null;
+  comp.lookupSequence += 1;
   comp.flyerUrl = null;
   comp.flyerName = null;
   comp.pendingMatch = null;
@@ -1267,6 +1295,7 @@ function resetCompForm() {
 }
 
 async function fillCompForm(d) {
+  if (comp.pendingSave || comp.saving) return;
   d = d || {};
   // Navigating to a genuinely different CoStar record → clear the form and update state.
   const newKey = d.costarId || normalizeCompAddress(d.street || "");
@@ -1373,7 +1402,8 @@ function syncCompModeUI() {
   const note = $("compModeNote");
   const isUpdate = comp.mode === "update" && comp.updateId;
   if (title) title.textContent = isUpdate ? "Update comp" : "New comp";
-  if (save) save.textContent = isUpdate ? "Update comp" : "Save comp";
+  if (save) save.textContent = comp.saving ? "Saving…" : comp.pendingSave ? "Retry pending save" : isUpdate ? "Update comp" : "Save comp";
+  renderCompPropertyLink();
   if (!note) return;
   if (!isUpdate) {
     note.classList.add("hidden");
@@ -1405,7 +1435,7 @@ function syncCompReviewState() {
   const save = $("compSave");
   const blocksSave = missing.some((item) => item.id === "comp_address" || item.id === "comp_sub_market");
   if (save) {
-    save.disabled = blocksSave || !IS_EXTENSION_CONTEXT;
+    save.disabled = comp.saving || (!comp.pendingSave && blocksSave) || !IS_EXTENSION_CONTEXT;
     save.title = !IS_EXTENSION_CONTEXT
       ? "Open this panel from the installed extension to save a comp"
       : blocksSave ? "Address and an official submarket are required" : "";
@@ -1421,6 +1451,8 @@ function markCompFieldEdited(id) {
     return;
   }
   if (id === "comp_yard_included") comp.yardEdited = true;
+  if (["comp_suite", "comp_multi_tenant", "comp_partial_site_override"].includes(id)) comp.siteFieldsEdited[id.slice(5)] = true;
+  if (["comp_address", "comp_city", "comp_state"].includes(id) && !comp.pendingSave && comp.propertyCandidates.length) cancelCompPropertyChoice();
   setCompFieldSource(id, id === "comp_yard_included" || String(node.value || "").trim() ? "Edited" : null);
   if (id === "comp_sub_market") {
     comp.unmappedSubmarket = null;
@@ -1445,6 +1477,7 @@ function syncCompImportSelection() {
 // ─── Scrape ──────────────────────────────────────────────────────────────────────
 
 async function scanComp(opts = {}) {
+  if (comp.pendingSave || comp.saving) return;
   setCompMsg("Reading CoStar…");
   // As in the survey flow: CoStar's SPA updates the URL before the content re-renders,
   // so on a record change we retry until the street is non-empty and has actually changed.
@@ -1459,6 +1492,7 @@ async function scanComp(opts = {}) {
     await sleep(600);
   }
   await fillCompForm(d);
+  if (comp.lookupError) return setCompMsg(comp.lookupError, true);
   if (!($("comp_address") && $("comp_address").value.trim())) {
     setCompMsg("Couldn't read an address off the CoStar page — check the fields.", true);
   } else {
@@ -1469,6 +1503,8 @@ async function scanComp(opts = {}) {
 // ─── Dedup (client-side scoring against SEARCH_COMPS candidates) ──────────────────
 
 async function runCompDedup(d) {
+  const sequence = ++comp.lookupSequence;
+  comp.lookupError = null;
   hideCompMatch();
   const street = d.street || "";
   const targetParts = compAddressParts(street);
@@ -1476,20 +1512,25 @@ async function runCompDedup(d) {
   const streetToken = (targetParts.streetName.split(" ")[0] || "").trim();
   if (!streetNumber && !streetToken && !d.costarId) return;
 
-  const res = await bg("SEARCH_COMPS", { streetNumber, streetToken, costarId: d.costarId || null });
-  if (!res || !res.ok) return;
+  const res = await bg("SEARCH_COMPS", { streetNumber, streetToken, costarId: d.costarId || null, city: d.city || "", state: d.state || "" });
+  if (sequence !== comp.lookupSequence || comp.pendingSave || comp.saving) return;
+  if (!res || !res.ok) {
+    comp.lookupError = "Could not check existing deals. Re-read to retry. Your selected deal and property link are kept.";
+    return;
+  }
 
   let best = null, bestScore = 0, bestReason = "";
   for (const c of (res.comps || [])) {
     const candidateParts = compAddressParts(c.address);
     const cityConflict = d.city && c.city && d.city.trim().toLowerCase() !== c.city.trim().toLowerCase();
+    const stateConflict = d.state && c.state && d.state.trim().toLowerCase() !== c.state.trim().toLowerCase();
     const zipConflict = d.zip && c.zip && String(d.zip).trim() !== String(c.zip).trim();
-    const locationConflict = cityConflict || zipConflict;
+    const locationConflict = cityConflict || stateConflict || zipConflict;
     const cityMatch = d.city && c.city && d.city.trim().toLowerCase() === c.city.trim().toLowerCase();
     const zipMatch = d.zip && c.zip && String(d.zip).trim() === String(c.zip).trim();
     let score = 0;
     let reason = "";
-    if (d.costarId && (c.notes || "").includes(`CoStar ID: ${d.costarId}`)) {
+    if (!locationConflict && /^\d+$/.test(String(d.costarId || "")) && new RegExp(`CoStar ID: ${d.costarId}\\b`).test(c.notes || "")) {
       score = 100;
       reason = "Same CoStar property ID";
     } else if (!locationConflict && targetParts.normalized &&
@@ -1522,15 +1563,16 @@ function showCompMatch(candidate, match = {}) {
   banner.innerHTML =
     `<div class="comp-match-head">` +
       `<div class="comp-match-copy">` +
-        `<span class="comp-match-kicker">Possible existing comp</span>` +
+        `<span class="comp-match-kicker">Another deal at this address</span>` +
         `<strong class="comp-match-address">${esc(candidate.address)}</strong>` +
         `<span class="comp-match-reason">${esc(match.reason || "Address match")} · match score ${Number(match.score || 0)}</span>` +
       `</div>${status}` +
     `</div>` +
+    `<p class="field-hint">Update only if this is the same deal. A new suite, sale, or lease gets its own deal under the same property.</p>` +
     `<div class="comp-match-actions">` +
       `<button type="button" id="compMatchView">View existing</button>` +
       `<button type="button" id="compMatchUpdate" class="primary">Update this comp</button>` +
-      `<button type="button" id="compMatchNew">Keep as new</button>` +
+      `<button type="button" id="compMatchNew">Save a separate deal</button>` +
     `</div>`;
   banner.classList.remove("hidden");
   const view = $("compMatchView"), upd = $("compMatchUpdate"), neu = $("compMatchNew");
@@ -1538,13 +1580,23 @@ function showCompMatch(candidate, match = {}) {
     chrome.tabs.create({ url: `${CONFIG.APP_URL}/comps/${candidate.id}` }));
   if (upd) upd.addEventListener("click", () => enterCompUpdate(candidate));
   if (neu) neu.addEventListener("click", () => {
-    if (!comp.yardEdited) {
+    if (comp.mode === "update" || !comp.yardEdited) {
       $("comp_yard_included").value = "";
+      comp.yardEdited = false;
       setCompFieldSource("comp_yard_included", null);
+    }
+    if (comp.mode === "update") {
+      for (const field of ["suite", "partial_site_override", "multi_tenant"]) $("comp_" + field).value = "";
+      comp.siteFieldsEdited = {};
     }
     comp.mode = "insert";
     comp.updateId = null;
     comp.baseline = null;
+    comp.requestId = null;
+    comp.originalPropertyId = null;
+    comp.propertyMode = "auto";
+    comp.propertyId = null;
+    cancelCompPropertyChoice(false);
     hideCompMatch();
     syncCompReviewState();
   });
@@ -1556,6 +1608,22 @@ function hideCompMatch() {
 }
 
 function enterCompUpdate(candidate) {
+  if (comp.pendingSave || comp.saving) return;
+  const sameDeal = comp.mode === "update" && comp.updateId === candidate.id;
+  if (!sameDeal || comp.originalPropertyId === undefined || (Object.hasOwn(candidate, "property_id") && candidate.property_id !== comp.originalPropertyId)) {
+    comp.requestId = null;
+    comp.siteFieldsEdited = {};
+    comp.propertyMode = candidate.property_id ? "preserve" : "auto";
+    comp.propertyId = candidate.property_id || null;
+    // Undefined means the lookup did not return identity. Saving must not treat it as null.
+    comp.originalPropertyId = candidate.property_id;
+    cancelCompPropertyChoice(false);
+  }
+  for (const field of ["suite", "partial_site_override", "multi_tenant"]) {
+    if (comp.siteFieldsEdited[field]) continue;
+    const node = $("comp_" + field);
+    if (node) node.value = candidate[field] == null ? "" : String(candidate[field]);
+  }
   // Switching DB rows starts a new answer; re-reading the same offer preserves
   // deliberate edits, including an explicitly selected Unknown (empty option).
   if (comp.updateId && comp.updateId !== candidate.id) comp.yardEdited = false;
@@ -1566,7 +1634,7 @@ function enterCompUpdate(candidate) {
   }
   comp.mode = "update";
   comp.updateId = candidate.id;
-  comp.baseline = candidate;
+  comp.baseline = sameDeal ? { ...candidate, property_id: comp.originalPropertyId } : candidate;
   // Keep the comp's saved name — otherwise the scrape default (the address) would
   // look "changed" vs the baseline and the patch would overwrite a custom name.
   if (candidate.property_name) {
@@ -1609,6 +1677,9 @@ function compFormRecord() {
     property_type: compChecked("comp_ptypes").join(", ") || null,
     building_sf: buildingSf,
     land_area: num("comp_land_area"),
+    suite: txt("comp_suite"),
+    partial_site_override: txt("comp_partial_site_override") === "true" ? true : txt("comp_partial_site_override") === "false" ? false : null,
+    multi_tenant: txt("comp_multi_tenant") === "true" ? true : txt("comp_multi_tenant") === "false" ? false : null,
     yard_included: txt("comp_yard_included") === "true" ? true : txt("comp_yard_included") === "false" ? false : null,
     sale_price: salePrice,
     price_psf: (salePrice != null && buildingSf) ? Math.round((salePrice / buildingSf) * 100) / 100 : null,
@@ -1635,8 +1706,11 @@ function compFormRecord() {
 // Always re-verify (last_verified_at); include flyer_url only if newly attached.
 function compUpdatePatch(rec) {
   const base = comp.baseline || {};
-  const skip = new Set(["last_verified_at", "flyer_url", "internal_deal", "source", "yard_included"]);
+  const skip = new Set(["last_verified_at", "flyer_url", "internal_deal", "source", "yard_included", "property_id", "suite", "partial_site_override", "multi_tenant"]);
   const patch = {};
+  for (const field of ["suite", "partial_site_override", "multi_tenant"]) {
+    if (comp.siteFieldsEdited?.[field] && (base[field] ?? null) !== rec[field]) patch[field] = rec[field];
+  }
   if (comp.yardEdited && (rec.yard_included === null || typeof rec.yard_included === "boolean") &&
       (base.yard_included ?? null) !== rec.yard_included) {
     patch.yard_included = rec.yard_included;
@@ -1651,57 +1725,281 @@ function compUpdatePatch(rec) {
   return patch;
 }
 
-async function saveComp() {
-  const rec = compFormRecord();
-  if (!rec.address) return setCompMsg("Address is required.", true);
-  if (!rec.sub_market || !SUBMARKET_TO_CLUSTER[rec.sub_market]) {
-    return setCompMsg("Choose an official submarket before saving.", true);
+const COMP_PENDING_SAVE_KEY = "comp_pending_property_save_v1";
+
+function compPendingSaveKey() {
+  return `${COMP_PENDING_SAVE_KEY}:${String(state.email || "").toLowerCase()}`;
+}
+
+function renderCompPropertyLink() {
+  const status = $("compPropertyStatus");
+  if (!status) return;
+  const linkedId = comp.propertyMode === "skip" ? null : comp.propertyId || comp.originalPropertyId;
+  const isUpdate = comp.mode === "update" && comp.updateId;
+  status.textContent = comp.pendingSave
+    ? "Save response not yet confirmed. Retry the same request to finish safely."
+    : comp.propertyMode === "skip"
+      ? (comp.originalPropertyId ? "Unlinked after this save — you chose to remove the property link." : "Unlinked — you chose to skip the property link.")
+      : linkedId
+        ? (comp.propertyMode === "auto" ? "Property change pending — will find its property on save. Current link stays until save succeeds." : comp.propertyMode === "preserve" ? "Property linked — existing link will be kept." : "Property selected — will link when saved.")
+        : "Unlinked — will link automatically when saved.";
+  const open = $("compOpenProperty");
+  open.classList.toggle("hidden", !linkedId);
+  if (linkedId) open.href = `${CONFIG.APP_URL}/properties/${encodeURIComponent(linkedId)}`;
+  else open.removeAttribute("href");
+  $("compSkipProperty").checked = comp.propertyMode === "skip";
+  $("compChangeProperty").classList.toggle("hidden", !linkedId || !!comp.pendingSave);
+  $("compKeepProperty").classList.toggle("hidden", !comp.originalPropertyId || comp.propertyMode === "preserve" || !!comp.pendingSave);
+  $("compNewDeal").classList.toggle("hidden", !isUpdate || !!comp.pendingSave);
+  $("compPropertyChoices").classList.toggle("hidden", !comp.propertyChoiceBase);
+  $("compFindProperty").classList.toggle("hidden", !comp.propertyChoiceBase || comp.propertyCandidates.length > 0);
+  $("compUseProperty").classList.toggle("hidden", comp.propertyCandidates.length === 0);
+  $("compCreateProperty").classList.toggle("hidden", comp.propertyCandidates.length === 0);
+}
+
+function closeCompPropertyChoice() {
+  comp.propertyChoiceBase = null;
+  comp.propertyCandidates = [];
+  $("compPropertyCandidates").replaceChildren();
+  renderCompPropertyLink();
+}
+
+function cancelCompPropertyChoice(restore = true) {
+  if (restore && comp.propertyChoiceBase) {
+    comp.propertyMode = comp.propertyChoiceBase.mode;
+    comp.propertyId = comp.propertyChoiceBase.id;
   }
-  setCompMsg("");
-  setLoading($("compSave"), true);
+  closeCompPropertyChoice();
+}
 
-  let res;
-  if (comp.mode === "update" && comp.updateId) {
-    res = await bg("UPDATE_COMP", { id: comp.updateId, patch: compUpdatePatch(rec) }, { write: true });
-  } else {
-    res = await bg("INSERT_COMP", { record: rec }, { write: true });
-  }
+function showCompPropertyChoice(result, before) {
+  comp.propertyChoiceBase = before;
+  comp.propertyCandidates = Array.isArray(result.candidates) ? result.candidates : [];
+  const message = $("compPropertyChoiceMessage");
+  message.textContent = result.message || "More than one property could match. Choose the building/site for this deal.";
+  const list = $("compPropertyCandidates");
+  list.replaceChildren();
+  comp.propertyCandidates.forEach((candidate, index) => {
+    const row = document.createElement("div");
+    row.className = "comp-property-candidate";
+    const label = document.createElement("label");
+    const radio = document.createElement("input");
+    radio.type = "radio";
+    radio.name = "comp_property_candidate";
+    radio.value = candidate.id;
+    radio.id = `comp-property-candidate-${index}`;
+    const text = document.createElement("span");
+    text.textContent = [candidate.address, candidate.city, candidate.state].filter(Boolean).join(", ");
+    const facts = document.createElement("small");
+    facts.textContent = [candidate.building_sf ? `${Number(candidate.building_sf).toLocaleString()} building SF` : "Building SF unknown", candidate.land_area ? `${candidate.land_area} acres` : "Site acreage unknown"].join(" · ");
+    text.appendChild(facts);
+    label.append(radio, text);
+    const open = document.createElement("a");
+    open.href = `${CONFIG.APP_URL}/properties/${encodeURIComponent(candidate.id)}`;
+    open.target = "_blank";
+    open.rel = "noopener";
+    open.textContent = "Open Property →";
+    row.append(label, open);
+    list.appendChild(row);
+  });
+  $("compUseProperty").disabled = comp.propertyCandidates.length === 0;
+  renderCompPropertyLink();
+  message.focus();
+}
 
-  setLoading($("compSave"), false);
-  if (handleAuthFailure(res)) return;
-  if (!res || !res.ok) return setCompMsg((res && res.error) || "Save failed.", true);
-
-  const savedId = (res.comp && res.comp.id) || (comp.mode === "update" ? comp.updateId : null);
-  const label = comp.mode === "update" ? "Comp updated ✓ (re-verified today)" : "Comp saved ✓";
-  setCompMsg(label);
-  // Append a "View comp" link that opens the saved record in the app.
-  if (savedId) {
-    const n = $("compMsg");
-    if (n) {
-      const a = document.createElement("a");
-      a.href = "#";
-      a.textContent = "View comp →";
-      a.style.marginLeft = "8px";
-      a.style.fontWeight = "600";
-      a.addEventListener("click", (e) => {
-        e.preventDefault();
-        chrome.tabs.create({ url: `${CONFIG.APP_URL}/comps/${savedId}` });
-      });
-      n.appendChild(a);
+function setCompSaveLocked(locked) {
+  document.querySelectorAll("#screen-comp input, #screen-comp select, #screen-comp textarea, #screen-comp button").forEach((node) => {
+    if (node.id === "compSave") return;
+    if (locked) {
+      if (node.dataset.saveDisabled === undefined) node.dataset.saveDisabled = String(node.disabled);
+      node.disabled = true;
+    } else if (node.dataset.saveDisabled !== undefined) {
+      node.disabled = node.dataset.saveDisabled === "true";
+      delete node.dataset.saveDisabled;
     }
-  }
-  // Clear update state either way (contract: a fresh insert leaves nothing pending).
-  comp.yardEdited = false;
-  comp.mode = "insert";
-  comp.updateId = null;
-  comp.baseline = null;
+  });
   syncCompReviewState();
+}
+
+function compDraftSnapshot() {
+  return {
+    fields: Object.fromEntries(COMP_INPUT_IDS.map((id) => [id, $(id)?.value || ""])),
+    propertyTypes: compChecked("comp_ptypes"), saleTypes: compChecked("comp_sale_types"),
+    baseline: comp.baseline, originalPropertyId: comp.originalPropertyId,
+    propertyMode: comp.propertyMode, propertyId: comp.propertyId,
+    yardEdited: comp.yardEdited, siteFieldsEdited: comp.siteFieldsEdited,
+    costarId: comp.costarId, sourceUrl: comp.sourceUrl, flyerUrl: comp.flyerUrl,
+  };
+}
+
+async function restorePendingCompSave() {
+  if (comp.pendingSave && comp.pendingSave.email !== state.email) {
+    comp.pendingSave = null;
+    setCompSaveLocked(false);
+    resetCompForm();
+  }
+  if (comp.pendingSave) return;
+  const stored = await chrome.storage.local.get([compPendingSaveKey()]);
+  const pending = stored[compPendingSaveKey()];
+  if (!pending || pending.email !== state.email || !pending.request?.p_request_id) return;
+  comp.pendingSave = pending;
+  comp.requestId = pending.request.p_request_id;
+  comp.mode = pending.request.p_comp_id ? "update" : "insert";
+  comp.updateId = pending.request.p_comp_id;
+  const draft = pending.draft || {};
+  for (const [id, value] of Object.entries(draft.fields || {})) if ($(id)) $(id).value = value;
+  for (const [container, values] of [["comp_ptypes", draft.propertyTypes], ["comp_sale_types", draft.saleTypes]]) {
+    $(container).querySelectorAll("input").forEach((input) => { input.checked = (values || []).includes(input.value); });
+  }
+  for (const field of ["baseline", "originalPropertyId", "propertyMode", "propertyId", "yardEdited", "siteFieldsEdited", "costarId", "sourceUrl", "flyerUrl"]) {
+    if (Object.hasOwn(draft, field)) comp[field] = draft[field];
+  }
+  setCompSaveLocked(true);
+  setCompMsg("A previous save has no confirmed response. Retry pending save to recover it without creating a duplicate.", true);
+}
+
+function buildCompSaveRequest(rec) {
+  const isUpdate = comp.mode === "update" && comp.updateId;
+  if (isUpdate && comp.originalPropertyId === undefined) throw new Error("The existing deal's property link could not be loaded. Re-read and choose Update this comp again before saving.");
+  const propertyFacts = /^\d+$/.test(comp.costarId || "") ? { costar_property_id: comp.costarId } : {};
+  return {
+    p_comp: isUpdate ? compUpdatePatch(rec) : rec,
+    p_request_id: comp.requestId || (comp.requestId = crypto.randomUUID()),
+    p_comp_id: isUpdate ? comp.updateId : null,
+    p_property_mode: comp.propertyMode,
+    p_property_id: comp.propertyMode === "existing" ? comp.propertyId : null,
+    p_expected_property_id: isUpdate ? comp.originalPropertyId : null,
+    // Form sizes describe the deal, not confirmed building/site totals.
+    p_property_facts: propertyFacts,
+  };
+}
+
+async function saveComp() {
+  if (comp.saving) return;
+  const rec = compFormRecord();
+  if (!comp.pendingSave) {
+    if (!rec.address) return setCompMsg("Address is required.", true);
+    if (!rec.sub_market || !SUBMARKET_TO_CLUSTER[rec.sub_market]) return setCompMsg("Choose an official submarket before saving.", true);
+  }
+  const before = comp.propertyChoiceBase || { mode: comp.propertyMode, id: comp.propertyId };
+  const wasUpdate = comp.mode === "update";
+  comp.saving = true;
+  setCompMsg("");
+  setCompSaveLocked(true);
+  let res;
+  try {
+    if (!comp.pendingSave) {
+      const pending = { email: state.email, request: buildCompSaveRequest(rec), draft: compDraftSnapshot() };
+      // Persist before starting the write. A worker suspension or closed panel can
+      // replay this exact request; failure to persist must prevent the write.
+      await chrome.storage.local.set({ [compPendingSaveKey()]: pending });
+      comp.pendingSave = pending;
+    }
+    res = await bg("SAVE_COMP", { request: comp.pendingSave.request }, { write: true });
+    if (res?.saveRejected || res?.status === "needs_choice" || (res?.ok && res?.status === "saved" && res?.comp?.id && Object.hasOwn(res.comp, "property_id"))) {
+      await chrome.storage.local.remove([compPendingSaveKey()]);
+      comp.pendingSave = null;
+    }
+  } catch (error) {
+    res = { ok: false, error: error.message };
+  } finally {
+    comp.saving = false;
+    setCompSaveLocked(!!comp.pendingSave);
+  }
+  if (handleAuthFailure(res)) return;
+  if (!res || !res.ok) {
+    const suffix = comp.pendingSave ? " Retry pending save to confirm the result safely." : "";
+    return setCompMsg(((res && res.error) || "Save failed.") + suffix, true);
+  }
+  if (res.status === "needs_choice") {
+    showCompPropertyChoice(res, before);
+    return setCompMsg("Choose a property above, or intentionally skip its link. No deal has been saved yet.");
+  }
+  if (res.status !== "saved" || !res.comp?.id || !Object.hasOwn(res.comp, "property_id")) return setCompMsg("Save response was incomplete. Retry pending save to confirm safely.", true);
+
+  // The response is authoritative, including the existing/new property ID. Keep
+  // this saved deal selected so a second click updates it instead of inserting again.
+  const saved = res.comp;
+  comp.mode = "update";
+  comp.updateId = saved.id;
+  comp.baseline = saved;
+  comp.originalPropertyId = saved.property_id ?? null;
+  comp.propertyId = saved.property_id ?? null;
+  comp.propertyMode = saved.property_id ? "preserve" : "skip";
+  comp.requestId = null;
+  comp.yardEdited = false;
+  comp.siteFieldsEdited = {};
+  for (const id of COMP_INPUT_IDS) {
+    const field = id.slice(5);
+    if (Object.hasOwn(saved, field) && $(id)) $(id).value = saved[field] == null ? "" : String(saved[field]);
+  }
+  closeCompPropertyChoice();
+  syncCompReviewState();
+  setCompMsg(wasUpdate ? "Comp updated ✓ (re-verified today)" : "Comp saved ✓");
+  const link = document.createElement("a");
+  link.href = `${CONFIG.APP_URL}/comps/${encodeURIComponent(saved.id)}`;
+  link.target = "_blank";
+  link.rel = "noopener";
+  link.textContent = "View comp →";
+  $("compMsg").append(" ", link);
 }
 
 // ─── Comp-mode wiring (guarded — panel.html owns these elements) ──────────────────
 
 function initCompMode() {
   populateCompSubmarkets();
+  $("compSkipProperty").addEventListener("change", () => {
+    const skip = $("compSkipProperty").checked;
+    cancelCompPropertyChoice();
+    comp.propertyMode = skip ? "skip" : comp.originalPropertyId ? "preserve" : "auto";
+    comp.propertyId = comp.originalPropertyId || null;
+    renderCompPropertyLink();
+  });
+  $("compKeepProperty").addEventListener("click", () => {
+    cancelCompPropertyChoice(false);
+    comp.propertyMode = "preserve";
+    comp.propertyId = comp.originalPropertyId;
+    renderCompPropertyLink();
+  });
+  $("compChangeProperty").addEventListener("click", () => {
+    const before = { mode: comp.propertyMode, id: comp.propertyId };
+    comp.propertyMode = "auto";
+    comp.propertyId = null;
+    showCompPropertyChoice({ message: "Edit the address if needed, then find its property on save. Cancel keeps your previous choice.", candidates: [] }, before);
+  });
+  $("compFindProperty").addEventListener("click", saveComp);
+  $("compCancelProperty").addEventListener("click", () => cancelCompPropertyChoice());
+  $("compUseProperty").addEventListener("click", async () => {
+    const selected = document.querySelector('input[name="comp_property_candidate"]:checked');
+    if (!selected) return setCompMsg("Choose a property first.", true);
+    comp.propertyMode = "existing";
+    comp.propertyId = selected.value;
+    await saveComp();
+  });
+  $("compCreateProperty").addEventListener("click", async () => {
+    comp.propertyMode = "create";
+    comp.propertyId = null;
+    await saveComp();
+  });
+  $("compNewDeal").addEventListener("click", () => {
+    const propertyId = comp.originalPropertyId;
+    comp.mode = "insert";
+    comp.updateId = null;
+    comp.baseline = null;
+    comp.originalPropertyId = null;
+    comp.propertyId = propertyId;
+    comp.propertyMode = propertyId ? "existing" : "auto";
+    comp.requestId = null;
+    comp.yardEdited = false;
+    $("comp_yard_included").value = "";
+    $("comp_suite").value = "";
+    $("comp_partial_site_override").value = "";
+    $("comp_multi_tenant").value = "";
+    comp.siteFieldsEdited = {};
+    cancelCompPropertyChoice(false);
+    setCompMsg("New separate deal. Review its sizes, price or rent, suite, and yard before saving.");
+    syncCompReviewState();
+  });
   const tg = $("modeToggle");
   if (tg) {
     tg.querySelectorAll("button[data-mode]").forEach((b) =>
@@ -1760,6 +2058,7 @@ function initCompMode() {
 let lastCompNavKey = null;
 let compNavBusy = false;
 async function maybeReScanCompOnNav() {
+  if (comp.pendingSave || comp.saving) return;
   if (state.appMode !== "comp" || !state.authed) return;
   if (state.screen !== "comp") return;
   if (compNavBusy) return;

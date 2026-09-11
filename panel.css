@@ -488,3 +488,18 @@ body.layout-editing #compFlyer, body.layout-editing #compRescan, body.layout-edi
   .comp-match-actions { grid-template-columns: 1fr; }
   .comp-sticky-footer { margin-left: -10px; margin-right: -10px; padding-left: 10px; padding-right: 10px; }
 }
+/* Always-visible property identity and deliberate link choices. */
+.comp-property-link { margin: 12px 0; padding: 12px; border: 1px solid #ccd8ce; border-radius: 10px; background: #f7faf7; font-size: 12px; }
+.comp-property-heading { display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center; }
+.comp-property-link p { margin: 8px 0; }
+.comp-property-link a { color: #226144; font-weight: 600; }
+.comp-property-skip { display: flex; align-items: center; gap: 8px; min-height: 36px; cursor: pointer; }
+.comp-property-skip input, .comp-property-candidate input { width: auto; flex: 0 0 auto; accent-color: #226144; }
+.comp-property-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.comp-property-actions button { white-space: normal; min-height: 36px; }
+.comp-property-candidate { border: 1px solid #d1d9d3; border-radius: 7px; padding: 10px; margin: 8px 0; background: white; }
+.comp-property-candidate label { display: flex; align-items: start; gap: 8px; cursor: pointer; }
+.comp-property-candidate small { display: block; margin-top: 4px; color: #58665d; }
+.comp-property-candidate a { display: inline-block; margin: 8px 0 0 24px; }
+#compPropertyChoiceMessage:focus { outline: 2px solid #226144; outline-offset: 3px; }
+.comp-size-hint { grid-column: 1 / -1; }

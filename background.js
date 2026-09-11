@@ -292,19 +292,20 @@ const COMP_COLS =
   "id,address,property_name,city,state,zip,status,property_type,sale_type,sale_price,price_psf," +
   "rent_psf,lease_format,cap_rate,building_sf,land_area,yard_included,sub_market,submarket_cluster," +
   "listing_brokerage,listing_agent,listing_agent_phone,listing_agent_email," +
-  "last_verified_at,list_date,notes,flyer_url";
+  "last_verified_at,list_date,notes,flyer_url,property_id,suite,partial_site_override,multi_tenant";
 
 // Find existing comps that likely match the CoStar listing, so the panel can offer
 // "update" instead of a duplicate insert. PostgREST ilike wildcard is a literal `*`
 // (never percent-encoded); the user-supplied text is encoded, then the `*` re-added.
 // sbSelect appends the query string raw, so spaces in a pattern must be %20.
-async function searchComps({ streetNumber, streetToken, costarId }) {
+async function searchComps({ streetNumber, streetToken, costarId, city, state }) {
   const byId = new Map();
+  const scope = `${city ? `&city=ilike.${encodeURIComponent(city)}` : ""}${state ? `&state=ilike.${encodeURIComponent(state)}` : ""}`;
 
   // CoStar-ID matches first — most precise (we stamp "CoStar ID: <n>" into notes).
   if (costarId) {
     const pat = `*CoStar ID: ${encodeURIComponent(costarId)}*`.replace(/ /g, "%20");
-    const rows = await sbSelect("comps", `select=${COMP_COLS}&notes=ilike.${pat}&limit=5`);
+    const rows = await sbSelect("comps", `select=${COMP_COLS}&notes=ilike.${pat}${scope}&limit=5`);
     for (const r of rows) byId.set(r.id, r);
   }
 
@@ -312,12 +313,21 @@ async function searchComps({ streetNumber, streetToken, costarId }) {
   if (streetNumber) {
     const rows = await sbSelect(
       "comps",
-      `select=${COMP_COLS}&address=ilike.${encodeURIComponent(streetNumber)}*&limit=20`
+      `select=${COMP_COLS}&address=ilike.${encodeURIComponent(streetNumber)}*${scope}&limit=20`
     );
     for (const r of rows) if (!byId.has(r.id)) byId.set(r.id, r);
   }
 
   return Array.from(byId.values()).slice(0, 20);
+}
+
+async function saveCompWithProperty(request) {
+  if (!request || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(request.p_request_id || "")) {
+    const error = new Error("Save request is missing its retry ID. Reopen the extension.");
+    error.saveRejected = true;
+    throw error;
+  }
+  return sbRpc("save_comp_with_property", request);
 }
 
 // ─── Side panel: open on toolbar-icon click ──────────────────────────────────────
@@ -330,9 +340,13 @@ chrome.sidePanel?.setPanelBehavior({ openPanelOnActionClick: true }).catch(() =>
 // ─── Message router ────────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  const reply = (p) =>
-    p.then((v) => sendResponse({ ok: true, ...v }))
-     .catch((e) => sendResponse({ ok: false, error: e.message, authRequired: e.code === "AUTH_REQUIRED" }));
+  const reply = async (promise) => {
+    try {
+      sendResponse({ ok: true, ...await promise });
+    } catch (e) {
+      sendResponse({ ok: false, error: e.message, authRequired: e.code === "AUTH_REQUIRED", saveRejected: e.saveRejected === true || e.code === "AUTH_REQUIRED" });
+    }
+  };
 
   switch (msg.type) {
     case "AUTH_STATUS":
@@ -393,15 +407,13 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
         streetNumber: msg.streetNumber || "",
         streetToken: msg.streetToken || "",
         costarId: msg.costarId || "",
+        city: msg.city || "",
+        state: msg.state || "",
       }).then((comps) => ({ comps })));
       return true;
 
-    case "INSERT_COMP":
-      reply(sbInsert("comps", msg.record || {}).then((comp) => ({ comp })));
-      return true;
-
-    case "UPDATE_COMP":
-      reply(sbUpdate("comps", msg.id, msg.patch || {}).then((comp) => ({ comp })));
+    case "SAVE_COMP":
+      reply(saveCompWithProperty(msg.request));
       return true;
 
     case "ATTACH_COMP_FLYER":

@@ -1,5 +1,51 @@
 # CoStar → Survey Pusher changelog
 
+## 1.3.3 — 2026-09-10 — Property linking on save (prepared)
+
+**Prepared only. Do not upload/publish until the main app's `save_comp_with_property`
+database function is released and verified.** The active unpacked installation is
+untouched. This branch includes the submitted 1.3.2 commit `ba55959`.
+
+- Comp saves now use the same atomic property-and-deal save service as Master App.
+  A confident address/alias match links the existing building/site; no match creates
+  one on save; ambiguous results ask the user to choose. City/state and observed
+  CoStar property ID are sent to the service. No eager property writes or raw comp
+  insert/update fallback remain in the extension.
+- Adds an always-visible property card with **Open Property**, explicit **Skip
+  property link for now**, and **Unlinked** status. Cancel restores the prior choice,
+  including after a rejected link replacement. Existing deal identity survives failed
+  lookups, and updates send the original property ID for the server's conflict check.
+- A possible existing deal is offered as a deliberate **Update this comp** or
+  **Save a separate deal** decision. The latter still runs automatic building/site
+  matching. A saved deal remains selected for subsequent updates; **New deal at this
+  property** intentionally starts another deal under the same site.
+- Adds Suite/unit, Portion of site, and Multi-tenant building controls. Untouched
+  values do not change existing rows. Offered sizes stay on the deal; new property
+  facts contain only the numeric CoStar ID observed in its URL. No site totals or
+  coordinates are inferred, and yard is not inherited into another deal.
+- Stores the exact pending save request locally by signed-in email before dispatch.
+  Retries, worker suspension, panel reopen, concurrent button clicks, and a lost
+  response reuse the same request ID. An uncertain response locks that draft for
+  safe retry. A confirmed validation/authorization rejection unlocks the draft;
+  generic gateway/server failures never silently enable a new insert or skip.
+- Permissions, hosts, sign-in method, and survey save behavior are unchanged.
+  Privacy documentation now covers market comps, linked property records, layout
+  preferences, and temporary pending-save recovery.
+
+Validation: 21 Node checks, 13 mounted property-linking scenarios, and six existing
+yard scenarios, all using synthetic/mock data and blocked external browser requests.
+Browser checks cover all five listing statuses, R&G/external edits, canceled changes,
+failed lookup/save, committed-but-lost response recovery, malformed response,
+storage failure before dispatch, ambiguity, skip, suite/portion data, and 320/390px
+widths with existing custom layouts. Actual matching, concurrency, and rollback are
+owned by the Master App database migration; extension tests verify its
+request/response boundary. No production business records were changed for testing.
+
+Run `node --test tests/comp-schema.test.cjs tests/property-linking.test.cjs`.
+Set `EXTENSION_ROOT` to an extracted package to verify those runtime files. Serve the
+source/package at `http://127.0.0.1:8783` and run the two browser fixture files through
+Playwright. Package and live dependency verification are tracked in CHROMEWEBSTORE.md.
+
 ## 1.3.2 — 2026-09-10 — Yard included
 
 Submitted to the Chrome Web Store on 2026-09-10: the single upload returned HTTP 200 / `SUCCESS`, the single publication request returned HTTP 200 / `OK`, and the post-publication draft read confirms 1.3.2. The public listing still showed 1.3.1 at 20:12 Arizona time, so public availability of 1.3.2 is not yet verified.

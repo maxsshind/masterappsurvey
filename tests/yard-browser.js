@@ -1,5 +1,5 @@
 // Run with Playwright browser_run_code_unsafe(filename) while serving the extension
-// at 127.0.0.1:8782. Uses the actual mounted panel and Chrome message contract, with
+// at 127.0.0.1:8783. Uses the actual mounted panel and Chrome message contract, with
 // all backend responses mocked and all non-local network requests blocked.
 async (page) => {
   const assert = {
@@ -27,7 +27,7 @@ async (page) => {
     const blocked = [];
     const errors = [];
     await context.route('**/*', async (route) => {
-      if (route.request().url().startsWith('http://127.0.0.1:8782/')) await route.continue();
+      if (route.request().url().startsWith('http://127.0.0.1:8783/')) await route.continue();
       else { blocked.push(route.request().url()); await route.abort(); }
     });
     await context.addInitScript(({ prefs }) => {
@@ -51,8 +51,8 @@ async (page) => {
           if (message.type === 'AUTH_STATUS') respond({ ok: true, connected: true, email: 'fixture@example.com' });
           else if (message.type === 'READ_COSTAR') respond({ ok: true, data: structuredClone(window.fixture.scrape) });
           else if (message.type === 'SEARCH_COMPS') respond({ ok: true, comps: structuredClone(window.fixture.candidates) });
-          else if (message.type === 'INSERT_COMP' || message.type === 'UPDATE_COMP') {
-            respond(window.fixture.failSave ? { ok: false, error: 'Fixture save failure' } : { ok: true, comp: { id: 'fixture-saved' } });
+          else if (message.type === 'SAVE_COMP') {
+            respond(window.fixture.failSave ? { ok: false, error: 'Fixture save failure', saveRejected: true } : { ok: true, status: 'saved', comp: { ...message.request.p_comp, id: message.request.p_comp_id || 'fixture-saved', property_id: message.request.p_expected_property_id || 'fixture-property' } });
           } else respond({ ok: false, error: `Unexpected fixture message: ${message.type}` });
         } },
       };
@@ -60,7 +60,7 @@ async (page) => {
     const p = await context.newPage();
     p.on('pageerror', (error) => errors.push(error.message));
     try {
-      await p.goto('http://127.0.0.1:8782/panel.html');
+      await p.goto('http://127.0.0.1:8783/panel.html');
       await p.waitForFunction(() => document.getElementById('comp_address').value === '100 Fixture Way');
       await p.evaluate(() => Layout.apply('comp'));
       const yard = p.getByLabel('Yard included', { exact: true });
@@ -79,22 +79,24 @@ async (page) => {
         continue;
       }
       await p.screenshot({ path: '/tmp/masterappsurvey-yard-default.png', fullPage: true });
-      const saves = () => p.evaluate(() => fixture.requests.filter((r) => ['INSERT_COMP', 'UPDATE_COMP'].includes(r.type)));
+      const saves = () => p.evaluate(() => fixture.requests.filter((r) => r.type === 'SAVE_COMP'));
       for (const [choice, value] of [['true', true], ['false', false], ['', null]]) {
+        await p.evaluate(async () => { resetCompForm(); await fillCompForm(fixture.scrape); });
         await yard.selectOption(choice);
         await p.locator('#compSave').click();
         await p.waitForFunction(() => document.getElementById('compMsg').textContent.includes('Comp saved'));
         const request = (await saves()).at(-1);
-        assert.equal(request.type, 'INSERT_COMP');
-        assert.equal(request.record.yard_included, value);
-        assert.equal(Object.hasOwn(request.record, 'type'), false);
+        assert.equal(request.type, 'SAVE_COMP');
+        assert.equal(request.request.p_comp_id, null);
+        assert.equal(request.request.p_comp.yard_included, value);
+        assert.equal(Object.hasOwn(request.request.p_comp, 'type'), false);
       }
       results.push('Mounted Save comp sends true/false/null inserts through Chrome message contract');
 
       for (const saved of [true, false, null]) {
         await p.evaluate(async (saved) => {
           resetCompForm();
-          fixture.candidates = [{ id: 'fixture-existing', address: fixture.scrape.street, yard_included: saved }];
+          fixture.candidates = [{ property_id: 'fixture-property', id: 'fixture-existing', address: fixture.scrape.street, yard_included: saved }];
           await fillCompForm(fixture.scrape);
         }, saved);
         await p.locator('#compMatchUpdate').click();
@@ -107,22 +109,22 @@ async (page) => {
       }
       results.push('Existing Yes/No/Unknown hydrate; unchanged refresh omits yard update');
 
-      await p.evaluate(() => enterCompUpdate({ id: 'fixture-other', address: fixture.scrape.street, yard_included: true }));
+      await p.evaluate(() => enterCompUpdate({ property_id: 'fixture-property', id: 'fixture-other', address: fixture.scrape.street, yard_included: true }));
       await yard.selectOption('');
       assert.ok((await p.locator('#compModeNote').innerText()).includes('yard included'));
-      await p.evaluate(() => { fixture.candidates = [{ id: 'fixture-other', address: fixture.scrape.street, yard_included: true }]; });
+      await p.evaluate(() => { fixture.candidates = [{ property_id: 'fixture-property', id: 'fixture-other', address: fixture.scrape.street, yard_included: true }]; });
       await p.locator('#compRescan').click();
       await p.locator('#compMatchUpdate').click();
       assert.equal(await yard.inputValue(), '', 'Intentional Unknown survives refresh and duplicate re-selection');
       await p.evaluate(() => { fixture.failSave = true; });
       await p.locator('#compSave').click();
       await p.waitForFunction(() => document.getElementById('compMsg').textContent.includes('Fixture save failure'));
-      assert.equal((await saves()).at(-1).patch.yard_included, null);
+      assert.equal((await saves()).at(-1).request.p_comp.yard_included, null);
       assert.equal(await p.evaluate(() => comp.yardEdited), true, 'Failure retains touched intent');
       await p.evaluate(() => { fixture.failSave = false; });
       await p.locator('#compSave').click();
       await p.waitForFunction(() => document.getElementById('compMsg').textContent.includes('Comp updated'));
-      assert.equal((await saves()).at(-1).patch.yard_included, null);
+      assert.equal((await saves()).at(-1).request.p_comp.yard_included, null);
       results.push('Intentional Unknown patches null, survives re-read/re-selection/failure, and succeeds on retry');
 
       // A manually selected No must survive a refresh and the first duplicate decision.
@@ -136,7 +138,7 @@ async (page) => {
       await p.locator('#compMatchUpdate').click();
       assert.equal(await yard.inputValue(), 'false');
       assert.equal(await p.evaluate(() => compUpdatePatch(compFormRecord()).yard_included), false);
-      await p.evaluate(() => enterCompUpdate({ id: 'fixture-different-row', address: fixture.scrape.street, yard_included: null }));
+      await p.evaluate(() => enterCompUpdate({ property_id: 'fixture-property', id: 'fixture-different-row', address: fixture.scrape.street, yard_included: null }));
       assert.equal(await yard.inputValue(), '', 'Switching DB records loads its own answer');
       assert.equal(await p.evaluate(() => comp.yardEdited), false);
       await yard.selectOption('true');

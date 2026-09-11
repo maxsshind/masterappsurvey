@@ -279,6 +279,32 @@
     <div id="compMatch" class="banner match hidden"></div>
     <div id="compModeNote" class="comp-mode-note hidden"></div>
 
+    <!-- Property choices stay visible even with a customized/hidden form layout. -->
+    <section id="compPropertyLink" class="comp-property-link" aria-labelledby="compPropertyTitle">
+      <div class="comp-property-heading">
+        <strong id="compPropertyTitle">Property link</strong>
+        <a id="compOpenProperty" class="hidden" target="_blank" rel="noopener">Open Property →</a>
+      </div>
+      <p id="compPropertyStatus" aria-live="polite">Unlinked — will link automatically when saved.</p>
+      <p id="compPropertyHint" class="field-hint">Use the existing building/site, or create one on save if none matches. New suites and later deals stay separate.</p>
+      <label class="comp-property-skip"><input type="checkbox" id="compSkipProperty" /> Skip property link for now</label>
+      <div class="comp-property-actions">
+        <button type="button" id="compChangeProperty" class="btn btn-ghost btn-sm hidden">Change property</button>
+        <button type="button" id="compKeepProperty" class="btn btn-ghost btn-sm hidden">Keep existing link</button>
+        <button type="button" id="compNewDeal" class="btn btn-ghost btn-sm hidden">New deal at this property</button>
+      </div>
+      <div id="compPropertyChoices" class="hidden" role="group" aria-label="Choose property">
+        <p id="compPropertyChoiceMessage" tabindex="-1"></p>
+        <div id="compPropertyCandidates"></div>
+        <div class="comp-property-actions">
+          <button type="button" id="compFindProperty" class="btn btn-primary btn-sm hidden">Find property and save</button>
+          <button type="button" id="compUseProperty" class="btn btn-primary btn-sm">Use selected property and save</button>
+          <button type="button" id="compCreateProperty" class="btn btn-ghost btn-sm">Create a separate property and save</button>
+          <button type="button" id="compCancelProperty" class="btn btn-ghost btn-sm">Cancel</button>
+        </div>
+      </div>
+    </section>
+
     <section id="compContentImport" class="comp-import-card hidden" aria-labelledby="compImportTitle">
       <div class="comp-import-head">
         <div>
@@ -356,6 +382,10 @@
     <div class="fieldset">
       <div class="fld two"><span>Building SF</span><input id="comp_building_sf" inputmode="decimal" /></div>
       <div class="fld two"><span>Land (acres)</span><input id="comp_land_area" inputmode="decimal" /></div>
+      <div class="fld"><span><label for="comp_suite">Suite / unit</label></span><input id="comp_suite" placeholder="If this deal covers a suite" /></div>
+      <div class="fld two"><span><label for="comp_partial_site_override">Portion of site</label></span><select id="comp_partial_site_override"><option value="">Unknown</option><option value="true">Yes</option><option value="false">No — whole site</option></select></div>
+      <div class="fld two"><span><label for="comp_multi_tenant">Multi-tenant building</label></span><select id="comp_multi_tenant"><option value="">Unknown</option><option value="true">Yes</option><option value="false">No</option></select></div>
+      <small class="field-hint comp-size-hint">Sizes above describe this deal. Whole-site totals remain unknown until confirmed separately.</small>
       <div class="fld two"><span>Asking Price ($)</span><input id="comp_sale_price" inputmode="decimal" /></div>
       <div class="fld two"><span>Asking Rent ($/SF/mo)</span><input id="comp_rent_psf" inputmode="decimal" /></div>
     </div>
