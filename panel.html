@@ -333,7 +333,24 @@
     </div>
     </div>
 
-    <!-- Key numbers first: size and headline pricing, right under the address. -->
+    <!-- A new section keeps yard discoverable even when an older layout hid or
+         collapsed Property/Property type. Existing layout preferences remain intact. -->
+    <div class="sec" data-sec="yard">
+      <div class="section-label mt-section">Yard</div>
+      <div class="fieldset">
+        <div class="fld">
+          <span><label for="comp_yard_included">Yard included</label></span>
+          <select id="comp_yard_included" aria-describedby="compYardHint">
+            <option value="">Unknown</option>
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+          <small id="compYardHint" class="field-hint">For this offered space or site. Put yard size, fencing, security, access, and permitted use in Notes. If sale and lease differ, choose Unknown and explain in Notes.</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Key numbers: size and headline pricing. -->
     <div class="sec" data-sec="sizing">
     <div class="section-label mt-section">Size &amp; pricing</div>
     <div class="fieldset">

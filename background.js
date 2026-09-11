@@ -289,8 +289,8 @@ function listSurveyProperties(surveyId) {
 // ─── Comps (master-app `comps` table) ────────────────────────────────────────────
 
 const COMP_COLS =
-  "id,address,property_name,city,state,zip,status,type,property_type,sale_type,sale_price,price_psf," +
-  "rent_psf,lease_format,cap_rate,building_sf,land_area,sub_market,submarket_cluster," +
+  "id,address,property_name,city,state,zip,status,property_type,sale_type,sale_price,price_psf," +
+  "rent_psf,lease_format,cap_rate,building_sf,land_area,yard_included,sub_market,submarket_cluster," +
   "listing_brokerage,listing_agent,listing_agent_phone,listing_agent_email," +
   "last_verified_at,list_date,notes,flyer_url";
 

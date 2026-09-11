@@ -937,6 +937,7 @@ const comp = {
   mode: "insert",     // 'insert' | 'update'
   updateId: null,     // comps.id being updated
   baseline: null,     // DB row backing the form in update mode (dirty-diff base)
+  yardEdited: false,  // distinguishes intentional Unknown from an omitted scrape value
   pendingMatch: null, // best dedup candidate awaiting the user's choice
   lastFilled: {},     // input id → last auto-filled value (protects user edits on re-scan)
   unmappedSubmarket: null,
@@ -947,7 +948,7 @@ const comp = {
 
 const COMP_INPUT_IDS = [
   "comp_status", "comp_address", "comp_property_name", "comp_city", "comp_state", "comp_zip",
-  "comp_sub_market", "comp_building_sf", "comp_land_area",
+  "comp_sub_market", "comp_building_sf", "comp_land_area", "comp_yard_included",
   "comp_sale_price", "comp_cap_rate", "comp_rent_psf",
   "comp_lease_format", "comp_listing_brokerage", "comp_listing_agent",
   "comp_listing_agent_phone", "comp_listing_agent_email", "comp_list_date", "comp_notes",
@@ -965,6 +966,7 @@ const COMP_FIELD_LABELS = {
   property_type: "property type",
   building_sf: "building SF",
   land_area: "land acres",
+  yard_included: "yard included",
   sale_price: "asking price",
   price_psf: "price/SF",
   cap_rate: "cap rate",
@@ -1233,6 +1235,7 @@ function resetCompForm() {
   comp.mode = "insert";
   comp.updateId = null;
   comp.baseline = null;
+  comp.yardEdited = false;
   comp.flyerUrl = null;
   comp.flyerName = null;
   comp.pendingMatch = null;
@@ -1284,6 +1287,9 @@ async function fillCompForm(d) {
   setCompSubmarket(d.submarket);
   setCompField("comp_building_sf", fmtThousands(d.rba));
   setCompField("comp_land_area", d.acLot);
+  // Yard describes this offered space/site. CoStar acreage, property class, and
+  // the separate survey yard_area flag do not establish whether yard is included.
+  // Leave the current answer alone on re-read; resetCompForm defaults new offers to Unknown.
   setCompField("comp_sale_price", fmtThousands(d.salePrice));
   setCompField("comp_cap_rate", d.capRate);
   setCompField("comp_rent_psf", d.leaseRate); // already $/SF/month for Phoenix industrial
@@ -1414,7 +1420,8 @@ function markCompFieldEdited(id) {
     syncCompImportSelection();
     return;
   }
-  setCompFieldSource(id, String(node.value || "").trim() ? "Edited" : null);
+  if (id === "comp_yard_included") comp.yardEdited = true;
+  setCompFieldSource(id, id === "comp_yard_included" || String(node.value || "").trim() ? "Edited" : null);
   if (id === "comp_sub_market") {
     comp.unmappedSubmarket = null;
     const hint = $("compSubmarketHint");
@@ -1531,6 +1538,10 @@ function showCompMatch(candidate, match = {}) {
     chrome.tabs.create({ url: `${CONFIG.APP_URL}/comps/${candidate.id}` }));
   if (upd) upd.addEventListener("click", () => enterCompUpdate(candidate));
   if (neu) neu.addEventListener("click", () => {
+    if (!comp.yardEdited) {
+      $("comp_yard_included").value = "";
+      setCompFieldSource("comp_yard_included", null);
+    }
     comp.mode = "insert";
     comp.updateId = null;
     comp.baseline = null;
@@ -1545,6 +1556,14 @@ function hideCompMatch() {
 }
 
 function enterCompUpdate(candidate) {
+  // Switching DB rows starts a new answer; re-reading the same offer preserves
+  // deliberate edits, including an explicitly selected Unknown (empty option).
+  if (comp.updateId && comp.updateId !== candidate.id) comp.yardEdited = false;
+  if (!comp.yardEdited) {
+    const yard = $("comp_yard_included");
+    if (yard) yard.value = typeof candidate.yard_included === "boolean" ? String(candidate.yard_included) : "";
+    setCompFieldSource("comp_yard_included", typeof candidate.yard_included === "boolean" ? "Saved" : null);
+  }
   comp.mode = "update";
   comp.updateId = candidate.id;
   comp.baseline = candidate;
@@ -1590,6 +1609,7 @@ function compFormRecord() {
     property_type: compChecked("comp_ptypes").join(", ") || null,
     building_sf: buildingSf,
     land_area: num("comp_land_area"),
+    yard_included: txt("comp_yard_included") === "true" ? true : txt("comp_yard_included") === "false" ? false : null,
     sale_price: salePrice,
     price_psf: (salePrice != null && buildingSf) ? Math.round((salePrice / buildingSf) * 100) / 100 : null,
     cap_rate: showSale ? num("comp_cap_rate") : null,
@@ -1611,12 +1631,16 @@ function compFormRecord() {
   return rec;
 }
 
-// Update PATCH: only non-empty form values that differ from the DB row, never a blank-out.
+// Update PATCH: non-empty changes, plus an explicitly edited yard answer (including Unknown).
 // Always re-verify (last_verified_at); include flyer_url only if newly attached.
 function compUpdatePatch(rec) {
   const base = comp.baseline || {};
-  const skip = new Set(["last_verified_at", "flyer_url", "internal_deal", "source"]);
+  const skip = new Set(["last_verified_at", "flyer_url", "internal_deal", "source", "yard_included"]);
   const patch = {};
+  if (comp.yardEdited && (rec.yard_included === null || typeof rec.yard_included === "boolean") &&
+      (base.yard_included ?? null) !== rec.yard_included) {
+    patch.yard_included = rec.yard_included;
+  }
   for (const [k, v] of Object.entries(rec)) {
     if (skip.has(k)) continue;
     if (v === null || v === undefined || v === "") continue; // never blank out a DB value
@@ -1667,6 +1691,7 @@ async function saveComp() {
     }
   }
   // Clear update state either way (contract: a fresh insert leaves nothing pending).
+  comp.yardEdited = false;
   comp.mode = "insert";
   comp.updateId = null;
   comp.baseline = null;
