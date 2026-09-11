@@ -345,10 +345,9 @@
       </div>
       <div class="fld"><span>Address <a id="toggleCompPropName" class="name-toggle">+ Name</a></span><input id="comp_address" /></div>
       <div class="fld hidden" id="fldCompPropertyName"><span>Property Name</span><input id="comp_property_name" /></div>
-      <div class="fld two"><span>City</span><input id="comp_city" /></div>
+      <div class="fld"><span><label for="comp_city">City</label></span><input id="comp_city" /></div>
+      <div class="fld two"><span><label for="comp_state">State</label></span><input id="comp_state" placeholder="e.g. AZ" /></div>
       <div class="fld two"><span>Zip</span><input id="comp_zip" /></div>
-      <!-- State stays in the DOM (auto-filled, defaults AZ) but is hidden to save a row. -->
-      <div class="fld two hidden"><span>State</span><input id="comp_state" /></div>
       <div class="fld">
         <span>Submarket</span>
         <select id="comp_sub_market">
@@ -385,7 +384,7 @@
       <div class="fld"><span><label for="comp_suite">Suite / unit</label></span><input id="comp_suite" placeholder="If this deal covers a suite" /></div>
       <div class="fld two"><span><label for="comp_partial_site_override">Portion of site</label></span><select id="comp_partial_site_override"><option value="">Unknown</option><option value="true">Yes</option><option value="false">No — whole site</option></select></div>
       <div class="fld two"><span><label for="comp_multi_tenant">Multi-tenant building</label></span><select id="comp_multi_tenant"><option value="">Unknown</option><option value="true">Yes</option><option value="false">No</option></select></div>
-      <small class="field-hint comp-size-hint">Sizes above describe this deal. Whole-site totals remain unknown until confirmed separately.</small>
+      <small class="field-hint comp-size-hint">Sizes above describe this deal. Suite/portion sizes stay separate from whole-site totals. Choose No for portion and multi-tenant only when confirmed.</small>
       <div class="fld two"><span>Asking Price ($)</span><input id="comp_sale_price" inputmode="decimal" /></div>
       <div class="fld two"><span>Asking Rent ($/SF/mo)</span><input id="comp_rent_psf" inputmode="decimal" /></div>
     </div>

@@ -22,7 +22,10 @@ untouched. This branch includes the submitted 1.3.2 commit `ba55959`.
 - Adds Suite/unit, Portion of site, and Multi-tenant building controls. Untouched
   values do not change existing rows. Offered sizes stay on the deal; new property
   facts contain only the numeric CoStar ID observed in its URL. No site totals or
-  coordinates are inferred, and yard is not inherited into another deal.
+  coordinates are inferred, and yard is not inherited into another deal. Explicitly
+  confirmed whole-site/single-tenant deals may initialize site totals through the
+  shared save service; suite/portion totals remain separate. State is visible and
+  missing CoStar state is no longer silently defaulted to Arizona.
 - Stores the exact pending save request locally by signed-in email before dispatch.
   Retries, worker suspension, panel reopen, concurrent button clicks, and a lost
   response reuse the same request ID. An uncertain response locks that draft for
@@ -32,14 +35,16 @@ untouched. This branch includes the submitted 1.3.2 commit `ba55959`.
   Privacy documentation now covers market comps, linked property records, layout
   preferences, and temporary pending-save recovery.
 
-Validation: 21 Node checks, 13 mounted property-linking scenarios, and six existing
+Validation: 22 Node checks, 13 mounted property-linking scenarios, and six existing
 yard scenarios, all using synthetic/mock data and blocked external browser requests.
 Browser checks cover all five listing statuses, R&G/external edits, canceled changes,
 failed lookup/save, committed-but-lost response recovery, malformed response,
 storage failure before dispatch, ambiguity, skip, suite/portion data, and 320/390px
-widths with existing custom layouts. Actual matching, concurrency, and rollback are
-owned by the Master App database migration; extension tests verify its
-request/response boundary. No production business records were changed for testing.
+widths with existing custom layouts. A further **40 real extension-to-PostgREST checks** passed on source and extracted
+ZIP against a separate disposable database with the final main-app migration. These
+use the actual form/request builders and session transport and confirm real alias
+matching, ambiguity, concurrency, rollback, response-loss recovery, and refresh.
+The fixture setup also passed the main app's 151 database assertions. No production business records were changed for testing.
 
 Run `node --test tests/comp-schema.test.cjs tests/property-linking.test.cjs`.
 Set `EXTENSION_ROOT` to an extracted package to verify those runtime files. Serve the

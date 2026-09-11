@@ -1311,7 +1311,7 @@ async function fillCompForm(d) {
   setCompField("comp_address", d.street);
   setCompField("comp_property_name", d.street); // default = address; Max renames as needed
   setCompField("comp_city", d.city);
-  setCompField("comp_state", d.state || "AZ");
+  setCompField("comp_state", d.state);
   setCompField("comp_zip", d.zip);
   setCompSubmarket(d.submarket);
   setCompField("comp_building_sf", fmtThousands(d.rba));
@@ -1668,7 +1668,7 @@ function compFormRecord() {
     address: ($("comp_address") && $("comp_address").value.trim()) || "",
     property_name: txt("comp_property_name"),
     city: txt("comp_city"),
-    state: txt("comp_state") || "AZ",
+    state: txt("comp_state"),
     zip: txt("comp_zip"),
     sub_market: txt("comp_sub_market"),
     // Cluster is derived, never typed: recomputed from whatever submarket is on the form.

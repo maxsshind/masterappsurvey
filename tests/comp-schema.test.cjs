@@ -129,6 +129,12 @@ test('yard inserts serialize Yes, No, and Unknown as true, false, and null', asy
   }
 });
 
+test('missing state remains unknown instead of silently defaulting to Arizona', () => {
+  const context = form('FOR SALE');
+  context.$('comp_state').value = '';
+  assert.equal(context.compFormRecord().state, null);
+});
+
 test('yard updates require an intentional edit and preserve every tri-state transition', async () => {
   const context = form('FOR LEASE');
   context.comp.yardEdited = true;
