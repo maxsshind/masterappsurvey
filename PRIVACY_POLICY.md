@@ -1,6 +1,6 @@
 # Privacy Policy — CoStar → Survey Pusher
 
-**Last updated:** September 10, 2026
+**Last updated:** September 18, 2026 — local review draft; this change is not published
 
 ## Overview
 The CoStar → Survey Pusher Chrome extension ("the Extension") is an internal
@@ -26,16 +26,26 @@ to its building/site property record. It also updates survey-property statuses.
 - **Locally in Chrome (`chrome.storage.local`) only:**
   - Your master-app (Supabase) sign-in session tokens, used to read and write on your behalf
   - Your last-used survey and email, for convenience
-  - Your form-layout preferences
+  - Your form-layout preferences and the backup made when the Survey layout is upgraded
+  - Survey drafts and their baseline record, including entered amounts, notes, existing
+    client-feedback fields needed to preserve the record, and a short source quote.
+    Drafts are separated by signed-in account and survey. They survive sign-out and
+    reopening on this device; another account cannot restore them. Drafts remain until
+    you clear them in Settings for the current survey or remove the extension. No full
+    CoStar page text is stored with these drafts.
+  - Exact reviewed Survey save requests and stable space IDs while the result is
+    uncertain. These remain locked for verification/retry and cannot be discarded
+    as ordinary drafts until their outcome is resolved.
   - The reviewed comp fields, selected property-link choice, and retry ID for a save
     whose result has not yet been confirmed. This is retained separately for each
     signed-in email and removed when the save succeeds or is confirmed rejected.
 - No data is stored on any server operated by the developer.
 
 ## Data the Extension sends
-- Property fields and flyer PDFs are written to **your own RGCRE master-app** (its Supabase
-  database and the `survey-files` storage bucket), using the sign-in session you authorized,
-  and only after you review the record and click Save / Add to survey.
+- Reviewed property fields are written to **your own RGCRE master-app** using the
+  sign-in session you authorized when you click Save / Add to survey. Flyer files are
+  uploaded to its `survey-files` storage bucket when you click Attach flyer; Save
+  then attaches that file to the reviewed property. No client message is sent.
 - Saving a comp can link it to an existing building/site or create its property
   record. Ambiguous matches require a choice. A visible skip option leaves the deal
   unlinked. Property creation occurs only during save, never while typing.

@@ -503,3 +503,64 @@ body.layout-editing #compFlyer, body.layout-editing #compRescan, body.layout-edi
 .comp-property-candidate a { display: inline-block; margin: 8px 0 0 24px; }
 #compPropertyChoiceMessage:focus { outline: 2px solid #226144; outline-offset: 3px; }
 .comp-size-hint { grid-column: 1 / -1; }
+
+/* Survey review: compact controls, individual drafts and persistent actions. */
+#screen-form { padding: 10px 12px 80px; }
+#screen-form .survey-review-head { margin: -10px -12px 8px; padding: 8px 12px; flex-wrap: wrap; }
+#screen-form .survey-review-head > div:first-child { min-width: 0; flex: 1; }
+#screen-form #formError { flex-basis: 100%; margin: 0; max-height: 110px; overflow: auto; }
+#screen-form .fieldset { padding: 8px; gap: 7px; }
+#screen-form [data-sec="offering"] { margin-top: 8px; }
+#screen-form label:not(.chk):not(.survey-choice), #screen-form .fld > span { font-size: 11px; font-weight: 650; color: #565968; }
+#screen-form .fld input, #screen-form .rent-field input, #screen-form .offered-acre input { min-height: 34px; padding: 6px 8px; }
+#screen-form .fld input, #screen-form .fld textarea, #screen-form .rent-field input { min-width: 0; }
+#screen-form textarea { resize: vertical; overflow: hidden; }
+.survey-location { display: grid; grid-template-columns: minmax(0,1fr) 54px 74px; gap: 7px; width: 100%; }
+.survey-choices { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 4px; width: 100%; }
+.survey-choice { display: flex; gap: 5px; align-items: center; cursor: pointer; border: 1px solid #d9d9e5; border-radius: 5px; padding: 6px; font-size: 11px; line-height: 1.2; min-height: 32px; overflow-wrap: anywhere; background: #fff; }
+#screen-form .survey-choice input { width: 13px; height: 13px; min-height: 0; flex: 0 0 13px; margin: 0; accent-color: #8B1538; }
+.survey-choice:has(input:checked) { background: #f9eaf0; border-color: #8B1538; color: #741532; }
+.survey-choice:has(input:focus-visible) { outline: 2px solid #8B1538; outline-offset: 2px; }
+.survey-choices .choice-clear { border: 0; background: transparent; font-size: 10px; color: #727483; text-decoration: underline; cursor: pointer; padding: 2px; grid-column: 1 / -1; justify-self: end; }
+.survey-pricing { gap: 9px; }
+.rent-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.rent-field { display: grid; grid-template-columns: minmax(0,1fr) minmax(100px,44%); gap: 3px 7px; align-items: center; }
+#screen-form .rent-field input { width: 100%; border: 1px solid #d9d9e5; border-radius: 6px; font: inherit; background: white; }
+.rent-field small { grid-column: 2; font-size: 10px; color: #717383; }
+.rent-field .adopt-amount { grid-column: 2; }
+.adopt-amount { font-size: 10px; color: #8B1538; text-align: left; border: 0; background: transparent; text-decoration: underline; cursor: pointer; }
+.offered-acre { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+#screen-form .offered-acre input { width: 96px; }
+.offered-acre .field-hint { flex-basis: 100%; }
+#screen-form .total-rent input { background: #f1f3f8; }
+.source-quote { font-size: 11px; line-height: 1.4; padding: 8px; background: #fff5da; border-radius: 5px; overflow-wrap: anywhere; }
+.space-drafts { display: flex; gap: 5px; flex-wrap: wrap; padding: 6px 0; }
+.space-tab { padding: 6px 8px; border: 1px solid #d9d9e5; background: white; border-radius: 5px; font-size: 11px; cursor: pointer; }
+.space-tab[aria-selected="true"] { color: #8B1538; border-color: #8B1538; background: #f9eaf0; }
+.space-actions { display: flex; gap: 4px; flex-wrap: wrap; width: 100%; }
+.space-actions .btn { width: auto; }
+.survey-footer { display: flex; gap: 8px; position: fixed; z-index: 10; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 560px; padding: 8px 12px; background: #f8f9fc; border-top: 1px solid #dde; }
+.survey-footer .btn-primary { flex: 1; }
+.survey-footer .btn { width: auto; }
+.has-details { font-size: 10px; color: #8B1538; }
+.field-error { font-size: 11px; color: #b42318; grid-column: 1 / -1; }
+#screen-form [aria-invalid="true"] { border-color: #b42318; }
+#spaceCandidates { display: grid; gap: 6px; margin-bottom: 8px; }
+.space-candidate { border: 1px solid #dde; border-radius: 6px; padding: 8px; background: white; font-size: 12px; overflow-wrap: anywhere; }
+.space-candidate button { margin: 5px 4px 0 0; }
+#screen-form #modeBanner { padding: 5px 8px; font-size: 11px; margin-bottom: 6px; }
+#screen-form .field-hint { margin: 0; }
+.browse-group { margin: 12px 0 6px; color: #8B1538; font-size: 12px; }
+.prop-edit { border: 0; background: none; text-align: left; width: 100%; cursor: pointer; }
+.prop-row .survey-choices { margin-top: 5px; }
+@media (min-width: 510px) {
+  #screen-form .rent-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  #screen-form #expenseAmounts { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  #screen-form .rent-grid .rent-field { display: flex; flex-direction: column; align-items: stretch; }
+}
+
+body:has(#screen-form:not(.hidden)) #toast { bottom: 64px; }
+#savedDraftList { padding: 8px 12px; }
+
+#screen-form .survey-choices { position: relative; }
+#screen-form .survey-choices .choice-clear { position: absolute; top: -19px; right: 0; }

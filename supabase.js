@@ -12,15 +12,34 @@
 const SB_SESSION_KEY = "sb_session";
 
 function sbGetStored() {
-  return new Promise((resolve) =>
-    chrome.storage.local.get([SB_SESSION_KEY], (r) => resolve(r[SB_SESSION_KEY] || null))
-  );
+  return sbStorageGet(SB_SESSION_KEY);
 }
 function sbStore(session) {
-  return new Promise((resolve) => chrome.storage.local.set({ [SB_SESSION_KEY]: session }, resolve));
+  return sbStorageSet(SB_SESSION_KEY, session);
 }
 function sbClear() {
-  return new Promise((resolve) => chrome.storage.local.remove([SB_SESSION_KEY], resolve));
+  return sbStorageRemove(SB_SESSION_KEY);
+}
+
+// Callback APIs otherwise swallow storage failures, which is unsafe for pending
+// writes. Authentication and Survey persistence both use checked completion.
+function sbStorageGet(key) {
+  return new Promise((resolve, reject) => chrome.storage.local.get([key], (r) => {
+    if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+    else resolve(r?.[key] ?? null);
+  }));
+}
+function sbStorageSet(key, value) {
+  return new Promise((resolve, reject) => chrome.storage.local.set({ [key]: value }, () => {
+    if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+    else resolve();
+  }));
+}
+function sbStorageRemove(key) {
+  return new Promise((resolve, reject) => chrome.storage.local.remove([key], () => {
+    if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+    else resolve();
+  }));
 }
 
 function authError(msg) {
@@ -227,4 +246,74 @@ async function sbUpdate(table, id, patch) {
     `Update ${table}`
   );
   return rows && rows[0];
+}
+
+// Survey batches intentionally do not use sbInsert's single-row result contract.
+// ON CONFLICT DO NOTHING is essential: recovery must preserve later client edits.
+async function sbInsertSurveyBatch(rows) {
+  // Like postgrest-js bulk upsert, specify the union of columns explicitly so
+  // independently drafted rows may omit different fields. Missing is distinct
+  // from explicit null and should retain database defaults on new rows.
+  const columns = [...new Set(rows.flatMap((row) => Object.keys(row)))].map((column) => `"${column}"`).join(",");
+  const response = await sbFetch(`/survey_properties?on_conflict=id&columns=${encodeURIComponent(columns)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Prefer: "resolution=ignore-duplicates,missing=default,return=minimal" },
+    body: JSON.stringify(rows),
+  });
+  if (!response.ok) return sbSurveyWriteJson(response, "Save survey spaces");
+  return null; // return=minimal may be an empty 201, not only 204.
+}
+
+// Only an actual PostgREST/Postgres rejection response proves this statement did
+// not commit. A later GET/auth failure, gateway timeout or lost response does not.
+async function sbSurveyWriteJson(response, what) {
+  if (response.ok) return sbJson(response, what);
+  const detail = await response.json().catch(() => ({}));
+  const error = new Error(`${what} failed: ${detail.message || detail.hint || response.statusText}`);
+  if ([400, 401, 403, 404, 405, 409, 422].includes(response.status) && /^(?:PGRST\d{3}|[0-9A-Z]{5})$/.test(detail.code || "")) {
+    error.saveRejected = true;
+    error.surveyWriteRejected = true;
+  }
+  throw error;
+}
+
+async function sbReadSurveyIds(surveyId, ids) {
+  const query = `select=*&survey_id=eq.${encodeURIComponent(surveyId)}&id=in.(${ids.map(encodeURIComponent).join(",")})`;
+  const rows = await sbSelect("survey_properties", query);
+  if (!Array.isArray(rows)) throw new Error("Could not verify saved spaces. Keep this pending request and retry verification.");
+  return rows;
+}
+
+async function sbListAllSurveyProperties(surveyId) {
+  const all = [], pageSize = 1000;
+  for (let offset = 0; ;) {
+    const response = await sbFetch(`/survey_properties?select=*&survey_id=eq.${encodeURIComponent(surveyId)}&order=id.asc&limit=${pageSize}&offset=${offset}`, {
+      headers: { Prefer: "count=exact" },
+    });
+    const rows = await sbJson(response, "Load survey properties");
+    if (!Array.isArray(rows)) throw new Error("Could not load this survey. No save was attempted.");
+    const count = response.headers?.get("Content-Range")?.match(/\/(\d+)$/);
+    if (!count) throw new Error("Could not verify the complete survey list. No save was attempted.");
+    const total = Number(count[1]);
+    all.push(...rows);
+    offset += rows.length; // honor the server's actual row cap, not a presumed one
+    if (offset >= total) {
+      if (new Set(all.map((row) => row.id)).size !== total) throw new Error("The survey changed while loading. Reload before saving.");
+      return all.sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)));
+    }
+    if (!rows.length) throw new Error("The survey changed while loading. Reload before saving.");
+  }
+}
+
+// updated_at is maintained by the existing database trigger. Check it in the
+// PATCH itself so a web edit between preflight and dispatch cannot be overwritten.
+async function sbUpdateSurveyScoped(surveyId, id, expectedUpdatedAt, patch) {
+  const query = `id=eq.${encodeURIComponent(id)}&survey_id=eq.${encodeURIComponent(surveyId)}&updated_at=eq.${encodeURIComponent(expectedUpdatedAt)}`;
+  const rows = await sbSurveyWriteJson(await sbFetch(`/survey_properties?${query}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Prefer: "return=representation" },
+    body: JSON.stringify(patch),
+  }), "Update survey space");
+  if (!Array.isArray(rows)) throw new Error("Could not confirm the updated space. Keep this request and verify again.");
+  return rows;
 }

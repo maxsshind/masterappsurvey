@@ -30,7 +30,7 @@ const load = (c, source, name) => {
   const nodes = {};
   const c = vm.createContext({
     fetch: localFetch, crypto: webcrypto, CONFIG: { SUPABASE_URL: endpoint.origin, SUPABASE_ANON_KEY: 'synthetic-local-only' },
-    chrome: { storage: { local: {
+    chrome: { runtime: {}, storage: { local: {
       get: (_keys, cb) => { cb(structuredClone(storage)); },
       set: (value, cb) => { Object.assign(storage, structuredClone(value)); if (cb) cb(); },
       remove: (keys, cb) => { for (const key of keys) delete storage[key]; if (cb) cb(); },

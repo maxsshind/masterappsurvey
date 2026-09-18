@@ -1,8 +1,39 @@
 # Chrome Web Store — CoStar → Survey Pusher
 
-Last updated: 2026-09-10
+Last updated: 2026-09-18
 
-## Release
+## September 18 Survey review build — not released
+
+Implemented on `codex/survey-alignment-20260918`, based on verified `origin/main`
+`ecf1b6776fc5a0bf2f11bd5aaa5db1e72ee4e70f`. See [PROJECT.md](PROJECT.md) for acceptance
+coverage, package hash and remaining verification limits.
+
+The local review ZIP retains manifest **1.3.3**, the approved starting baseline.
+It is not a newly numbered release and must not be uploaded as-is. Select an unused
+version after checking current Store draft/public state when distribution is authorized.
+**No upload, publication, installed-extension reload/replacement, or production data
+change occurred. Current public/installed versions were not rechecked.**
+
+Survey changes: editable linked monthly total/SF/acre rent, offered acreage, explicit
+expenses, source-period/basis review, independent spaces and explicit suite targets,
+atomic stable-ID batch retries, stale-update protection, strict numbers, visible
+choices, early availability/client notes, expandable Notes 2, local draft recovery,
+and Survey-only layout migration. Comp input behavior and its existing save safeguards
+remain unchanged; direct Comp rent intake does not inherit the separate web bridge's
+monthly/expense-exclusive confirmation safeguard.
+
+Local storage now retains account/survey drafts and exact uncertain Survey requests;
+see the local [privacy-policy update](PRIVACY_POLICY.md). There are no new permissions,
+hosts, analytics, remote code or external data recipients. Refresh the hosted policy
+and Store screenshots only as part of an authorized release.
+
+`./package.sh` builds a local archive with an explicit 14-file runtime/icon allowlist.
+`./publish.sh --package-only` does the same. The old unchecked upload/publish chain is
+removed; running `publish.sh` otherwise exits without a network request. A future
+release must separately verify the supported Store API, upload success, matching
+draft version and publication response. Historical release evidence below remains historical.
+
+## Release — September 10 historical evidence
 
 - Item: `hohikcikmjiopimpigebcbdileipbhhc`
 - [Store listing](https://chromewebstore.google.com/detail/hohikcikmjiopimpigebcbdileipbhhc)

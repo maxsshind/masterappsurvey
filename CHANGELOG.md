@@ -1,3 +1,24 @@
+# Changelog
+
+## Unreleased — September 18 Survey alignment review
+
+- Linked editable monthly total, per-SF and per-acre rent; explicitly offered acreage;
+  separate/included/unknown expenses; version-1 source metadata and exact decimal math.
+- Strict complete-number entry, explicit monthly source review, legacy values and
+  unknown choices preserved, minimal unrelated patches, coordinated area/rent writes.
+- Deliberate suite selection, independent MT drafts and combined alternatives,
+  stable-ID atomic saves, durable reviewed retries, stale-update review and account isolation.
+- Compact tenancy/availability/lease/status choices; early client notes; expandable
+  Notes 2; private source evidence; persistent Save controls; neutral empty fields.
+- Survey layout migration with exact prior backup and unchanged Comp preferences.
+- Corrected inherited Survey `property_name` writes: the canonical Survey table has no
+  such column. Comp's separate property name remains supported.
+- Packaging separated from publication. Draft storage and retention disclosed locally.
+
+This is a local implementation/review package; manifest remains the 1.3.3 baseline.
+No Store, installation, production data, main-app schema or behavior changes.
+See PROJECT.md for exact checks, artifacts and known boundaries.
+
 # CoStar → Survey Pusher changelog
 
 ## 1.3.3 — 2026-09-10 — Property linking on save

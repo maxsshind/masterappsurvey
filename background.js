@@ -10,7 +10,7 @@
  *     user clicks / navigates. No automated navigation, no CoStar APIs, no crawling.
  */
 
-importScripts("config.js", "supabase.js");
+importScripts("config.js", "supabase.js", "survey-fields.js", "survey-rent.js", "survey-spaces.js");
 
 // ─── CoStar read (on-demand, single DOM read of the active CoStar tab) ───────────
 
@@ -117,6 +117,26 @@ async function readCoStar() {
                  txt.match(/\$([\d.]+)\s*\n?\s*\/\s*(?:NNN|Gross|FSG|MG|IG)\b/i);        // "$0.80/NNN"
       if (lr) leaseRate = lr[1];
 
+      // Additive Survey review evidence. Keep leaseRate unchanged for the separate
+      // Comp intake. A detected amount is a suggestion, never an adopted quote.
+      const quoteLineIndex = lines.findIndex((line) => /(?:asking.*rent|^rent\b)/i.test(line));
+      const quoteWindow = quoteLineIndex >= 0 ? lines.slice(Math.max(0, quoteLineIndex - 2), quoteLineIndex + 4).join("\n") : "";
+      const explicitQuote = (quoteWindow || txt).match(/\$\s*[\d,.]+(?:\s*[-–]\s*\$?\s*[\d,.]+)?\s*(?:\/\s*(?:sf|sq\.?\s*ft|ac|acres?|mo(?:nth)?|yr|year)\b|per\s+(?:sf|square\s+foot|acre|month|year)\b)[^\n]{0,160}/i);
+      const quoteSnippet = quoteWindow || explicitQuote?.[0] || lr?.[0] || "";
+      const annual = /annual|yearly|per[\s_-]*year|\/\s*(?:yr|year)|\bp\.?a\.?\b/i.test(quoteSnippet);
+      const monthly = /monthly|per[\s_-]*month|\/\s*mo(?:nth)?\b/i.test(quoteSnippet);
+      const perSF = /(?:\/\s*|per\s+)(?:sf\b|sq\.?\s*ft\b|square\s+foot\b)/i.test(quoteSnippet);
+      const perAcre = /(?:\/\s*|per\s+)(?:ac\b|acres?\b)/i.test(quoteSnippet);
+      const leaseQuote = {
+        rawText: quoteSnippet.slice(0, 500),
+        amountText: (quoteSnippet.match(/\$\s*([\d,.]+(?:\s*[-–]\s*\$?\s*[\d,.]+)?)/) || [])[1] || "",
+        basis: perSF && !perAcre ? "sf" : perAcre && !perSF ? "acre" : /\btotal\b/i.test(quoteSnippet) ? "total" : "unknown",
+        period: annual && !monthly ? "annual" : monthly && !annual ? "monthly" : "unknown",
+        ranged: /\d\s*[-–]\s*\$?\s*\d/.test(quoteSnippet),
+        gross: /\b(?:gross|fsg|mg|ig)\b/i.test(quoteSnippet),
+        reviewed: false,
+      };
+
       // ---- lease type : "Service Type  Triple Net" or "/NNN" ----
       let leaseType = "";
       const stM = txt.match(/Service Type\s*\n?\s*([A-Za-z ]+?)\s*(?:\n|CAM|$)/i);
@@ -127,6 +147,8 @@ async function readCoStar() {
       else if (/full service/.test(ltLow)) leaseType = "Full Service Gross";
       else if (/industrial gross|(?:^|\b)ig\b/.test(ltLow)) leaseType = "Industrial Gross";
       else if (/modified|(?:^|\b)mg\b/.test(ltLow)) leaseType = "Modified Gross";
+      leaseQuote.serviceType = ltRaw;
+      leaseQuote.gross ||= /\b(?:gross|fsg|mg|ig)\b/i.test(ltRaw);
 
       // ---- cap rate : "Cap Rate  6.50%" ----
       let capRate = "";
@@ -177,7 +199,7 @@ async function readCoStar() {
       const _debug = { textLen: txt.length, sample: txt.slice(0, 400) };
       return {
         street, city, state, zip, submarket, rba, acLot, salePrice, leaseRate,
-        leaseType, capRate, yearBuilt, saleHighlights, saleNotes, _debug,
+        leaseType, leaseQuote, capRate, yearBuilt, saleHighlights, saleNotes, _debug,
       };
     },
   });
@@ -186,6 +208,7 @@ async function readCoStar() {
   data.costarId = costarId;
   data.sourceUrl = tab.url;
   data.scrapedTabUrl = tab.url;
+  if (data.leaseQuote) data.leaseQuote.sourceUrl = tab.url;
   return data;
 }
 
@@ -280,10 +303,168 @@ async function attachCompFlyer() {
 }
 
 function listSurveyProperties(surveyId) {
-  return sbSelect(
-    "survey_properties",
-    `select=*&survey_id=eq.${encodeURIComponent(surveyId)}&order=created_at.asc`
-  );
+  return sbListAllSurveyProperties(surveyId);
+}
+
+// ─── Survey reviewed-request transport ────────────────────────────────────────
+// Durable exact requests survive panel closure and worker suspension. The map
+// only serializes messages in this worker; storage is the recovery authority.
+const surveySavesInFlight = new Map();
+
+async function surveySaveContext(surveyId, accountId) {
+  const session = await sbGetSession();
+  if (!session.user_id || (accountId && accountId !== session.user_id))
+    throw authError("Sign in to the same account that owns this Survey draft.");
+  if (!/^[0-9a-f-]{36}$/i.test(surveyId || "")) throw new Error("Choose a survey before saving.");
+  return { accountId: session.user_id, key: `survey_pending_v1:${session.user_id}:${surveyId}` };
+}
+
+async function getSurveyPending(surveyId) {
+  const context = await surveySaveContext(surveyId);
+  return { pending: await sbStorageGet(context.key) };
+}
+
+async function surveyRecoverPending(context, pending) {
+  if (!pending) return { status: "none", properties: [], pending: null };
+  const request = pending.request;
+  SurveySpaces.validateRequest(request);
+  if (request.accountId !== context.accountId) throw authError("Sign in to the account that owns this draft.");
+  const ids = request.kind === "insert" ? request.rows.map((row) => row.id) : [request.id];
+  const result = SurveySpaces.classifyReadback(request, await sbReadSurveyIds(request.surveyId, ids));
+  if (result.status === "saved") {
+    await sbStorageRemove(context.key);
+    return { ...result, pending: null };
+  }
+  // A newer timestamp on this exact update target makes the old CAS predicate
+  // impossible. This permits a fresh review without replaying the stale patch.
+  const canReviewCurrent = request.kind === "update" && result.status === "changed" &&
+    !!result.current?.updated_at && result.current.updated_at !== request.baseline.updated_at;
+  return { ...result, pending, canReviewCurrent };
+}
+
+async function recoverSurveySave(surveyId) {
+  const context = await surveySaveContext(surveyId);
+  return surveyRecoverPending(context, await sbStorageGet(context.key));
+}
+
+async function abandonSurveyPending(surveyId) {
+  const context = await surveySaveContext(surveyId);
+  if (surveySavesInFlight.has(context.key)) throw new Error("This save is still running. Verify it before changing the draft.");
+  const pending = await sbStorageGet(context.key);
+  const result = await surveyRecoverPending(context, pending);
+  if (!result.pending) return result;
+  if (result.status === "partial") throw new Error("Some spaces already exist. Reconcile this batch before clearing its pending save.");
+  if (pending.phase === "prepared" || pending.saveRejected === true || result.canReviewCurrent) {
+    await sbStorageRemove(context.key);
+    return { ...result, pending: null };
+  }
+  const error = new Error("This save may still finish on the server. Keep the reviewed payload locked and retry or verify the same request.");
+  error.pending = pending; error.status = result.status; throw error;
+}
+
+function validateSurveyRequestFields(request) {
+  SurveySpaces.validateRequest(request);
+  const writes = request.kind === "insert" ? request.rows : [request.patch];
+  for (const write of writes) {
+    const result = SurveyFields.validateSurveyWrite(write, request.kind === "update" ? request.baseline : undefined);
+    if (!result.valid) throw new SurveySpaces.SurveySpaceConflictError(result.issues.map((issue) => issue.message).join(" "));
+    if (!SurveySpaces.sameValue(write, result.values))
+      throw new SurveySpaces.SurveySpaceConflictError("Review the numeric fields before saving. The request must contain validated numbers, not unparsed text.");
+    const final = { ...(request.baseline || {}), ...write };
+    const pricingFields = ["monthly_base_rent", "lease_rate_psf", "monthly_opex_psf", "total_monthly_opex", "total_lease_rate"];
+    const coordinated = ["rent_calculation", "tenancy", "building_sf", "suite_size", ...pricingFields].some((key) => Object.hasOwn(write, key));
+    if (final.rent_calculation?.version === 1 && coordinated) {
+      const expected = SurveyRent.calculateSurveyRent(final.rent_calculation, final, final);
+      if (!Object.hasOwn(write, "rent_calculation") || pricingFields.some((key) => !Object.hasOwn(write, key) || !SurveySpaces.sameValue(write[key], expected[key])))
+        throw new SurveySpaces.SurveySpaceConflictError("Linked pricing and area must be reviewed together. Reopen the draft and recalculate before saving.");
+    }
+  }
+  if (request.kind === "insert") SurveySpaces.assertUniqueSpaces(request.rows);
+}
+
+async function saveSurveyRequest(request) {
+  try { validateSurveyRequestFields(request); }
+  catch (error) { error.saveRejected = true; throw error; }
+  const context = await surveySaveContext(request.surveyId, request.accountId);
+  const running = surveySavesInFlight.get(context.key);
+  if (running) {
+    if (SurveySpaces.sameValue(running.request, request)) return running.promise;
+    throw new Error("Another save is running for this survey. Verify its outcome before saving a different draft.");
+  }
+  const operation = { request, promise: null };
+  operation.promise = executeSurveyRequest(context, request);
+  surveySavesInFlight.set(context.key, operation);
+  try { return await operation.promise; }
+  finally { surveySavesInFlight.delete(context.key); }
+}
+
+async function executeSurveyRequest(context, request) {
+  let pending = await sbStorageGet(context.key);
+  if (pending && !SurveySpaces.sameValue(pending.request, request)) {
+    const error = new Error("A reviewed save is pending in this survey. Recover it before changing or saving another draft.");
+    error.pending = pending; throw error;
+  }
+  if (!pending) {
+    pending = { request, phase: "prepared" };
+    try { await sbStorageSet(context.key, pending); }
+    catch (error) { error.message = `Draft could not be protected locally; no write was attempted. ${error.message}`; error.saveRejected = true; error.pending = null; throw error; }
+  }
+  // A rejection of a retry says nothing about an earlier lost request that may
+  // still be running. Only the first definitely rejected dispatch can unlock.
+  const hadUncertainDispatch = pending.phase === "dispatched";
+  try {
+    const recovered = await surveyRecoverPending(context, pending);
+    if (recovered.status === "saved") return recovered;
+    if (["partial", "changed"].includes(recovered.status)) return recovered;
+
+    const existing = await listSurveyProperties(request.surveyId); // failure is never an empty survey
+    if (request.kind === "insert") {
+      const latest = SurveySpaces.classifyReadback(request, existing);
+      if (latest.status === "saved") return surveyRecoverPending(context, pending);
+      if (latest.status === "partial") return { ...latest, pending };
+      SurveySpaces.assertUniqueSpaces(request.rows, existing);
+    }
+    else {
+      const current = existing.find((row) => row.id === request.id);
+      if (!current || !SurveySpaces.sameValue(current, request.baseline))
+        return { status: "changed", current: current || null, properties: current ? [current] : [], pending };
+      if (["tenancy", "address", "city", "state", "suite_number"].some((key) => Object.hasOwn(request.patch, key)))
+        SurveySpaces.assertUniqueSpaces([{ ...current, ...request.patch }], existing);
+    }
+    const dispatched = { request: pending.request, phase: "dispatched" };
+    // A failure to store the dispatch state stops before the write as well.
+    await sbStorageSet(context.key, dispatched);
+    pending = dispatched;
+    let writeError;
+    try {
+      if (request.kind === "insert") await sbInsertSurveyBatch(request.rows);
+      else await sbUpdateSurveyScoped(request.surveyId, request.id, request.baseline.updated_at, request.patch);
+    } catch (error) { writeError = error; }
+    if (writeError?.surveyWriteRejected === true && !hadUncertainDispatch) {
+      const rejected = { ...pending, phase: "rejected", saveRejected: true };
+      await sbStorageSet(context.key, rejected);
+      pending = rejected;
+      throw writeError;
+    }
+    // Even a failed/lost write response may represent a committed statement.
+    const verified = await surveyRecoverPending(context, pending);
+    if (verified.status === "saved" || verified.status === "partial" || verified.status === "changed") return verified;
+    if (writeError) { writeError.pending = pending; writeError.status = "none"; throw writeError; }
+    return verified;
+  } catch (error) {
+    // Before first dispatch there is no uncertain write. Permit correcting the
+    // retained UI draft. Once dispatched, only verified recovery can clear it.
+    if (pending.phase === "prepared" || pending.saveRejected === true) {
+      try { await sbStorageRemove(context.key); }
+      catch (storageError) {
+        storageError.pending = pending; storageError.saveRejected = true;
+        storageError.message = `No write is pending, but its local recovery record could not be cleared. ${storageError.message}`;
+        throw storageError;
+      }
+      error.saveRejected = true; error.pending = null;
+    } else { error.pending = pending; error.saveRejected = false; }
+    throw error;
+  }
 }
 
 // ─── Comps (master-app `comps` table) ────────────────────────────────────────────
@@ -344,14 +525,17 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     try {
       sendResponse({ ok: true, ...await promise });
     } catch (e) {
-      sendResponse({ ok: false, error: e.message, authRequired: e.code === "AUTH_REQUIRED", saveRejected: e.saveRejected === true || e.code === "AUTH_REQUIRED" });
+      const surveySaveMessage = ["SAVE_SURVEY_BATCH", "SAVE_SURVEY_UPDATE", "RECOVER_SURVEY_SAVE", "ABANDON_SURVEY_PENDING"].includes(msg.type);
+      sendResponse({ ok: false, error: e.message, authRequired: e.code === "AUTH_REQUIRED", saveRejected: e.saveRejected === true || (!surveySaveMessage && e.code === "AUTH_REQUIRED" && !e.pending),
+        ...(Object.hasOwn(e, "pending") ? { pending: e.pending } : {}),
+        ...(e.status ? { status: e.status } : {}), ...(e.current ? { current: e.current } : {}) });
     }
   };
 
   switch (msg.type) {
     case "AUTH_STATUS":
       // Reports whether a session is stored; expiry is handled lazily on first use.
-      reply(sbGetStored().then((s) => ({ connected: !!(s && s.refresh_token), email: s ? s.email : null })));
+      reply(sbGetStored().then((s) => ({ connected: !!(s && s.refresh_token), email: s ? s.email : null, accountId: s?.user_id || null })));
       return true;
 
     case "AUTH_SEND_OTP":
@@ -359,11 +543,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       return true;
 
     case "AUTH_VERIFY_OTP":
-      reply(sbVerifyOtp(msg.email, msg.token).then((s) => ({ email: s.email })));
+      reply(sbVerifyOtp(msg.email, msg.token).then((s) => ({ email: s.email, accountId: s.user_id })));
       return true;
 
     case "AUTH_VERIFY_LINK":
-      reply(sbVerifyLink(msg.link).then((s) => ({ email: s.email })));
+      reply(sbVerifyLink(msg.link).then((s) => ({ email: s.email, accountId: s.user_id })));
       return true;
 
     case "AUTH_SIGN_OUT":
@@ -394,12 +578,21 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       reply(listSurveyProperties(msg.surveyId).then((properties) => ({ properties })));
       return true;
 
-    case "INSERT_PROPERTY":
-      reply(sbInsert("survey_properties", msg.record || {}).then((property) => ({ property })));
+    case "GET_SURVEY_PENDING":
+      reply(getSurveyPending(msg.surveyId));
       return true;
 
-    case "UPDATE_PROPERTY":
-      reply(sbUpdate("survey_properties", msg.id, msg.patch || {}).then((property) => ({ property })));
+    case "RECOVER_SURVEY_SAVE":
+      reply(recoverSurveySave(msg.surveyId));
+      return true;
+
+    case "ABANDON_SURVEY_PENDING":
+      reply(abandonSurveyPending(msg.surveyId));
+      return true;
+
+    case "SAVE_SURVEY_BATCH":
+    case "SAVE_SURVEY_UPDATE":
+      reply(saveSurveyRequest(msg.request));
       return true;
 
     case "SEARCH_COMPS":

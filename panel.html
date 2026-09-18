@@ -33,8 +33,11 @@
       <span class="ctx-label">Survey</span>
       <span id="ctxSurveyName" class="ctx-name">No survey selected</span>
     </div>
+    <button id="btnSavedDrafts" class="btn btn-ghost btn-sm">Drafts</button>
     <button id="btnChangeSurvey" class="btn btn-ghost btn-sm">Change</button>
   </div>
+
+  <div id="savedDraftList" class="space-drafts hidden"></div>
 
   <!-- Tab bar: Push (CoStar form) / Survey (browse & edit) -->
   <div id="tabBar" class="tab-bar hidden">
@@ -99,127 +102,104 @@
     <button id="btnPickerBack" class="btn btn-ghost btn-sm mt hidden">Back</button>
   </section>
 
-  <!-- Screen: property form (insert or update) -->
+  <!-- Survey controls: one mounted editor, independent persisted space drafts. -->
   <section id="screen-form" class="screen hidden">
-    <div class="review-head">
-      <h2 id="formTitle">New property</h2>
+    <div class="review-head survey-review-head">
+      <div><h2 id="formTitle">New property</h2><span id="draftStatus" class="field-hint" aria-live="polite"></span></div>
       <button id="btnSave" class="btn btn-primary btn-sm">Save</button>
+      <div id="formError" class="error hidden" role="alert" tabindex="-1"></div>
     </div>
-
+    <div id="pendingSurvey" class="banner hidden" aria-live="polite">
+      <p id="pendingSurveyText"></p>
+      <button id="btnRecoverSurvey" class="btn btn-ghost btn-sm">Check saved result / retry</button>
+      <button id="btnReviewLatest" class="btn btn-ghost btn-sm hidden">Review current saved space</button>
+      <button id="btnUnlockSurvey" class="btn btn-ghost btn-sm hidden">Return to editing</button>
+    </div>
     <div id="modeBanner" class="banner hidden"></div>
     <div id="dupChooser" class="hidden">
-      <div class="sugg">
-        <div class="sugg-txt" id="dupText"></div>
-      </div>
-      <div class="action-row-stack">
-        <button id="btnDupUpdate" class="btn btn-primary btn-sm">Update existing</button>
-        <button id="btnDupNew" class="btn btn-ghost btn-sm">Add as new property</button>
-      </div>
+      <p id="dupText" class="hint">Choose the space to update, or add a separate offering.</p>
+      <div id="spaceCandidates"></div>
+      <button id="btnDupNew" class="btn btn-ghost btn-sm">Add separate property</button>
     </div>
-
-    <div id="suggestions" class="hidden">
-      <div class="sugg-head"><span class="section-label">CoStar differs</span></div>
-      <div id="suggList"></div>
-    </div>
-
-    <div class="sec" data-sec="address">
-      <div class="section-label mt-section">Address</div>
+    <div id="spaceDrafts" class="space-drafts hidden" aria-label="Available space drafts"></div>
+    <div id="suggestions" class="hidden"><div class="sugg-head"><span class="section-label">CoStar differs</span></div><div id="suggList"></div></div>
+    <div class="sec" data-sec="setup">
       <div class="fieldset">
-        <div class="fld"><span>Address * <a id="togglePropName" class="name-toggle">+ Name</a></span><input id="fAddress" /></div>
-        <div class="fld hidden" id="fldPropertyName"><span>Property Name</span><input id="fPropertyName" /></div>
-        <div class="fld two"><span>City</span><input id="fCity" /></div>
-        <div class="fld two"><span>State</span><input id="fState" /></div>
-        <div class="fld two"><span>Zip</span><input id="fZip" /></div>
+        <div class="fld" data-layout-key="fTenancy"><span id="tenancyLabel">Tenancy</span><div id="fTenancy" class="survey-choices" role="radiogroup" aria-labelledby="tenancyLabel"></div></div>
+        <div class="fld"><label for="fAddress">Address *</label><input id="fAddress" /></div>
+        <div class="survey-location">
+          <div class="fld"><label for="fCity">City</label><input id="fCity" /></div>
+          <div class="fld"><label for="fState">State</label><input id="fState" /></div>
+          <div class="fld"><label for="fZip">ZIP</label><input id="fZip" /></div>
+        </div>
       </div>
     </div>
-
-    <div class="sec" data-sec="tenancy">
-      <div class="section-label mt-section">Tenancy</div>
+    <div class="sec" data-sec="offering">
       <div class="fieldset">
-        <div class="fld"><span>Tenancy</span><select id="fTenancy"><option value="">—</option><option value="ST">Single Tenant (ST)</option><option value="MT">Multi Tenant (MT)</option></select></div>
+        <div class="fld" data-layout-key="fAvailability"><span id="availabilityLabel">Availability</span><div id="fAvailability" class="survey-choices" role="radiogroup" aria-labelledby="availabilityLabel"></div></div>
+        <div class="fld"><label for="fNotes">Notes (Client Visible)</label><textarea id="fNotes" rows="2"></textarea></div>
+        <div class="fld"><label for="fDateAvailable">Date available</label><input id="fDateAvailable" /></div>
       </div>
     </div>
-
     <div class="sec" data-sec="size">
-      <div class="section-label mt-section">Size</div>
+      <div class="section-label mt-section">Area</div>
       <div class="fieldset">
-        <div class="fld two" id="rowSuiteNumber"><span>Suite #</span><input id="fSuiteNumber" placeholder="e.g. 101" /></div>
-        <div class="fld two" id="rowOfficeSf"><span>Office SF</span><input id="fOfficeSf" inputmode="decimal" /></div>
-        <div class="fld" id="rowSuiteSize"><span>Suite size</span><input id="fSuiteSize" placeholder='e.g. 6,500 - 15,000 SF' /></div>
-        <div class="fld two" id="rowBuildingSf"><span id="lblBuildingSf">Building SF</span><input id="fBuildingSf" inputmode="decimal" /></div>
-        <div class="fld two"><span>Land (AC)</span><input id="fLandAc" inputmode="decimal" /></div>
+        <div class="fld two" id="rowSuiteNumber"><label for="fSuiteNumber">Suite / space label</label><input id="fSuiteNumber" /></div>
+        <div class="fld two" id="rowSuiteSize"><label for="fSuiteSize">Suite size (SF)</label><input id="fSuiteSize" /></div>
+        <div class="fld two" id="rowBuildingSf"><label id="lblBuildingSf" for="fBuildingSf">Total Building SF</label><input id="fBuildingSf" inputmode="numeric" /></div>
+        <div class="fld two" id="rowOfficeSf"><label for="fOfficeSf">Office SF</label><input id="fOfficeSf" inputmode="numeric" /></div>
+        <div class="fld two"><label for="fLandAc">Parcel acres</label><input id="fLandAc" inputmode="decimal" /></div>
+        <div class="space-actions"><button id="btnAddSpace" class="btn btn-ghost btn-sm" type="button">+ Available space</button><button id="btnCombinedSpace" class="btn btn-ghost btn-sm" type="button">+ Combined option</button></div>
       </div>
     </div>
-
-    <div class="sec" data-sec="status">
-      <div class="section-label mt-section">Status</div>
-      <div class="fieldset">
-        <label class="chk"><input type="checkbox" id="fForSale" /><span>For Sale</span></label>
-        <label class="chk"><input type="checkbox" id="fForLease" /><span>For Lease</span></label>
-        <div class="fld"><span>Availability</span><select id="fAvailability"></select></div>
-        <div class="fld"><span>Internal status <small>(hidden from client)</small></span><select id="fInternalStatus"></select></div>
-      </div>
-    </div>
-
     <div id="leaseBlock" class="sec" data-sec="lease">
-      <div class="section-label mt-section">Lease</div>
+      <div class="section-label mt-section">Monthly lease pricing</div>
       <div class="fieldset">
-        <div class="fld two"><span>Lease rate ($/SF)</span><input id="fLeaseRate" inputmode="decimal" /></div>
-        <div class="fld two"><span>Lease type</span><select id="fLeaseType"></select></div>
-        <div class="fld two"><span>Date available</span><input id="fDateAvailable" placeholder="e.g. Now / 8/1" /></div>
+        <div class="fld" data-layout-key="fLeaseType"><span id="leaseTypeLabel">Lease type</span><div id="fLeaseType" class="survey-choices" role="radiogroup" aria-labelledby="leaseTypeLabel"></div></div>
+        <div id="surveyPricing" class="fld survey-pricing" data-layout-key="surveyPricing">
+          <p id="rentArea" class="field-hint"></p>
+          <p id="rentCompatibility" class="hint hidden"></p>
+          <div id="sourceQuote" class="source-quote hidden"></div>
+          <div class="rent-grid">
+            <div class="rent-field"><label for="fMonthlyBase">Base rent ($/month)</label><input id="fMonthlyBase" inputmode="decimal" /><small id="labelMonthlyBase"></small><button type="button" data-adopt-rent="total" class="adopt-amount hidden">Use this amount</button></div>
+            <div class="rent-field"><label for="fLeaseRate">Rent ($/SF/month)</label><input id="fLeaseRate" inputmode="decimal" /><small id="labelLeaseRate"></small><button type="button" data-adopt-rent="sf" class="adopt-amount hidden">Use this amount</button></div>
+            <div class="rent-field"><label for="fRentAcre">Rent ($/acre/month)</label><input id="fRentAcre" inputmode="decimal" /><small id="labelRentAcre"></small><button type="button" data-adopt-rent="acre" class="adopt-amount hidden">Use this amount</button></div>
+          </div>
+          <div class="offered-acre"><label for="fOfferedAcres">Acres in lease</label><input id="fOfferedAcres" inputmode="decimal" /><span class="field-hint">Only acres included in this offering</span></div>
+          <div class="fld" data-layout-key="fExpenseTreatment"><span id="expenseLabel">Expenses</span><div id="fExpenseTreatment" class="survey-choices" role="radiogroup" aria-labelledby="expenseLabel"></div></div>
+          <div id="expenseAmounts" class="rent-grid">
+            <div class="rent-field"><label for="fOpexTotal">Expenses / month</label><input id="fOpexTotal" inputmode="decimal" /><small id="labelOpexTotal"></small><button type="button" data-adopt-expenses="total" class="adopt-amount hidden">Use this amount</button></div>
+            <div class="rent-field"><label for="fOpexPsf">Expenses / SF / month</label><input id="fOpexPsf" inputmode="decimal" /><small id="labelOpexPsf"></small><button type="button" data-adopt-expenses="sf" class="adopt-amount hidden">Use this amount</button></div>
+          </div>
+          <div class="rent-field total-rent"><label for="fTotalLeaseRate">Total monthly rent</label><input id="fTotalLeaseRate" readonly /><small id="labelTotalLeaseRate"></small></div>
+          <label id="monthlyReview" class="chk hidden"><input id="fMonthlyConfirmed" type="checkbox" /><span>I reviewed this as a monthly quote for this offering and basis.</span></label>
+          <button id="btnResetRent" class="btn btn-ghost btn-sm" type="button">Reset quote to draft baseline</button>
+        </div>
       </div>
     </div>
-
-    <div id="saleBlock" class="sec" data-sec="sale">
-      <div class="section-label mt-section">Sale</div>
-      <div class="fieldset">
-        <div class="fld two"><span>Sale price ($)</span><input id="fSalePrice" inputmode="decimal" /></div>
-        <div class="fld two"><span>Cap rate (%)</span><input id="fCapRate" inputmode="decimal" /></div>
-      </div>
-    </div>
-
-    <div class="sec" data-sec="building">
-      <div class="section-label mt-section">Building</div>
-      <div class="fieldset">
-        <div class="fld two"><span>Zoning</span><input id="fZoning" /></div>
-        <div class="fld two"><span>Power</span><input id="fPower" placeholder="e.g. 2,000A 277/480V" /></div>
-        <div class="fld two"><span>Loading</span><input id="fLoading" placeholder='e.g. 4 docks, 2 GL' /></div>
-        <div class="fld two"><span>Clear height</span><input id="fClearHeight" placeholder="e.g. 24'" /></div>
-        <label class="chk"><input type="checkbox" id="fYardArea" /><span>Yard area</span></label>
-      </div>
-    </div>
-
-    <div class="sec" data-sec="flyer">
-      <div class="section-label mt-section">Flyer</div>
-      <div class="fieldset">
-        <button id="btnAttachFlyer" class="btn btn-ghost btn-sm" type="button">📎 Attach open CoStar flyer (PDF)</button>
-        <div class="fld"><span>Flyer URL</span><input id="fFlyerUrl" placeholder="uploaded flyer link — or paste one" /></div>
-      </div>
-    </div>
-
-    <div class="sec" data-sec="notes">
-      <div class="section-label mt-section">Notes</div>
-      <div class="fieldset">
-        <div class="fld"><span>Notes <small>(client-visible)</small></span><textarea id="fNotes" rows="2"></textarea></div>
-        <div class="fld"><span>Internal notes <small>(hidden from client)</small></span><textarea id="fInternalNotes" rows="3"></textarea></div>
-      </div>
-    </div>
-
-    <details class="more mt-section" data-sec="more">
-      <summary>More fields</summary>
-      <div class="fieldset mt6">
-        <div class="fld two"><span>Private offices</span><input id="fOffices" inputmode="numeric" /></div>
-        <div class="fld two"><span>Monthly base rent</span><input id="fMonthlyBase" inputmode="decimal" /></div>
-        <div class="fld two"><span>Monthly opex $/SF</span><input id="fOpexPsf" inputmode="decimal" /></div>
-        <div class="fld two"><span>Total monthly opex</span><input id="fOpexTotal" inputmode="decimal" /></div>
-        <div class="fld two"><span>Total lease rate</span><input id="fTotalLeaseRate" inputmode="decimal" /></div>
-        <div class="fld"><span>Photo URL</span><input id="fPhotoUrl" /></div>
-        <label class="chk"><input type="checkbox" id="fFeatured" /><span>Featured</span></label>
-      </div>
-    </details>
-
-    <button id="btnSaveBottom" class="btn btn-primary mt">Save</button>
-    <div id="formError" class="error hidden"></div>
+    <div id="saleBlock" class="sec" data-sec="sale"><div class="section-label mt-section">Sale</div><div class="fieldset">
+      <div class="fld two"><label for="fSalePrice">Sale price ($)</label><input id="fSalePrice" inputmode="decimal" /></div>
+      <div class="fld two"><label for="fCapRate">Cap rate (%)</label><input id="fCapRate" inputmode="decimal" /></div>
+    </div></div>
+    <details class="more mt-section" data-sec="building"><summary>Property details <span class="has-details"></span></summary><div class="fieldset mt6">
+      <label class="chk"><input type="checkbox" id="fForSale" /><span>For Sale</span></label><label class="chk"><input type="checkbox" id="fForLease" /><span>For Lease</span></label>
+      <div class="fld two"><label for="fZoning">Zoning</label><input id="fZoning" /></div><div class="fld two"><label for="fPower">Power</label><input id="fPower" /></div>
+      <div class="fld two"><label for="fLoading">Loading</label><input id="fLoading" /></div><div class="fld two"><label for="fClearHeight">Clear height</label><input id="fClearHeight" /></div>
+      <label class="chk"><input type="checkbox" id="fYardArea" /><span>Yard area</span></label>
+    </div></details>
+    <details class="more mt-section" data-sec="flyer"><summary>Flyer and photo <span class="has-details"></span></summary><div class="fieldset mt6">
+      <button id="btnAttachFlyer" class="btn btn-ghost btn-sm" type="button">Attach open CoStar flyer (PDF)</button>
+      <div class="fld"><label for="fFlyerUrl">Flyer URL</label><input id="fFlyerUrl" /></div><div class="fld"><label for="fPhotoUrl">Photo URL</label><input id="fPhotoUrl" /></div>
+    </div></details>
+    <details id="notes2Details" class="more mt-section" data-sec="notes"><summary>Additional client note <span class="has-details"></span></summary><div class="fieldset mt6">
+      <div class="fld"><label for="fNotes2">Notes 2 (Client Visible)</label><textarea id="fNotes2" rows="2"></textarea></div>
+    </div></details>
+    <details class="more mt-section" data-sec="more"><summary>Internal and other details <span class="has-details"></span></summary><div class="fieldset mt6">
+      <div class="fld" data-layout-key="fInternalStatus"><span id="internalStatusLabel">Internal status (Private)</span><div id="fInternalStatus" class="survey-choices" role="radiogroup" aria-labelledby="internalStatusLabel"></div></div>
+      <div class="fld"><label for="fInternalNotes">Internal notes (Private)</label><textarea id="fInternalNotes" rows="3"></textarea></div>
+      <div class="fld two"><label for="fOffices">Private offices</label><input id="fOffices" inputmode="numeric" /></div>
+    </div></details>
+    <div class="survey-footer"><button id="btnSaveBottom" class="btn btn-primary">Save</button><button id="btnCancelDraft" class="btn btn-ghost">Cancel edits</button></div>
   </section>
 
   <!-- Screen: survey browser -->
@@ -238,6 +218,7 @@
     <h2>Ready</h2>
     <p class="hint">Open a CoStar property's Summary page, then click <strong>Read CoStar page</strong> — or use the <strong>Survey</strong> tab to update statuses.</p>
     <button id="btnRead" class="btn btn-primary">Read CoStar page</button>
+    <button id="btnManualProperty" class="btn btn-ghost mt">Enter a property manually</button>
     <div id="idleError" class="error hidden"></div>
   </section>
 
@@ -263,6 +244,9 @@
       </div>
     </div>
     <button id="btnLayoutReset" class="btn btn-ghost btn-sm">Reset layout to default</button>
+    <button id="btnClearSurveyDrafts" class="btn btn-ghost btn-sm mt">Clear saved drafts for current survey</button>
+    <p class="field-hint">Saved properties stay in Master App. Resolve pending saves before clearing drafts.</p>
+    <div id="draftClearError" class="error hidden"></div>
     <button id="btnBack" class="btn btn-ghost mt">Back</button>
   </section>
 
@@ -487,6 +471,9 @@
   </div>
 
   <script src="config.js"></script>
+  <script src="survey-fields.js"></script>
+  <script src="survey-rent.js"></script>
+  <script src="survey-spaces.js"></script>
   <script src="layout.js"></script>
   <script src="panel.js"></script>
 </body>
