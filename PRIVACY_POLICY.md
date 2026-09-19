@@ -33,6 +33,11 @@ to its building/site property record. It also updates survey-property statuses.
     reopening on this device; another account cannot restore them. Drafts remain until
     you clear them in Settings for the current survey or remove the extension. No full
     CoStar page text is stored with these drafts.
+  - Your explicit building-flyer choices (building identity and stored flyer link),
+    separated by account and survey in the same local workspace. New spaces may
+    reuse that link; each space's final attachment is saved only when you save it.
+    Stop reusing removes the local default; clearing local survey drafts also
+    removes these choices. It does not delete files or other saved attachments.
   - Exact reviewed Survey save requests and stable space IDs while the result is
     uncertain. These remain locked for verification/retry and cannot be discarded
     as ordinary drafts until their outcome is resolved.
