@@ -150,6 +150,76 @@ async function readCoStar() {
       leaseQuote.serviceType = ltRaw;
       leaseQuote.gross ||= /\b(?:gross|fsg|mg|ig)\b/i.test(ltRaw);
 
+      // Survey-only selected offering: the open Space Details wins over the
+      // property's asking/estimated-rent header. Never change Comp's leaseRate.
+      const spaceHeadings = [...txt.matchAll(/\bSpace Details\b/gi)];
+      let selectedSpace = null;
+      if (spaceHeadings.length) {
+        selectedSpace = { scope: "space-details", availableSf: null, monthlyRent: null,
+          rentPsf: null, officeSf: null, suite: null, floor: null, serviceType: null,
+          identity: null, rawText: "", canPrefill: false, issue: null };
+        if (spaceHeadings.length !== 1) {
+          selectedSpace.issue = "Multiple Space Details sections are visible. Open one selected space.";
+        } else {
+          const start = spaceHeadings[0].index + spaceHeadings[0][0].length;
+          const section = txt.slice(start).split(/\b(?:Documents|Space Notes|Highlights|Leasing Contacts)\b/i)[0].trim();
+          selectedSpace.rawText = section.slice(0, 500);
+          // Field labels can be separate lines or adjacent inline AX/DOM text.
+          const labels = /\b(?:Floor Contig|Bldg Contig|Lease Status|Time on Market|Space Features|Rent\s*\/\s*(?:Month|Mo|Year|Yr)|Service Type|Services|Available(?=\s+(?:[\d$]|Withheld|Negotiable|Upon))|Office|Floor|Occupancy|Suite(?: Number)?|Rent|Type|Term|Docks|Drive Ins)\b/gi;
+          const matches = [...section.matchAll(labels)];
+          const fields = new Map();
+          let duplicate = false;
+          for (let i = 0; i < matches.length; i++) {
+            const rawKey = matches[i][0].toLowerCase().replace(/\s+/g, "");
+            const key = ({ "rent/month": "rent/mo", "rent/year": "rent/yr", servicetype: "services", suitenumber: "suite" })[rawKey] || rawKey;
+            const value = section.slice(matches[i].index + matches[i][0].length, matches[i + 1]?.index ?? section.length).trim();
+            if (fields.has(key)) duplicate = true;
+            fields.set(key, value);
+          }
+          const numeric = "(?:\\d{1,3}(?:,\\d{3})+|\\d+)(?:\\.\\d+)?";
+          const exactNumber = (value, suffix = "") => {
+            const match = (value || "").match(new RegExp("^\\$?\\s*(" + numeric + ")\\s*" + suffix + "$", "i"));
+            return match && Number.isFinite(Number(match[1].replace(/,/g, ""))) ? match[1].replace(/,/g, "") : null;
+          };
+          selectedSpace.availableSf = exactNumber(fields.get("available"), "SF(?:\\s+(?:Industrial|Office|Retail|Warehouse|Flex|Space))?");
+          selectedSpace.officeSf = exactNumber(fields.get("office"), "SF");
+          selectedSpace.floor = fields.get("floor") || null;
+          selectedSpace.suite = fields.get("suite") || fields.get("suitenumber") || null;
+          selectedSpace.serviceType = fields.get("services") || fields.get("servicetype") || null;
+          const monthlyRaw = fields.get("rent/mo") ?? fields.get("rent/month");
+          const rateRaw = fields.get("rent");
+          const monthly = exactNumber(monthlyRaw, "(?:/\\s*(?:mo(?:nth)?)|per\\s+month)?");
+          const rate = exactNumber(rateRaw, "(?:/\\s*SF(?:\\s*/\\s*(?:mo(?:nth)?))?)?");
+          const annual = fields.has("rent/year") || fields.has("rent/yr") || /annual|yearly|per\s+year|\/\s*(?:yr|year)\b/i.test([monthlyRaw, rateRaw].filter(Boolean).join(" "));
+          const positiveArea = Number(selectedSpace.availableSf) > 0;
+          const conflict = monthly !== null && rate !== null && positiveArea &&
+            Math.abs(Number(monthly) - Number(rate) * Number(selectedSpace.availableSf)) > 0.011;
+          if (duplicate) selectedSpace.issue = "Repeated space fields require review.";
+          else if (annual) selectedSpace.issue = "Annual or mixed-period rent requires monthly review.";
+          else if (monthly === null) selectedSpace.issue = "An exact Rent/Mo amount is not available for this space.";
+          else if (rateRaw && rate === null) selectedSpace.issue = "The selected space rent is ranged, withheld or unclear.";
+          else if (conflict) selectedSpace.issue = "Rent/Mo and Rent × available SF disagree. Review the selected space.";
+          else {
+            selectedSpace.monthlyRent = monthly;
+            selectedSpace.canPrefill = true;
+            // Bare Rent gains monthly/SF meaning only through this cross-check.
+            if (rate !== null && positiveArea) selectedSpace.rentPsf = rate;
+          }
+          const ordinal = [...txt.slice(0, start).matchAll(/\b\d+\s+of\s+\d+\s+Spaces\b/gi)].at(-1)?.[0] || "";
+          selectedSpace.identity = JSON.stringify([ordinal, selectedSpace.suite, selectedSpace.floor, selectedSpace.availableSf]);
+        }
+        // Even an unresolved selected space must not inherit the header's quote.
+        Object.assign(leaseQuote, {
+          rawText: selectedSpace.rawText, amountText: selectedSpace.monthlyRent || "",
+          basis: selectedSpace.canPrefill ? "total" : "unknown",
+          period: selectedSpace.canPrefill ? "monthly" : "unknown",
+          ranged: /\d\s*[-–]\s*\$?\s*\d/.test(selectedSpace.rawText),
+          serviceType: selectedSpace.serviceType || "",
+          gross: /\b(?:gross|fsg|mg|ig)\b/i.test(selectedSpace.serviceType || ""),
+          reviewed: false,
+        });
+      }
+
       // ---- cap rate : "Cap Rate  6.50%" ----
       let capRate = "";
       const cr = txt.match(/Cap Rate\s*\n?\s*([\d.]+)\s*%/i);
@@ -199,7 +269,7 @@ async function readCoStar() {
       const _debug = { textLen: txt.length, sample: txt.slice(0, 400) };
       return {
         street, city, state, zip, submarket, rba, acLot, salePrice, leaseRate,
-        leaseType, leaseQuote, capRate, yearBuilt, saleHighlights, saleNotes, _debug,
+        leaseType, leaseQuote, selectedSpace, capRate, yearBuilt, saleHighlights, saleNotes, _debug,
       };
     },
   });

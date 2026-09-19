@@ -1,6 +1,6 @@
 # September 18 Survey extension alignment
 
-## Current checkpoint — 2026-09-18 16:36:22 MST (America/Phoenix)
+## Current checkpoint — 2026-09-18 17:12:12 MST (America/Phoenix)
 
 **Local implementation and review package complete. Distribution and live authenticated verification remain outside this task.**
 
@@ -10,7 +10,22 @@ Authorized: implement and test Survey alignment; prepare a review ZIP. **No Stor
 
 Verified starting HEAD and fetched `origin/main`: `ecf1b6776fc5a0bf2f11bd5aaa5db1e72ee4e70f`. Manifest stays **1.3.3**, solely as the review baseline; this is not a newly numbered release. Current Store draft, public version and installed runtime were not rechecked.
 
-## Review artifacts
+## Follow-up: selected-space rent fix — current build
+
+Max reported the rent blank while CoStar's open Space Details showed 40,000 SF, Rent $0.65, Rent/Mo $26,000 and Triple Net. Read-only inspection of the actual open Chrome page confirmed those labels and a separate 380,569-SF building summary. The original scraper selected the summary first; the new draft intentionally did not adopt its ambiguous quote.
+
+Fixed: a unique open Space Details section supplies exact monthly total, offered SF, office SF and service type. New blank offerings prefill explicit monthly rent for review. Tenancy remains a deliberate choice; selecting MT calculates $0.65/SF from 40,000 SF, never the 380,569-SF reference building. Expense amounts/all-in total stay unknown. Saved or edited rents are not replaced; clearing rent stays cleared. Different selected spaces at one building retain distinct draft identities. Annual/ranged/malformed/conflicting/repeated quotes remain unresolved. Original Comp scrape/save behavior stays unchanged.
+
+- [Current review ZIP](/Users/maxschumacher/Developer/masterappsurvey/masterappsurvey-v1.3.3-survey-review-rent-fix-2026-09-18.zip) — **92,289 bytes**, SHA-256 `fdaa084dd8bdbbe9c55876e5596e93353520415f0ae8f01edee5e51f9241d12d`.
+- [Already-extracted folder for Load unpacked](/Users/maxschumacher/Developer/masterappsurvey/local-extension/survey-review-rent-fix-2026-09-18). This is a new isolated folder; no installed extension was reloaded/replaced. The earlier ZIP/folders remain intact.
+- [Updated 390px pricing preview](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/rent-fix-selected-space-390.png).
+- **167 unit tests** and **41 browser scenarios** passed against source and extracted ZIP: [source units](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/rent-fix-unit-source.txt), [package units](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/rent-fix-unit-package.txt), [source browser](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/rent-fix-browser-source.json), [package browser](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/rent-fix-browser-package.json). New tests exercise the actual scraper → panel draft → serializer, including explicit zero, plus mounted review/edit/re-read/space-switch behavior.
+- Packaged canonical rent modules passed **1,003 PostgreSQL assertions** again; the final text-only source-summary shortening did not change those modules. [Database evidence](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/rent-fix-database-package.json).
+- Final package [actual MV3 smoke](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/rent-fix-extension-package.json) passed in a disposable profile. Parent inspected the new scraper/tests, reran checks and verified 14-file source/extracted/delivered byte parity. [Package hash evidence](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/rent-fix-package.json).
+
+Next manual check after loading this review folder: open one CoStar Space Details, click Re-read, confirm tenancy/offered area and monthly quote, then review before saving. Task-owned test servers on ports 8898/8899 were stopped and verified closed; temporary test profiles were removed. Current installed code was not replaced or exercised with the fix; no production save occurred. Existing live-authenticated release limits below still apply. Manifest remains 1.3.3 review-only; no Store upload/publication. Shared playbook/ops/wiki status remains unchanged: this is a local correction, not a production release.
+
+## Initial review artifacts — superseded by the rent-fix build
 
 - [Review ZIP](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/masterappsurvey-survey-review-20260918.zip): **89,976 bytes**, 14 runtime/icon files.
 - SHA-256: `d4b3d82849d86a2fe34d66edcf682482cebcc773ef9c68191574fe8349fa80d4`.
@@ -22,7 +37,7 @@ The archive contains only manifest/config, panel/worker/runtime scripts, stylesh
 ## Implemented behavior
 
 - Canonical linked monthly total/SF/acre calculations, explicit offered acreage and expense treatment. Suite SF supplies MT math; building/parcel facts do not silently become offered area. Zero, blank, historical precision and untouched legacy values remain distinct.
-- Scraped quote text retains period/basis as private evidence. Numeric rent is not automatically adopted. Populated adopted quotes require explicit monthly review for the selected offering; source changes invalidate confirmation. No automatic annual conversion or expense-exclusive split is inferred.
+- Scraped quote text retains period/basis as private evidence. General summary rent is not automatically adopted. The follow-up above prefills explicit selected-space monthly totals for review. Populated adopted quotes require explicit monthly review for the selected offering; source changes invalidate confirmation. No automatic annual conversion or expense-exclusive split is inferred.
 - Independent spaces and combined alternatives have their own terms, notes, flyer, validation and stable IDs. Building matches require a deliberate suite target. Shared building facts seed new spaces without copying sibling terms.
 - Atomic bulk inserts use stable IDs, ignore duplicates and full readback. Durable account/survey requests retain the reviewed payload through retries, reopen, another panel's pending request and lost responses. Uncertain dispatched saves stay locked. Existing-row writes require the selected ID, survey and original `updated_at`; stale rows require review.
 - Minimal dirty patches preserve metadata, custom/null choices and client feedback. Removed unsupported Survey `property_name` writes: the canonical SurveyProperty/table has no such column. Comp's separate property-name field remains supported.
@@ -30,7 +45,7 @@ The archive contains only manifest/config, panel/worker/runtime scripts, stylesh
 - Drafts persist by account/survey; Settings clears resolved drafts. Pending uncertain requests cannot be cleared as ordinary drafts. Local privacy text covers retention, private evidence and flyer upload timing.
 - Existing Comp property-linking/yard/separate-deal behavior is preserved. No new permissions, hosts, analytics or remote code.
 
-## Verification
+## Initial review verification
 
 The parent independently reran the Survey checks, inspected screenshots and verified artifacts. Synthetic fixtures only; mounted browser tests block external requests.
 

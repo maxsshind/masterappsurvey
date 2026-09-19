@@ -2,6 +2,8 @@
 
 ## Unreleased — September 18 Survey alignment review
 
+- Follow-up rent fix: prefer the open CoStar Space Details over the property summary; prefill exact monthly rent and offered size for review, preserve existing/edited quotes, and retain separate drafts per selected space. Source/extracted checks: 167 unit tests and 41 browser scenarios. No installed or Store update.
+
 - Linked editable monthly total, per-SF and per-acre rent; explicitly offered acreage;
   separate/included/unknown expenses; version-1 source metadata and exact decimal math.
 - Strict complete-number entry, explicit monthly source review, legacy values and

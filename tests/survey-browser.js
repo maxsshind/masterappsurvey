@@ -51,6 +51,43 @@ async (page) => {
   const confirm=async()=>{if(await p.locator('#monthlyReview').isVisible())await p.locator('#fMonthlyConfirmed').check();};
   try{
     await p.goto('http://127.0.0.1:8898/panel.html');await p.waitForFunction(()=>state.survey?.id);
+    // Selected-space monthly quote: header/body rent must never supply the offer.
+    await p.evaluate(()=>{
+      surveyEditor.bundle=null;surveyEditor.archives={};
+      fixture.scrape={costarId:'7654321',street:'100 Fixture Way',city:'Phoenix',state:'AZ',rba:'380569',acLot:'14.09',leaseRate:'0.65',leaseType:'NNN',
+        leaseQuote:{rawText:'Space Details · Available 40,000 SF · Rent $0.65 · Rent/Mo $26,000 · Services Triple Net',period:'monthly',basis:'total',amountText:'26000',reviewed:false},
+        selectedSpace:{scope:'space-details',identity:'partial-1st|40000|sublet',canPrefill:true,monthlyRent:'26000',availableSf:'40000',officeSf:'3200',rentPsf:'0.65',floor:'Partial 1st',suite:null,serviceType:'Triple Net'}};
+      state.scraped=structuredClone(fixture.scrape);matchAndShowForm();
+    });
+    assert.equal(await value('fMonthlyBase'),'26000');assert.equal(await value('fSuiteSize'),'40000');assert.equal(await value('fOfficeSf'),'3200');
+    assert.equal(await value('fBuildingSf'),'380569');assert.equal(await p.evaluate(()=>activeSurveyDraft().model.values.tenancy),null);
+    assert.equal(await value('fTotalLeaseRate'),'');assert.equal(await p.locator('#fMonthlyConfirmed').isChecked(),false);
+    assert.ok((await p.locator('#labelMonthlyBase').innerText()).includes('CoStar'));
+    await choose('fTenancy','MT');await fill('fSuiteNumber','Sublease');assert.equal(await value('fLeaseRate'),'0.65');
+    await p.locator('#surveyPricing').scrollIntoViewIfNeeded();await p.screenshot({path:'output/review/rent-fix-selected-space-390.png'});
+    await p.locator('#btnSave').click();assert.ok((await p.locator('#formError').innerText()).includes('monthly quote'));
+    await fill('fMonthlyBase','27000');await fill('fNotes','Keep this review');await confirm();
+    await p.evaluate(()=>{fixture.scrape.selectedSpace.monthlyRent='28000';fixture.scrape.leaseQuote.amountText='28000';fixture.scrape.leaseQuote.rawText='Space Details Rent/Mo $28,000';});
+    await p.locator('#btnRefresh').click();assert.equal(await value('fMonthlyBase'),'27000');assert.equal(await value('fNotes'),'Keep this review');assert.equal(await p.locator('#fMonthlyConfirmed').isChecked(),false);
+    results.push('Open space prefills monthly total, suite/office size; building stays separate, review required, edited quote survives source changes');
+
+    await p.evaluate(()=>{fixture.scrape.selectedSpace.identity='suite-2|10000|direct';fixture.scrape.selectedSpace.suite='2';fixture.scrape.selectedSpace.availableSf='10000';fixture.scrape.selectedSpace.monthlyRent='10000';fixture.scrape.leaseQuote.rawText='Space Details Rent/Mo $10,000';});
+    await p.locator('#btnRefresh').click();assert.equal(await value('fMonthlyBase'),'10000');assert.equal(await value('fSuiteSize'),'10000');assert.equal(await value('fNotes'),'');
+    await p.evaluate(()=>{fixture.scrape.selectedSpace.identity='partial-1st|40000|sublet';fixture.scrape.selectedSpace.monthlyRent='28000';fixture.scrape.selectedSpace.availableSf='40000';});
+    await p.locator('#btnRefresh').click();assert.equal(await value('fMonthlyBase'),'27000');assert.equal(await value('fNotes'),'Keep this review');
+    await fill('fMonthlyBase','');await p.locator('#btnRefresh').click();assert.equal(await value('fMonthlyBase'),'','Intentional clear must not be refilled');
+    results.push('Different selected spaces at one building retain independent drafts; intentional cleared rent stays cleared');
+
+    await p.evaluate(()=>{surveyEditor.bundle=null;surveyEditor.archives={};fixture.scrape.selectedSpace.canPrefill=false;fixture.scrape.selectedSpace.issue='Conflicting source rates';state.scraped=structuredClone(fixture.scrape);matchAndShowForm();});
+    assert.equal(await value('fMonthlyBase'),'');assert.ok((await p.locator('#sourceQuote').innerText()).includes('Conflicting source rates'));
+    await p.evaluate(()=>{
+      surveyEditor.bundle=null;surveyEditor.archives={};fixture.scrape.selectedSpace.canPrefill=true;state.scraped=structuredClone(fixture.scrape);
+      setupForm('update',{id:'30000000-0000-4000-8000-000000000095',address:'100 Fixture Way',city:'Phoenix',state:'AZ',monthly_base_rent:12345,lease_rate_psf:1.1,rent_calculation:null,for_sale_or_lease:['lease']});
+    });
+    assert.equal(await value('fMonthlyBase'),'12345');assert.equal(await value('fLeaseRate'),'1.1');
+    results.push('Ambiguous selected quotes stay unadopted; opening saved rows never replaces their existing rent');
+    // Restore the unrelated existing regression fixture.
+    await p.evaluate(()=>{fixture.scrape={costarId:'123456',street:'100 Fixture Way',city:'Phoenix',state:'AZ',rba:'40000',acLot:'10',leaseRate:'18',leaseQuote:{rawText:'$18/SF/YR',amountText:'18',basis:'sf',period:'annual'}};});
     await fresh({tenancy:'ST',building_sf:10000});await fill('fLeaseRate','1.25');await fill('fOfferedAcres','2');
     assert.equal(await value('fMonthlyBase'),'12500.00');assert.equal(await value('fRentAcre'),'6250');
     await choose('fExpenseTreatment','included');assert.equal(await value('fTotalLeaseRate'),'12500.00');

@@ -623,7 +623,7 @@ function scrapeInternalNotes(d) {
   if (d.costarId) parts.push(`CoStar ID: ${d.costarId}`);
   if (d.sourceUrl) parts.push(`CoStar: ${d.sourceUrl}`);
   if (d.submarket) parts.push(`Submarket: ${d.submarket}`);
-  const quote = d.leaseQuote?.rawText || d.leaseQuoteRaw || d.leaseRate;
+  const quote = d.selectedSpace ? (d.selectedSpace.rawText || d.selectedSpace.issue) : d.leaseQuote?.rawText || d.leaseQuoteRaw || d.leaseRate;
   if (quote) parts.push(`CoStar rent quote (review period and basis): ${String(quote).slice(0,400)}`);
   return parts.join("\n");
 }
@@ -642,7 +642,10 @@ function recordFromScrape(d) {
     cap_rate: d.capRate || null,
     tenancy: d.street ? null : "ST",
     lease_rate_psf: null,
-    lease_type: d.leaseType || null,
+    lease_type: surveySpaceLeaseType(d.selectedSpace?.serviceType) || d.leaseType || null,
+    suite_size: d.selectedSpace?.availableSf || null,
+    suite_number: d.selectedSpace?.suite || null,
+    office_sf: d.selectedSpace?.officeSf ?? null,
     for_sale_or_lease:
       surveyType === "lease_and_sale" ? ["sale", "lease"] :
       surveyType === "sale" ? ["sale"] : ["lease"],
@@ -725,13 +728,37 @@ function surveyChoice(id, value, scope = activeSurveyDraft()?.id || 'initial') {
 }
 function surveyReviewSource(source) {
   if (!source) return null;
-  return Object.fromEntries(['costarId','street','city','state','zip','sourceUrl','rba','acLot','leaseQuote','leaseQuoteRaw','leaseRate'].filter(k => source[k] !== undefined).map(k => [k,source[k]]));
+  return Object.fromEntries(['costarId','street','city','state','zip','sourceUrl','rba','acLot','leaseQuote','leaseQuoteRaw','leaseRate','selectedSpace'].filter(k => source[k] !== undefined).map(k => [k,source[k]]));
 }
 function makeSurveyDraft(row, isNew, source = null) {
   source = surveyReviewSource(source);
-  return { id: crypto.randomUUID(), model: SurveyFields.hydrateDraft(row, { isNew }), source, reviewedQuote: null };
+  const draft = { id: crypto.randomUUID(), model: SurveyFields.hydrateDraft(row, { isNew }), source, reviewedQuote: null };
+  const space = source?.selectedSpace;
+  // Only a new blank offering gets an explicit monthly source suggestion. Never
+  // replace a saved quote or restore a cleared/edited quote during a re-read.
+  const blankRent = ['monthly_base_rent','lease_rate_psf','lease_rate_per_acre'].every(k => row[k] == null || row[k] === '');
+  if (isNew && blankRent && !row.rent_calculation && space?.scope === 'space-details' && space.canPrefill === true) {
+    const parsed = SurveyFields.parseNumericInput(space.monthlyRent, SurveyFields.SURVEY_NUMERIC_OPTIONS.monthly_base_rent);
+    if (parsed.valid && parsed.value != null) {
+      draft.model.rentDraft = SurveyRent.editRent(draft.model.rentDraft, 'total', String(parsed.value));
+      draft.prefilledMonthlyRent = String(parsed.value);
+    }
+  }
+  return draft;
 }
-function surveySourceKey(d) { return d?.costarId ? `costar:${d.costarId}` : `address:${[d?.street,d?.city,d?.state].map(v => String(v || '').trim().toLowerCase()).join('|')}`; }
+function surveySpaceLeaseType(raw) {
+  if (/triple net|^nnn$/i.test(raw || '')) return 'NNN';
+  if (/full service/i.test(raw || '')) return 'Full Service Gross';
+  if (/industrial gross/i.test(raw || '')) return 'Industrial Gross';
+  if (/modified gross/i.test(raw || '')) return 'Modified Gross';
+  return null;
+}
+function surveySourceKey(d) {
+  const building = d?.costarId ? `costar:${d.costarId}` : `address:${[d?.street,d?.city,d?.state].map(v => String(v || '').trim().toLowerCase()).join('|')}`;
+  // The open space is a distinct offering, even when another suite shares its
+  // CoStar building ID. Amount changes do not change the space's draft identity.
+  return d?.selectedSpace?.identity ? `${building}:space:${d.selectedSpace.identity}` : building;
+}
 async function persistSurveyDraft() {
   const key = surveyDraftKey();
   if (!key || !surveyEditor.bundle) return;
@@ -1066,7 +1093,7 @@ function renderSurveyRent() {
     if (document.activeElement !== input) input.value = isSource ? quote.amount : SurveyRent.displayed(values[col],basis,!quote);
     input.disabled = !m.rentSupported || Boolean(surveyEditor.pending || surveyEditor.saving);
     const amount = isSource ? SurveyFields.parseNumericInput(quote.amount,SurveyRent.quoteOptions(quote)).value : values[col];
-    $(label).textContent = amount == null ? '' : !quote ? 'Saved · unlinked' : isSource ? 'Entered' : 'Calculated · editable';
+    $(label).textContent = amount == null ? '' : !quote ? 'Saved · unlinked' : isSource ? (id === 'fMonthlyBase' && quote.amount === d.prefilledMonthlyRent ? 'CoStar · review' : 'Entered') : 'Calculated · editable';
     const adopt = input.parentElement.querySelector('button');
     if (adopt) adopt.classList.toggle('hidden',Boolean(quote) || values[col] == null || !m.rentSupported);
   }
@@ -1078,9 +1105,15 @@ function renderSurveyRent() {
   $('fTotalLeaseRate').value = SurveyRent.displayed(values.total_lease_rate,'total',!rd);
   $('labelTotalLeaseRate').textContent = values.total_lease_rate == null ? 'Awaiting reviewed rent and expenses' : !rd ? 'Saved · unlinked' : 'Calculated';
   const quote = d.source?.leaseQuote;
-  const raw = quote?.rawText || d.source?.leaseQuoteRaw || d.source?.leaseRate;
+  const raw = d.source?.selectedSpace ? (quote?.rawText || d.source.selectedSpace.issue || 'Selected space details are unresolved') : quote?.rawText || d.source?.leaseQuoteRaw || d.source?.leaseRate;
   $('sourceQuote').classList.toggle('hidden',!raw);
-  $('sourceQuote').textContent = raw ? `CoStar source: ${raw}. Period: ${quote?.period || 'unconfirmed'}; basis: ${quote?.basis || 'unconfirmed'}. Enter the reviewed monthly amount below. Annual amounts must be converted and reviewed before entry.` : '';
+  const space = d.source?.selectedSpace;
+  const spaceSummary = space?.canPrefill ? [space.suite ? `Suite ${space.suite}` : space.floor,
+    space.availableSf == null ? null : `${Number(space.availableSf).toLocaleString('en-US')} SF`,
+    `$${Number(space.monthlyRent).toLocaleString('en-US')}/month`, space.serviceType].filter(Boolean).join(' · ') : raw;
+  $('sourceQuote').textContent = raw ? (space
+    ? `Open CoStar space: ${spaceSummary}. ${space.canPrefill ? 'Confirm tenancy and the offered size, then review the monthly quote below. Review expenses separately.' : 'Check this quote before entering monthly rent. ' + (space.issue || '')}`
+    : `CoStar source: ${raw}. Period: ${quote?.period || 'unconfirmed'}; basis: ${quote?.basis || 'unconfirmed'}. Enter the reviewed monthly amount below. Annual amounts must be converted and reviewed before entry.`) : '';
   $('monthlyReview').classList.toggle('hidden',!surveyQuoteNeedsReview(d));
   $('fMonthlyConfirmed').checked = d.reviewedQuote === surveyQuoteFingerprint(d);
   surveyDetailsIndicators();

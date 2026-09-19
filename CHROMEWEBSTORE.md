@@ -4,6 +4,8 @@ Last updated: 2026-09-18
 
 ## September 18 Survey review build — not released
 
+Latest local package includes the selected-space rent fix: explicit Rent/Mo and offered size now prefill for review from the open Space Details. Existing edits and separate-space drafts are preserved. See PROJECT.md for the current rent-fix ZIP/extracted folder, hash, 167 unit tests and 41 browser scenarios. Earlier review ZIP remains historical. No installed extension or Store state changed.
+
 Implemented on `codex/survey-alignment-20260918`, based on verified `origin/main`
 `ecf1b6776fc5a0bf2f11bd5aaa5db1e72ee4e70f`. See [PROJECT.md](PROJECT.md) for acceptance
 coverage, package hash and remaining verification limits.

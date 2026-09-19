@@ -355,3 +355,91 @@ for (const fixture of [
     if (fixture.amount === '0.80') assert.equal(data.leaseRate, '0.80', 'existing Comp field remains compatible');
   });
 }
+
+async function selectedSpaceFixture(section, separator = '\n') {
+  const h = harness();
+  h.c.document = { body: { innerText: [
+    '6825 W Buckeye Rd', 'Phoenix, AZ 85043', '380,569 SF RBA',
+    '$0.99 /NNN Asking Industrial Rent', '$0.62 - 0.75 CoStar Est. Industrial Rent',
+    'Other spaces Rent/Mo $90,000 Available 100,000 SF', '1 of 2 Spaces',
+    section, 'Documents', 'Another brochure Rent/Mo $999,000',
+  ].join(separator) } };
+  h.c.chrome.tabs = { query: async () => [{ id: 1, url: 'https://product.costar.com/detail/all-properties/5025345/lease' }] };
+  h.c.chrome.scripting = { executeScript: async ({ func }) => [{ result: func() }] };
+  return h.c.readCoStar();
+}
+const spaceDetailsFixture = 'Space Details\nLast updated on September 18, 2026\nReport an error\nAvailable\n40,000 SF Industrial\nFloor\nPartial 1st\nOffice\n3,200 SF\nFloor Contig\n40,000 SF\nBldg Contig\n40,000 SF\nOccupancy\n30 Days\nLease Status\nAvailable\nRent\n$0.65\nRent/Mo\n$26,000\nServices\nTriple Net\nType\nSublet\nTerm\nThru Jan 2027\nTime on Market\n11 Months 23 Days\nDocks\n2 ext\nDrive Ins\n1 tot.';
+for (const inline of [false, true]) {
+  test(`selected Space Details takes exact monthly rent and size, preserves Comp header (${inline ? 'inline' : 'lines'})`, async () => {
+    const data = await selectedSpaceFixture(inline ? spaceDetailsFixture.replaceAll('\n', ' ') : spaceDetailsFixture);
+    assert.equal(data.selectedSpace.canPrefill, true);
+    for (const [key, expected] of Object.entries({ availableSf: '40000', monthlyRent: '26000', rentPsf: '0.65', officeSf: '3200', floor: 'Partial 1st', serviceType: 'Triple Net', suite: null })) assert.equal(data.selectedSpace[key], expected, key);
+    assert.equal(data.leaseRate, '0.99', 'Comp retains original header rate');
+    assert.equal(data.leaseQuote.amountText, '26000'); assert.equal(data.leaseQuote.period, 'monthly'); assert.equal(data.leaseQuote.basis, 'total');
+    assert.equal(data.leaseQuote.reviewed, false); assert.equal(data.leaseQuote.gross, false);
+    assert.ok(!data.selectedSpace.rawText.includes('999,000')); assert.ok(!data.selectedSpace.rawText.includes('0.99'));
+  });
+}
+for (const [label, change] of [
+  ['range', s => s.replace('$26,000', '$26,000 - $30,000')],
+  ['withheld', s => s.replace('$26,000', 'Upon Request')],
+  ['malformed grouping', s => s.replace('$26,000', '$26,00')],
+  ['annual rate', s => s.replace('$0.65', '$7.80/SF/year')],
+  ['annual total', s => s.replace('Rent/Mo', 'Rent/Year')],
+  ['conflicting rate', s => s.replace('$0.65', '$0.75')],
+  ['ranged rate', s => s.replace('$0.65', '$0.65 - $0.75')],
+  ['duplicate monthly field', s => s + '\nRent/Mo\n$20,000'],
+  ['conflicting monthly aliases', s => s + '\nRent/Month\n$20,000'],
+  ['multiple Space Details', s => s + '\nSpace Details\nAvailable\n10,000 SF\nRent/Mo\n$5,000'],
+]) {
+  test(`selected Space Details refuses unsafe prefill: ${label}`, async () => {
+    const data = await selectedSpaceFixture(change(spaceDetailsFixture));
+    assert.equal(data.selectedSpace.canPrefill, false); assert.equal(data.selectedSpace.monthlyRent, null); assert.ok(data.selectedSpace.issue);
+    assert.equal(data.leaseQuote.amountText, ''); assert.equal(data.leaseRate, '0.99');
+  });
+}
+test('selected monthly total remains usable without a size but never invents monthly per-SF', async () => {
+  const data = await selectedSpaceFixture(spaceDetailsFixture.replace('Available\n40,000 SF Industrial', 'Available\nWithheld'));
+  assert.equal(data.selectedSpace.availableSf, null); assert.equal(data.selectedSpace.monthlyRent, '26000');
+  assert.equal(data.selectedSpace.rentPsf, null); assert.equal(data.selectedSpace.canPrefill, true);
+});
+test('selected offering identity retains suite/floor/size while quote changes do not change identity', async () => {
+  const a = await selectedSpaceFixture(spaceDetailsFixture.replace('Floor\nPartial', 'Suite\nA\nFloor\nPartial'));
+  const b = await selectedSpaceFixture(spaceDetailsFixture.replace('Floor\nPartial', 'Suite\nA\nFloor\nPartial').replace('$0.65', '$0.75').replace('$26,000', '$30,000'));
+  assert.equal(a.selectedSpace.suite, 'A'); assert.equal(a.selectedSpace.identity, b.selectedSpace.identity);
+});
+
+for (const monthly of ['26000', '0']) {
+  test(`actual selected-space scrape -> panel draft -> writable Survey row keeps correct area and monthly total (${monthly})`, async () => {
+    const body = monthly === '0' ? spaceDetailsFixture.replace('$26,000', '$0').replace('$0.65', '$0') : spaceDetailsFixture;
+    const scraped = await selectedSpaceFixture(body);
+    const h = harness();
+    h.c.state = { survey: { id: surveyId, survey_type: 'lease' } };
+    const panel = fs.readFileSync(path.join(root, 'panel.js'), 'utf8');
+    for (const name of ['surveyReviewSource', 'surveySpaceLeaseType', 'scrapeInternalNotes', 'recordFromScrape', 'makeSurveyDraft']) {
+      const fn = panel.match(new RegExp(`^function ${name}\\([^]*?^}`, 'm'));
+      assert.ok(fn, `actual packaged panel function ${name} exists`);
+      vm.runInContext(fn[0], h.c, { filename: `panel.js:${name}` });
+    }
+    const record = h.c.recordFromScrape(scraped);
+    const draft = h.c.makeSurveyDraft(record, true, scraped);
+    assert.equal(draft.model.values.tenancy, null, 'scrape does not invent tenancy');
+    assert.equal(Number(draft.model.values.building_sf), 380569, 'whole building stays separate');
+    assert.equal(Number(draft.model.values.suite_size), 40000);
+    assert.equal(Number(draft.model.values.office_sf), 3200);
+    assert.equal(draft.reviewedQuote, null, 'suggestion still requires review');
+    assert.equal(draft.prefilledMonthlyRent, monthly);
+    assert.equal(h.c.SurveyFields.serializeDraft(draft.model).values.monthly_base_rent, Number(monthly));
+    draft.model.values.tenancy = 'MT';
+    draft.model.values.suite_number = 'Reviewed space 1';
+    const result = h.c.SurveyFields.serializeDraft(draft.model);
+    assert.equal(result.valid, true, JSON.stringify(result.issues));
+    assert.equal(result.values.monthly_base_rent, Number(monthly));
+    assert.equal(result.values.lease_rate_psf, monthly === '0' ? 0 : 0.65);
+    assert.equal(result.values.total_monthly_opex, null);
+    assert.equal(result.values.monthly_opex_psf, null);
+    assert.equal(result.values.total_lease_rate, null);
+    assert.equal(draft.reviewedQuote, null);
+    assert.ok(scraped.selectedSpace.rawText.length <= 500);
+  });
+}
