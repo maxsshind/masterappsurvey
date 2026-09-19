@@ -1,6 +1,6 @@
 # September 18 Survey extension alignment
 
-## Current checkpoint — 2026-09-18 17:22:02 MST (America/Phoenix)
+## Current checkpoint — 2026-09-18 17:34:04 MST (America/Phoenix)
 
 **Local implementation and review package complete. Distribution and live authenticated verification remain outside this task.**
 
@@ -10,7 +10,33 @@ Authorized: implement and test Survey alignment; prepare a review ZIP. **No Stor
 
 Verified starting HEAD and fetched `origin/main`: `ecf1b6776fc5a0bf2f11bd5aaa5db1e72ee4e70f`. Manifest stays **1.3.3**, solely as the review baseline; this is not a newly numbered release. Current Store draft, public version and installed runtime were not rechecked.
 
-## Follow-up: simplified pricing — current build
+## Follow-up: pop-out mode — current build
+
+Max requested a pop-out mode. Replaced the obscure icon with a labeled **Pop out**
+button. Opens a resizable window at up to 720×900, bounded by the available screen;
+the form can expand to 820px when resized. The detached header identifies the mode.
+The source panel closes only after the destination restores its Survey workspace
+and Comp controls. Survey active suite/IDs/amounts/notes and Comp raw fields,
+checkboxes, existing deal/property choice, baseline and flyer survive. The one-use
+handoff is account-scoped in Chrome session memory and removed after transfer or
+handled failure. Pending-save recovery keeps precedence. Busy reads/uploads/saves
+block handoff; opening/storage failures leave the source editable. Opening again
+focuses the existing popup without replacing either form's edits.
+
+- [Current ZIP](/Users/maxschumacher/Developer/masterappsurvey/masterappsurvey-v1.3.3-popout-review-2026-09-18.zip) — 93,324 bytes; SHA-256 `9ca853af3bb146406f377c47655748cfbc24f19ca5cf2c6cab3176ffa2768217`.
+- [Ready-to-load folder](/Users/maxschumacher/Developer/masterappsurvey/local-extension/survey-review-popout-2026-09-18). Previous review folders and installed extension remain untouched.
+- Source and extracted ZIP: **167 unit tests**, **41 existing browser scenarios** and **6 real pop-out scenarios** passed. Pop-out checks use real Chrome windows/session storage with synthetic database replies in a disposable profile; all remote requests are blocked. The separate actual MV3 worker/panel smoke also passed on the final ZIP.
+- Evidence: [source pop-out](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/popout-runtime-source.json), [ZIP pop-out](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/popout-runtime-package.json), [source unit tests](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/popout-unit-source.txt), [ZIP unit tests](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/popout-unit-package.txt), [source browser](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/popout-browser-source.json), [ZIP browser](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/popout-browser-package.json), [MV3](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/popout-extension-package.json), [archive](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/popout-package.json).
+- Visually checked [320px panel](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/popout/panel-320.png) and [720px pop-out](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/popout/window-720.png); no horizontal overflow and Save remains reachable.
+
+The rent fix, requested section order and simplified pricing remain included. Local
+changelog, release guide and privacy draft cover this change. Shared playbook/ops/wiki
+release updates remain unnecessary for this local review build; the prior three-
+destination check below still applies. No production save or installed-copy test
+occurred. Next step: review this latest folder, then use **Pop out** in its header.
+Store/installation restrictions and prior authenticated-verification limits remain.
+
+## Follow-up: simplified pricing — earlier review build
 
 Max explicitly requested removal of the calculation-area explanation, yellow CoStar source box and monthly-review checkbox shown in his screenshots. Removed those elements, the empty-total waiting message, and the checkbox's save gate/event handler. Normal Save now submits valid amounts without that extra confirmation. Source evidence remains private; exact selected-space monthly prefill, strict numeric validation, linked calculations, uncertain-save recovery and existing-row protection remain. This request supersedes the original separate monthly-confirmation UI requirement; it does not authorize any Store/installation or production-data change.
 

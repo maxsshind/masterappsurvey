@@ -2,6 +2,10 @@
 
 ## Unreleased — September 18 Survey alignment review
 
+- Added a labeled Pop out button for a wider, resizable window. Survey drafts and
+  unsaved Comp edits transfer before the original panel closes; opening failures
+  retain the original form. Repeated clicks focus the existing pop-out.
+
 - Requested pricing simplification: removed area-calculation helper, source callout, empty-total waiting message and monthly-confirmation checkbox/save gate. Normal Save accepts valid pricing; exact monthly prefill and numeric/source safeguards remain.
 
 - Requested layout revision: Area → Monthly pricing → Availability/client Notes/Date. Saved layouts migrate to v3 with a separate prior-preferences backup; Comp layout and draft values remain intact.

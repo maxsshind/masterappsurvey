@@ -2,6 +2,7 @@
 <html>
 <head>
   <meta charset="UTF-8" />
+  <title>CoStar → Survey Pusher</title>
   <link rel="stylesheet" href="panel.css" />
 </head>
 <body>
@@ -14,7 +15,8 @@
     <div class="header-actions">
       <button id="btnRefresh" class="icon-btn" title="Re-read the CoStar page">↻</button>
       <button id="btnOpenApp" class="icon-btn" title="Open survey in master-app">↗</button>
-      <button id="btnPopout" class="icon-btn" title="Pop out into a window">⤢</button>
+      <button id="btnPopout" class="icon-btn popout-btn" title="Open this form in a separate, resizable window"><span aria-hidden="true">⤢</span> Pop out</button>
+      <span id="popoutLabel" class="popout-label hidden">Pop-out window</span>
       <button id="btnSettings" class="icon-btn" title="Settings">⚙</button>
     </div>
   </header>

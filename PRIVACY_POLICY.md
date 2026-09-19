@@ -39,6 +39,12 @@ to its building/site property record. It also updates survey-property statuses.
   - The reviewed comp fields, selected property-link choice, and retry ID for a save
     whose result has not yet been confirmed. This is retained separately for each
     signed-in email and removed when the save succeeds or is confirmed rejected.
+- **Temporarily in Chrome's session memory (`chrome.storage.session`):** when you
+  click Pop out, the current form context and unsaved Comp fields move to the new
+  window. The handoff is account-scoped, accepts restoration for one minute, and is
+  removed after transfer or a handled opening failure. If Chrome interrupts the
+  transfer, any remaining copy is cleared when the browser session ends. No sign-in
+  tokens are copied into this handoff, and popping out does not save to the server.
 - No data is stored on any server operated by the developer.
 
 ## Data the Extension sends

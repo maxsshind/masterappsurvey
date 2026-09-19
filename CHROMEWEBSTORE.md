@@ -4,7 +4,13 @@ Last updated: 2026-09-18
 
 ## September 18 Survey review build — not released
 
-Latest local build removes the requested pricing explanations and monthly-review checkbox, including its save requirement. Valid pricing saves through the normal Save action. Exact monthly prefill, numeric validation and retry protection remain. PROJECT.md links the current clean-pricing ZIP/folder and verification.
+Latest local build adds a labeled **Pop out** button and a wider, resizable window.
+Survey drafts and unsaved Comp edits transfer before the original panel closes;
+failed opening leaves the original form available. Existing pop-outs are reused.
+The short-lived handoff stays in Chrome session memory, scoped to the signed-in
+account; no permissions were added. PROJECT.md links the current ZIP and checks.
+
+The build also removes the requested pricing explanations and monthly-review checkbox, including its save requirement. Valid pricing saves through the normal Save action. Exact monthly prefill, numeric validation and retry protection remain.
 
 Current local layout: Area → Monthly pricing → Availability/client Notes/Date, including existing saved layouts. The area-first package and exact verification/hash are linked from PROJECT.md; rent-fix behavior remains included.
 

@@ -64,6 +64,7 @@ const state = {
 // A CoStar scrape reads the whole page's text — firing a second one while the first
 // is still running piles CPU onto the CoStar tab, so concurrent reads share one promise.
 let pendingRead = null;
+let activeMessages = 0;
 function bg(type, extra = {}, opts = {}, attempt = 0) {
   if (type === "READ_COSTAR" && attempt === 0) {
     if (pendingRead) return pendingRead;
@@ -77,8 +78,9 @@ function bg(type, extra = {}, opts = {}, attempt = 0) {
 function bgSend(type, extra = {}, opts = {}, attempt = 0) {
   const isWrite = opts.write === true;
   return new Promise((resolve) => {
+    activeMessages++;
     let settled = false;
-    const finish = (v) => { if (!settled) { settled = true; resolve(v); } };
+    const finish = (v) => { if (!settled) { settled = true; activeMessages--; resolve(v); } };
     const timeoutMs = isWrite ? 60000 : (attempt === 0 ? 2000 : 3000);
     const timeoutId = setTimeout(async () => {
       if (settled) return;
@@ -171,12 +173,14 @@ async function init() {
     state.authed = true;
     state.email = status.email;
     state.accountId = status.accountId;
+    await loadPopoutHandoff();
     await onAuthed();
   } else {
     const stored = await chrome.storage.local.get(["last_email"]);
     $("authEmail").value = stored.last_email || "max@rgcre.com";
     showScreen("auth-email");
   }
+  await finishPopoutHandoff();
 }
 
 async function onAuthed() {
@@ -189,14 +193,22 @@ async function onAuthed() {
     state.accountId = auth.accountId; state.email = auth.email;
   }
   syncModeToggle();
+  if (popoutHandoff && (popoutHandoff.accountId !== state.accountId || popoutHandoff.email !== state.email)) throw new Error("The signed-in account changed. Keep using the original panel.");
   await restorePendingCompSave();
+  if (popoutHandoff) restorePopoutComp();
   // Restore last-used survey (verify it still exists), else prompt to pick.
-  const stored = await chrome.storage.local.get(["last_survey_id"]);
+  const stored = popoutHandoff ? { last_survey_id: popoutHandoff.surveyId } : await chrome.storage.local.get(["last_survey_id"]);
   if (stored.last_survey_id) {
     const res = await bg("GET_SURVEY", { id: stored.last_survey_id });
     if (handleAuthFailure(res)) return;
     if (res.ok && res.survey) {
       await selectSurvey(res.survey, { silent: true });
+      if (popoutHandoff) {
+        state.scraped = popoutHandoff.scraped;
+        if (state.appMode === "comp") showScreen("comp");
+        else setTab(popoutHandoff.tab);
+        return;
+      }
       // Comp mode is independent of surveys — land there once context is restored.
       if (state.appMode === "comp") { enterCompMode(); return; }
       // If a CoStar record is on screen, read it right away.
@@ -207,7 +219,7 @@ async function onAuthed() {
     }
     chrome.storage.local.remove(["last_survey_id"]);
   }
-  if (state.appMode === "comp") { enterCompMode(); return; }
+  if (state.appMode === "comp") { if (popoutHandoff) showScreen("comp"); else enterCompMode(); return; }
   openPicker({ noBack: true });
 }
 
@@ -299,15 +311,120 @@ $("btnOpenApp").addEventListener("click", () => {
   if (state.survey) chrome.tabs.create({ url: `${CONFIG.APP_URL}/surveys/${state.survey.id}` });
 });
 
-if (IS_EXTENSION_CONTEXT) {
-  chrome.windows.getCurrent((win) => {
-    if (win && win.type === "popup") $("btnPopout").classList.add("hidden"); // already detached
-  });
+const IS_POPOUT = new URLSearchParams(location.search).get("view") === "popout";
+const popoutToken = new URLSearchParams(location.search).get("handoff");
+const popoutKey = popoutToken ? "panel_handoff:" + popoutToken : null;
+let popoutHandoff = null;
+let poppingOut = false;
+if (IS_POPOUT) {
+  document.body.classList.add("popout");
+  $("btnPopout").classList.add("hidden");
+  $("popoutLabel").classList.remove("hidden");
+  document.title = "CoStar → Survey Pusher · Pop-out";
 }
-$("btnPopout").addEventListener("click", () => {
-  chrome.windows.create({ url: "panel.html", type: "popup", width: 420, height: 760 }, () => {
-    window.close();
-  });
+
+// A short-lived, account-scoped handoff in browser memory preserves raw Comp
+// edits as well as the Survey draft already saved on this device. Never copy auth.
+async function loadPopoutHandoff() {
+  if (!popoutKey) return;
+  const saved = (await chrome.storage.session.get(popoutKey))[popoutKey];
+  if (!saved || saved.status !== "opening") return;
+  if (Date.now() - saved.createdAt > 60000 || saved.accountId !== state.accountId || saved.email !== state.email) {
+    throw new Error("The form belongs to a different or expired session. Keep using the original panel.");
+  }
+  popoutHandoff = saved;
+  state.appMode = saved.appMode;
+}
+
+function restorePopoutComp() {
+  // Durable pending-save recovery takes precedence over an ordinary form copy.
+  if (comp.pendingSave) return;
+  Object.assign(comp, popoutHandoff.comp);
+  for (const field of popoutHandoff.compControls) {
+    const node = $(field.id); if (!node) continue;
+    node.value = field.value; node.checked = field.checked;
+  }
+  for (const [container, values] of Object.entries(popoutHandoff.compChecks)) {
+    $(container).querySelectorAll("input").forEach(node => { node.checked = values.includes(node.value); });
+  }
+  renderCompContentImport();
+  syncCompFieldVisibility();
+  syncNameToggle("toggleCompPropName", "fldCompPropertyName", "comp_property_name", "comp_address");
+  if (comp.pendingMatch) showCompMatch(comp.pendingMatch);
+  if (comp.flyerUrl) $("compFlyerState").textContent = comp.flyerName || "Flyer attached";
+  for (const [id, source] of Object.entries(popoutHandoff.compSources)) setCompFieldSource(id, source);
+  if (comp.unmappedSubmarket) setCompSubmarket(comp.unmappedSubmarket);
+  syncCompReviewState();
+}
+
+async function finishPopoutHandoff() {
+  if (!popoutKey) return;
+  const saved = (await chrome.storage.session.get(popoutKey))[popoutKey];
+  if (!saved || saved.status !== "opening") return;
+  if (saved.accountId && (!state.authed || saved.accountId !== state.accountId || saved.surveyId !== (state.survey?.id || null) || (saved.bundleKey && saved.bundleKey !== surveyEditor.bundle?.key))) {
+    throw new Error("The form could not be restored. Keep using the original panel.");
+  }
+  await chrome.storage.session.set({ [popoutKey]: { status: "ready" } });
+  history.replaceState(null, "", "panel.html?view=popout");
+  window.scrollTo(0, saved.scrollY || 0);
+  popoutHandoff = null;
+}
+
+$("btnPopout").addEventListener("click", async () => {
+  if (!IS_EXTENSION_CONTEXT || poppingOut) return;
+  if (surveyEditor.saving || comp.saving || activeMessages || pendingRead || navBusy || compNavBusy || document.querySelector(".loading")) {
+    toast("Finish the current read, upload or save, then pop out."); return;
+  }
+  poppingOut = true;
+  $("btnPopout").disabled = true;
+  let key = null, opened = null, transferred = false;
+  try {
+    const panelUrl = chrome.runtime.getURL("panel.html");
+    const windows = await chrome.windows.getAll({ populate: true, windowTypes: ["popup"] });
+    const existing = windows.find(win => win.tabs?.some(tab => tab.url?.split("?")[0] === panelUrl));
+    if (existing) {
+      await chrome.windows.update(existing.id, { focused: true });
+      toast("Your pop-out is already open. This panel's edits are still here.");
+      return;
+    }
+    // Keep one editor during handoff; the source closes only after restoration.
+    document.body.inert = true;
+    await persistSurveyDraft();
+    await chrome.storage.local.set({ mode: state.appMode, ...(state.survey ? { last_survey_id: state.survey.id } : {}) });
+    key = "panel_handoff:" + crypto.randomUUID();
+    const handoff = {
+      status: "opening", createdAt: Date.now(), accountId: state.accountId, email: state.email,
+      appMode: state.appMode, surveyId: state.survey?.id || null, tab: state.tab,
+      bundleKey: surveyEditor.bundle?.key || null,
+      scraped: state.scraped, scrollY: window.scrollY, comp: structuredClone(comp),
+      compControls: [...document.querySelectorAll("#screen-comp input[id], #screen-comp select[id], #screen-comp textarea[id]")].map(node => ({ id: node.id, value: node.value, checked: node.checked })),
+      compChecks: { comp_ptypes: compChecked("comp_ptypes"), comp_sale_types: compChecked("comp_sale_types") },
+      compSources: Object.fromEntries(COMP_INPUT_IDS.map(id => [id, $(id)?.closest(".fld")?.querySelector(".field-source")?.textContent || null])),
+    };
+    await chrome.storage.session.set({ [key]: handoff });
+    opened = await chrome.windows.create({ url: panelUrl + "?view=popout&handoff=" + key.split(":")[1], type: "popup", width: Math.min(720, screen.availWidth), height: Math.min(900, screen.availHeight) });
+    const deadline = Date.now() + 15000;
+    while (Date.now() < deadline) {
+      const result = (await chrome.storage.session.get(key))[key];
+      if (result?.status === "ready") {
+        await chrome.storage.session.remove(key); key = null;
+        transferred = true;
+        toast("Form moved to the pop-out window. You can close this panel.");
+        window.close(); return;
+      }
+      if (result?.status === "error") throw new Error(result.error);
+      await sleep(100);
+    }
+    throw new Error("The new window did not finish opening. Your form is still here; try again.");
+  } catch (error) {
+    if (opened?.id) { try { await chrome.windows.remove(opened.id); } catch {} }
+    toast("Could not pop out: " + esc(error.message), true);
+  } finally {
+    if (key) { try { await chrome.storage.session.remove(key); } catch {} }
+    document.body.inert = transferred;
+    poppingOut = false;
+    $("btnPopout").disabled = false;
+  }
 });
 
 $("btnSettings").addEventListener("click", async () => {
@@ -496,6 +613,7 @@ function costarRecordKey(url) {
 let lastNavKey = null;
 let navBusy = false;
 async function maybeReReadOnNav() {
+  if (poppingOut || document.body.inert) return;
   if (navBusy) return;
   if (!state.authed || !state.survey) return;
   // Don't yank the UI while Max is picking a survey, in settings, signing in,
@@ -2340,6 +2458,7 @@ function initCompMode() {
 let lastCompNavKey = null;
 let compNavBusy = false;
 async function maybeReScanCompOnNav() {
+  if (poppingOut || document.body.inert) return;
   if (comp.pendingSave || comp.saving) return;
   if (state.appMode !== "comp" || !state.authed) return;
   if (state.screen !== "comp") return;
@@ -2433,5 +2552,11 @@ function initLocalPreview() {
   }
 }
 
-if (IS_EXTENSION_CONTEXT) init();
+if (IS_EXTENSION_CONTEXT) void (async () => {
+  try { await init(); }
+  catch (error) {
+    if (popoutKey) await chrome.storage.session.set({ [popoutKey]: { status: "error", error: error.message } });
+    toast("Could not open the form: " + esc(error.message), true);
+  }
+})();
 else initLocalPreview();
