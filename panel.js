@@ -2948,6 +2948,8 @@ installCompFlyerReview({
     },
     // Raw input also detects invalid/intermediate typing while the request runs.
     raw: Object.fromEntries(CompPropertyFields.fields.map(field=>[field,$('comp_'+field)?.value])),
+    form: Object.fromEntries(COMP_INPUT_IDS.map(id=>[id,$(id)?.value])),
+    propertyTypes: compChecked('comp_ptypes'), saleTypes: compChecked('comp_sale_types'),
   }),
   analyze: async draft => {
     const result=await bg('ANALYZE_COMP_FLYER',{draft},{write:true});
@@ -2959,6 +2961,7 @@ installCompFlyerReview({
     for(const row of rows) {
       setCompPropertyValue(row.field,row.value,'Flyer');
       comp.propertyFieldsEdited[row.field]=true;
+      if(row.field==='lease_area')comp.leaseAreaOrigin='source';
       setCompNeedsReview('comp_'+row.field,false);
     }
     syncCompFeatureChecks();syncCompReviewState();
