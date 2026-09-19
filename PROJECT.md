@@ -1,3 +1,7 @@
+## CLI release verified
+
+Google accepted1.4.13 upload and publication request. Public Store still showed1.4.0 after submission. GitHub main verified pushed10b48b9; public privacy policy HTTP200 and Anthropic flyer-analysis disclosure verified. Existing Store long description/screenshots unchanged (no official CLI/API edit support); prepared copy in STORE_LISTING.md. Shared release documentation proposal remains pending approval below.
+
 ## Chrome Web Store submission1.4.13 — 2026-09-18T22:32:28.493908-07:00
 
 User explicitly authorized publishing and updating the existing listing; then required CLI use. Existing item hohikcikmjiopimpigebcbdileipbhhc was read through authenticated API: draft1.4.0. Exactly one1.4.13 upload returned HTTP200/SUCCESS; draft reread confirmed1.4.13; exactly one publish returned HTTP200/statusOK. Submitted for Google review, not confirmed public. No cancellation or installed update. Existing listing identity retained. Long description/screenshots cannot be changed through the official Store API and were not changed; user required CLI. Credentials read privately from canonical .secrets; no tokens logged.
