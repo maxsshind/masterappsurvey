@@ -1,3 +1,49 @@
+# Clear-height ranges — completed local 1.4.6 — 2026-09-18 21:16 MST
+
+Max's direct follow-up in coordinated task `01a0b7bd-bc4b-7041-8e52-e32965450063`
+was read: "we will often times enter clear height like this 22-24' so make sure it
+isnt a hard number field". Parent owns the extension correction in Codex worktree
+`/Users/maxschumacher/.codex/worktrees/survey-property-fields-20260918`, branch
+`codex/survey-property-fields-20260918`, based on1.4.5 commit15033e3. App/schema/matcher
+owner remains that coordinated task. No app edits or real-record test writes here.
+
+1.4.6 supersedes1.4.5 for height entry. `clear_height` preserves reviewed ranges/
+descriptions (max200, outer trim only). Single explicit feet values also populate
+legacy `clear_height_ft`; ranges/prose leave that numeric field null. Edited height
+patches both fields, clearing clears both, unrelated patches omit both. Legacy
+numeric records hydrate and old numeric-only pending requests retry unchanged.
+Stable layout key preserves prior custom placement; pop-out retains exact text.
+App owner deployed migration20260919041254, reporting71 SQL assertions. Independently
+verified live nullable text/numeric columns and atomic save text support.
+
+Verification: **228 units**, **68 mounted scenarios** (12property,13Comp,6Yard,37Survey),
+**6 actual pop-outs**, **5 MV3 property-capture groups** including exact22-24' DOM ->
+save -> readback. Final extracted1.4.6 reran228units,5property groups,5Sales groups
+and actualMV3smoke. All pass, zero external requests. Prior12suite/flyer runtime
+regressions passed for1.4.5; those modules unchanged. Screenshot checks320/390px.
+Evidence: `output/review/height-text-*`. Package all16files match source/ZIP/folder.
+
+Delivered ZIP: `/Users/maxschumacher/Developer/chrome extensions/Master App Survey/masterappsurvey-v1.4.6.zip`
+Extracted: `/Users/maxschumacher/Developer/chrome extensions/Master App Survey/output/review/space-extension-1.4.6`
+108,696bytes; SHA256 `dec2a91bff04e9639b83687b536cc7ea5ad98fcbb6404f7ee1c3035bdba1a88a`.
+
+Extension-only shared Surveys reference, Comps data reference section and existing
+`https://www.sshteam.app/wiki/surveys`/OneDrive wiki mirror updated under prior explicit
+approval. Wiki/mirror MD5 `2b27b0f52db897bab0823b5cf6936ffe`. No separate production ops
+event for a local package; app owner owns the schema/web release documentation.
+
+Installed1.4.4 ID `pnoophcbdjbdnpknbidojhiiecfmghhj` and active unsaved2434S10thflyer
+remain untouched. No Store submission. After Max saves/cancels the edit, reverify
+installed path/ID, back up runtime and replace files in place from1.4.6, then Reload
+same extensioncard. Detailed steps in CHROMEWEBSTORE.md. Do not remove/reinstall.
+
+New separate task `01a0b7db-a7e9-7651-8554-e51208268673` owns PDF analysis button/route.
+It must branch from this final1.4.6 code, not15033e3. No PDF-analysis edits belong here.
+Both task owners receive final commit/artifacts; this scoped correction is complete
+except deferred installed reload needed to preserve Max's active edit.
+
+---
+
 # Property fields extension — 2026-09-18 21:05 MST
 
 Completed local **1.4.5** candidate in Codex worktree

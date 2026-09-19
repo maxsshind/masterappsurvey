@@ -136,6 +136,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     await source.locator('#comp_notes').fill('Private unsaved comp edit');
     await source.locator('#comp_building_sf').fill('5,000 - 6,000');
     await source.locator('#comp_notes').focus(); // Existing blur formatting runs before a header click.
+    await source.locator('#comp_clear_height').fill("22-24'");
     await source.locator('#comp_office_sf').fill('6,500');
     await source.locator('#comp_heavy_power').check();
     await source.locator('#comp_has_rail').check(); await source.locator('#comp_has_rail').uncheck();
@@ -145,6 +146,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     assert.equal(await target.locator('#screen-comp').isVisible(), true);
     assert.deepEqual(await target.evaluate(() => ({ model: comp, fields: compDraftSnapshot(), highlights: $('compIncludeHighlights').checked })), compBefore);
     assert.equal(await target.locator('#compFlyerState').innerText(), 'Fixture flyer.pdf');
+    assert.equal(await target.locator('#comp_clear_height').inputValue(),"22-24'");
     assert.equal(await target.locator('#comp_office_sf').inputValue(),'6,500');
     assert.equal(await target.locator('#comp_heavy_power').isChecked(),true);
     assert.equal(await target.locator('#comp_has_rail_answer').innerText(),'No');

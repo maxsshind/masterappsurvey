@@ -609,7 +609,7 @@ const COMP_COLS =
   "rent_psf,lease_format,cap_rate,building_sf,land_area,yard_included,sub_market,submarket_cluster," +
   "listing_brokerage,listing_agent,listing_agent_phone,listing_agent_email," +
   "last_verified_at,list_date,notes,flyer_url,property_id,suite,partial_site_override,multi_tenant," +
-  "clear_height_ft,office_sf,lease_area,year_built,loading,class_a,heavy_power,has_rail,has_truckwell_or_dock";
+  "clear_height,clear_height_ft,office_sf,lease_area,year_built,loading,class_a,heavy_power,has_rail,has_truckwell_or_dock";
 
 // Find existing comps that likely match the CoStar listing, so the panel can offer
 // "update" instead of a duplicate insert. PostgREST ilike wildcard is a literal `*`

@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.4.6 local candidate — 2026-09-18 — Clear-height ranges and text
+
+- Clear height accepts reviewed ranges and descriptions such as `22-24'`, retaining
+  the entered wording in `comps.clear_height` (up to 200 characters, outer trim).
+  A single explicit feet value can also populate the legacy numeric field; ranges
+  and prose leave `clear_height_ft` null instead of inventing a scalar.
+- Editing a height sends the text/numeric pair together. Clearing clears both;
+  unrelated updates omit both. Older numeric records still display and pending
+  numeric-only saves retry their exact original request. Existing height-field
+  layout customizations and pop-out edits survive the new text control.
+- Includes all1.4.5 property fields and prior suite/shared-flyer/Sales fixes.
+  Uses the coordinated app's new nullable text column and paired save contract.
+  No new permissions or hosts. Installed1.4.4 active draft stays untouched.
+
+Verified locally: 228 unit/transport checks, 68 mounted scenarios including 12
+property-field scenarios, 6 actual pop-outs and 5 real MV3 property-capture groups.
+The range is exercised through source capture, manual entry, save, authoritative
+readback, uncertain-response reload and pop-out. No production test records.
+
 ## 1.4.5 local candidate — 2026-09-18 — Property fields
 
 - Comp adds clear height (decimal feet or feet/inches input), office SF, available
