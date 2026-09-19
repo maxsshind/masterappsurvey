@@ -155,7 +155,7 @@ async function readCoStar() {
       const spaceHeadings = [...txt.matchAll(/\bSpace Details\b/gi)];
       let selectedSpace = null;
       if (spaceHeadings.length) {
-        selectedSpace = { scope: "space-details", availableSf: null, monthlyRent: null,
+        selectedSpace = { scope: "space-details", availableSf: null, availableRange: null, monthlyRent: null,
           rentPsf: null, officeSf: null, suite: null, floor: null, serviceType: null,
           identity: null, rawText: "", canPrefill: false, issue: null };
         if (spaceHeadings.length !== 1) {
@@ -182,6 +182,14 @@ async function readCoStar() {
             return match && Number.isFinite(Number(match[1].replace(/,/g, ""))) ? match[1].replace(/,/g, "") : null;
           };
           selectedSpace.availableSf = exactNumber(fields.get("available"), "SF(?:\\s+(?:Industrial|Office|Retail|Warehouse|Flex|Space))?");
+          // A range must belong to this one open Space Details section. Never
+          // read a building's smallest-to-total availability or contiguous area.
+          const availableRange = (fields.get("available") || "").match(new RegExp("^(" + numeric + ")\\s*[-–—]\\s*(" + numeric + ")\\s*SF(?:\\s+(?:Industrial|Office|Retail|Warehouse|Flex|Space))?(?:\\s*\\(Will Divide\\))?$", "i"));
+          if (!duplicate && availableRange) {
+            const min = Number(availableRange[1].replaceAll(",", "")), max = Number(availableRange[2].replaceAll(",", ""));
+            if (Number.isSafeInteger(min) && Number.isSafeInteger(max) && min > 0 && min <= max)
+              selectedSpace.availableRange = { min: String(min), max: String(max) };
+          }
           selectedSpace.officeSf = exactNumber(fields.get("office"), "SF");
           selectedSpace.floor = fields.get("floor") || null;
           selectedSpace.suite = fields.get("suite") || fields.get("suitenumber") || null;
@@ -195,6 +203,7 @@ async function readCoStar() {
           const conflict = monthly !== null && rate !== null && positiveArea &&
             Math.abs(Number(monthly) - Number(rate) * Number(selectedSpace.availableSf)) > 0.011;
           if (duplicate) selectedSpace.issue = "Repeated space fields require review.";
+          else if (selectedSpace.availableRange) selectedSpace.issue = "Choose the proposed SF and review pricing for this divisible suite.";
           else if (annual) selectedSpace.issue = "Annual or mixed-period rent requires monthly review.";
           else if (monthly === null) selectedSpace.issue = "An exact Rent/Mo amount is not available for this space.";
           else if (rateRaw && rate === null) selectedSpace.issue = "The selected space rent is ranged, withheld or unclear.";
@@ -206,7 +215,7 @@ async function readCoStar() {
             if (rate !== null && positiveArea) selectedSpace.rentPsf = rate;
           }
           const ordinal = [...txt.slice(0, start).matchAll(/\b\d+\s+of\s+\d+\s+Spaces\b/gi)].at(-1)?.[0] || "";
-          selectedSpace.identity = JSON.stringify([ordinal, selectedSpace.suite, selectedSpace.floor, selectedSpace.availableSf]);
+          selectedSpace.identity = JSON.stringify([ordinal, selectedSpace.suite, selectedSpace.floor, selectedSpace.availableSf, ...(selectedSpace.availableRange ? [selectedSpace.availableRange] : [])]);
         }
         // Even an unresolved selected space must not inherit the header's quote.
         Object.assign(leaseQuote, {
@@ -442,7 +451,7 @@ function validateSurveyRequestFields(request) {
       throw new SurveySpaces.SurveySpaceConflictError("Review the numeric fields before saving. The request must contain validated numbers, not unparsed text.");
     const final = { ...(request.baseline || {}), ...write };
     const pricingFields = ["monthly_base_rent", "lease_rate_psf", "monthly_opex_psf", "total_monthly_opex", "total_lease_rate"];
-    const coordinated = ["rent_calculation", "tenancy", "building_sf", "suite_size", ...pricingFields].some((key) => Object.hasOwn(write, key));
+    const coordinated = ["rent_calculation", "tenancy", "building_sf", "suite_size", "space_option", ...pricingFields].some((key) => Object.hasOwn(write, key));
     if (final.rent_calculation?.version === 1 && coordinated) {
       const expected = SurveyRent.calculateSurveyRent(final.rent_calculation, final, final);
       if (!Object.hasOwn(write, "rent_calculation") || pricingFields.some((key) => !Object.hasOwn(write, key) || !SurveySpaces.sameValue(write[key], expected[key])))

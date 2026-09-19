@@ -8,7 +8,7 @@
   const SURVEY_VERSION = 3;
   const SURVEY_TOP = ["setup", "size", "lease", "offering"];
   const SURVEY_SECTIONS = [...SURVEY_TOP, "sale", "building", "flyer", "notes", "more"];
-  const SURVEY_REQUIRED = new Set(["fAddress", "fTenancy", "fAvailability", "fNotes", "fDateAvailable", "surveyPricing", "fForSale", "fForLease"]);
+  const SURVEY_REQUIRED = new Set(["fAddress", "fTenancy", "fAvailability", "fNotes", "fDateAvailable", "fSpaceKind", "rangeFields", "combinedSpaceNotice", "surveyPricing", "fForSale", "fForLease"]);
   const SECTION_ALIASES = { address: "setup", tenancy: "setup", status: "offering" };
   const PRICING_FIELDS = new Set(["fLeaseRate", "fMonthlyBase", "fOpexPsf", "fOpexTotal", "fTotalLeaseRate", "fRentPerAcre", "fRentAcre", "fOfferedAcres", "fExpenseTreatment", "fExpenseBasis", "fExpenseAmount"]);
   const SCREENS = { survey: "screen-form", comp: "screen-comp" };

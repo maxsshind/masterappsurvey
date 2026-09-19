@@ -729,7 +729,8 @@ function updateBlockVisibility() {
   const isMT = leaseOnly && tenancy === "MT";
   $("rowSuiteNumber").classList.toggle("hidden", isST);
   $("rowOfficeSf").classList.remove("hidden");
-  $("rowSuiteSize").classList.toggle("hidden", isST);
+  $("rowSuiteSize").classList.toggle("hidden", isST && !activeSurveyDraft()?.model.values.space_option);
+  if (activeSurveyDraft()) renderSpaceOption();
   $("lblBuildingSf").textContent = isMT ? "Total Building SF (reference)" : "Total Building SF";
 }
 $("fForSale").addEventListener("change", updateBlockVisibility);
@@ -761,9 +762,10 @@ function recordFromScrape(d) {
     tenancy: d.street ? null : "ST",
     lease_rate_psf: null,
     lease_type: surveySpaceLeaseType(d.selectedSpace?.serviceType) || d.leaseType || null,
-    suite_size: d.selectedSpace?.availableSf || null,
+    suite_size: SurveySpaces.sourceRange(d.selectedSpace) ? SurveySpaces.rangeLabel(SurveySpaces.sourceRange(d.selectedSpace)) : d.selectedSpace?.availableSf || null,
+    ...(SurveySpaces.sourceRange(d.selectedSpace) ? { space_option: SurveySpaces.sourceRange(d.selectedSpace) } : {}),
     suite_number: d.selectedSpace?.suite || null,
-    office_sf: d.selectedSpace?.officeSf ?? null,
+    office_sf: d.selectedSpace?.availableRange ? null : d.selectedSpace?.officeSf ?? null,
     for_sale_or_lease:
       surveyType === "lease_and_sale" ? ["sale", "lease"] :
       surveyType === "sale" ? ["sale"] : ["lease"],
@@ -960,7 +962,7 @@ function mountSurveyDraft() {
   if (!surveyEditor.pending) applyNnnExpenseDefault(draft);
   state.pendingDup = surveyEditor.bundle.decision === 'unresolved';
   state.mode = draft.model.isNew ? 'insert' : 'update'; state.editingId = draft.model.isNew ? null : draft.model.baseline.id; state.baseline = draft.model.baseline;
-  fillForm(draft.model.values); renderSurveyRent(); renderSurveyDraftTabs();
+  fillForm(draft.model.values); renderSpaceOption(); renderSurveyRent(); renderSurveyDraftTabs();
   $('formTitle').textContent = draft.model.isNew ? 'New offering' : 'Update this space';
   const label = surveyEditor.bundle.drafts.length > 1 ? `Save ${surveyEditor.bundle.drafts.length} spaces` : draft.model.isNew ? 'Add to survey' : 'Save changes';
   $('btnSave').textContent = $('btnSaveBottom').textContent = label;
@@ -968,6 +970,55 @@ function mountSurveyDraft() {
   setTab('push'); showScreen('form');
   if (surveyEditor.bundle.decision === 'unresolved') showSurveyCandidates(findMatch(draft.source));
 }
+function renderSpaceOption() {
+  const d = activeSurveyDraft(); if (!d) return;
+  const option = d.model.values.space_option, range = option?.kind === 'range';
+  const controlled = option && !['fixed', 'range'].includes(option.kind);
+  $('fSpaceKind').value = range ? 'range' : 'fixed';
+  $('rowSpaceKind').classList.toggle('hidden', Boolean(controlled));
+  $('rangeFields').classList.toggle('hidden', !range);
+  $('combinedSpaceNotice').classList.toggle('hidden', !controlled);
+  $('combinedSpaceLink').href = CONFIG.APP_URL + '/surveys/' + state.survey.id;
+  for (const [id,key] of [['fSpaceMin','min'],['fSpaceMax','max'],['fSpaceProposed','proposed']])
+    if (document.activeElement !== $(id)) $(id).value = range ? option[key] : '';
+  $('fSuiteSize').readOnly = Boolean(range || controlled);
+  if (range) $('fSuiteSize').value = d.model.values.suite_size || '';
+}
+function changeSpaceRange(patch) {
+  const d = activeSurveyDraft(); if (!d || surveyEditor.pending || surveyEditor.saving) return;
+  hideError($('formError'));
+  $('rangeFields').querySelectorAll('.field-error').forEach(node => node.remove());
+  $('rangeFields').querySelectorAll('[aria-invalid]').forEach(node => node.removeAttribute('aria-invalid'));
+  const previousArea = SurveyRent.resolveSurveyRentArea(d.model.values);
+  const old = d.model.values.space_option;
+  const option = {kind:'range',min:'',max:'',proposed:'',members:[],review:false,quoteArea:'',...old,...patch};
+  d.model.values.space_option = option;
+  d.model.values.suite_size = SurveySpaces.rangeLabel(option);
+  const area = SurveyRent.resolveSurveyRentArea(d.model.values);
+  if (area !== previousArea) {
+    for (const group of ['rent','expenses']) {
+      const quote = d.model.rentDraft?.[group];
+      if (quote?.basis === 'total' && quote.amount !== '') {
+        d.model.rentDraft[group] = {...quote,amount:'',preservePrecision:false};
+        showError($('formError'),'Proposed area changed. Enter the monthly total quoted for the new area.');
+      }
+    }
+    option.quoteArea = '';
+  }
+  updateBlockVisibility(); renderSpaceOption(); renderSurveyRent(); queueSurveyDraft();
+}
+$('fSpaceKind').addEventListener('change', () => {
+  const d = activeSurveyDraft(); if (!d || surveyEditor.pending || surveyEditor.saving) return;
+  if ($('fSpaceKind').value === 'range') changeSpaceRange({kind:'range'});
+  else if (d.model.values.space_option?.kind === 'range') {
+    // Switching modes is a deliberate new area/quote, never silently take max SF.
+    changeSpaceRange({proposed:''});
+    d.model.values.space_option = null; d.model.values.suite_size = '';
+    renderSpaceOption(); $('fSuiteSize').value = ''; renderSurveyRent(); queueSurveyDraft();
+  }
+});
+for (const [id,key] of [['fSpaceMin','min'],['fSpaceMax','max'],['fSpaceProposed','proposed']])
+  $(id).addEventListener('input', () => changeSpaceRange({[key]:$(id).value}));
 function syncSurveyLock() {
   const locked = Boolean(surveyEditor.pending || surveyEditor.saving);
   $('screen-form').querySelectorAll('input,textarea,select,button').forEach(el => { el.disabled = locked; });
@@ -979,6 +1030,11 @@ function syncSurveyLock() {
   $('btnUnlockSurvey').classList.add('hidden');
   if (state.pendingDup) $('btnSave').disabled = $('btnSaveBottom').disabled = true;
   if (!activeSurveyDraft()?.model.rentSupported) $('surveyPricing').querySelectorAll('input,button').forEach(el => { el.disabled = true; });
+  const option = activeSurveyDraft()?.model.values.space_option;
+  if (option && !['fixed','range'].includes(option.kind)) {
+    for (const id of ['fAddress','fCity','fState','fBuildingSf','fSuiteNumber','fSuiteSize','fDateAvailable','fOfferedAcres','btnResetRent']) $(id).disabled = true;
+    for (const id of ['fTenancy','fAvailability','surveyPricing']) $(id).querySelectorAll('input,button').forEach(el => { el.disabled = true; });
+  }
 }
 function setupForm(mode, row, opts = {}) {
   if (surveyEditor.pending || surveyEditor.saving) { mountSurveyDraft(); return; }
@@ -1031,6 +1087,7 @@ function matchAndShowForm() {
 $('btnDupNew').addEventListener('click', () => { state.pendingDup = null; surveyEditor.bundle.decision = 'new'; $('dupChooser').classList.add('hidden'); syncSurveyLock(); queueSurveyDraft(); });
 function addSurveySpace(combined = false, building = null) {
   if (surveyEditor.pending || surveyEditor.saving) return;
+  if (combined) { void chrome.tabs.create({url: CONFIG.APP_URL + '/surveys/' + state.survey.id}); return; }
   const current = activeSurveyDraft(); const source = building || current?.model.values;
   if (!source || source.tenancy !== 'MT') return showError($('formError'),'Choose Multi-tenant before adding an available space.');
   if (surveyEditor.bundle) queueSurveyDraft();
@@ -1076,7 +1133,7 @@ async function showSurveyIssues(issues, index) {
   $('screen-form').querySelectorAll('.field-error').forEach(el => el.remove());
   $('screen-form').querySelectorAll('[aria-invalid]').forEach(el => el.removeAttribute('aria-invalid'));
   for (const issue of issues) {
-    const id = FIELDS[issue.field]?.[0] || ({ rent:'fMonthlyBase',rent_total:'fMonthlyBase',rent_sf:'fLeaseRate',rent_acre:'fRentAcre',expenses_total:'fOpexTotal',expenses_sf:'fOpexPsf',expenses:'fOpexTotal',offered_acres:'fOfferedAcres' })[issue.field];
+    const id = FIELDS[issue.field]?.[0] || ({ rent:'fMonthlyBase',rent_total:'fMonthlyBase',rent_sf:'fLeaseRate',rent_acre:'fRentAcre',expenses_total:'fOpexTotal',expenses_sf:'fOpexPsf',expenses:'fOpexTotal',offered_acres:'fOfferedAcres',space_option:'fSpaceProposed' })[issue.field];
     const node = $(id); if (!node) continue;
     node.setAttribute('aria-invalid','true'); const error = document.createElement('span'); error.className = 'field-error'; error.textContent = issue.message; node.parentElement.append(error);
   }
@@ -1135,7 +1192,7 @@ async function save() {
     const result = SurveyFields.serializeDraft(d.model);
     if (!result.values.address?.trim()) result.issues.push({field:'address',message:'Address is required.'});
     if (!result.values.for_sale_or_lease?.length) result.issues.push({field:'for_sale_or_lease',message:'Select For Sale and/or For Lease.'});
-    if (d.combined && (!String(result.values.suite_number || '').replace(/^Combined:\s*/i,'').trim() || !SurveyRent.resolveSurveyRentArea(result.values))) result.issues.push({field:'suite_size',message:'A combined option needs its included-suite wording and one confirmed combined size.'});
+    if (d.combined && d.model.isNew) result.issues.push({field:'space_option',message:'Create this combined option in Master App to select and confirm the included suites.'});
     result.valid = result.issues.length === 0; return result;
   });
   const bad = results.findIndex(r => !r.valid); if (bad >= 0) return showSurveyIssues(results[bad].issues,bad);
@@ -1221,6 +1278,7 @@ function renderSurveyRent() {
   $('fTotalLeaseRate').value = SurveyRent.displayed(values.total_lease_rate,'total',!rd);
   $('labelTotalLeaseRate').textContent = values.total_lease_rate == null ? '' : !rd ? 'Saved · unlinked' : 'Calculated';
   surveyDetailsIndicators();
+  if (m.values.space_option && !['fixed','range'].includes(m.values.space_option.kind)) $('surveyPricing').querySelectorAll('input,button').forEach(el => { el.disabled = true; });
 }
 function recordSurveyInput(col,id,type) {
   const d = activeSurveyDraft(); if (!d || surveyEditor.pending || surveyEditor.saving) return;
@@ -1259,6 +1317,8 @@ for (const [id,[group,basis]] of Object.entries(SURVEY_RENT_INPUTS)) $(id).addEv
   const shown = SurveyRent.preview(d.model.rentDraft,area,d.model.baseline)[SURVEY_RENT_INPUTS[id][2]];
   if (parsed.valid && parsed.value === shown) return;
   d.model.rentDraft = group === 'rent' ? SurveyRent.editRent(d.model.rentDraft,basis,$(id).value) : SurveyRent.editExpenses(d.model.rentDraft,basis,$(id).value);
+  if (basis === 'total' && d.model.values.space_option?.kind === 'range') d.model.values.space_option.quoteArea = String(SurveyRent.resolveSurveyRentArea(d.model.values) || '');
+  if (SurveyFields.serializeDraft(d.model).valid) hideError($('formError'));
   renderSurveyRent(); queueSurveyDraft();
 });
 $('fOfferedAcres').addEventListener('input',() => {
@@ -1282,6 +1342,8 @@ $('screen-form').querySelectorAll('[data-adopt-rent],[data-adopt-expenses]').for
   const d = activeSurveyDraft(); if (!d || surveyEditor.pending) return;
   const input = button.parentElement.querySelector('input'); const basis = button.dataset.adoptRent || button.dataset.adoptExpenses;
   d.model.rentDraft = button.dataset.adoptRent ? SurveyRent.editRent(d.model.rentDraft,basis,input.value,true) : SurveyRent.editExpenses(d.model.rentDraft,basis,input.value,true);
+  if (basis === 'total' && d.model.values.space_option?.kind === 'range') d.model.values.space_option.quoteArea = String(SurveyRent.resolveSurveyRentArea(d.model.values) || '');
+  if (SurveyFields.serializeDraft(d.model).valid) hideError($('formError'));
   renderSurveyRent(); queueSurveyDraft();
 }));
 

@@ -2,6 +2,25 @@
 
 Last updated: 2026-09-18
 
+## 1.4.1 candidate — divisible survey spaces
+
+**Prepared locally, not uploaded/submitted/installed.** Verify the currently public
+and draft version before any upload; the last recorded successful submission is
+1.4.0 below. Parent release owner handles GitHub and distribution after the web app
+and its `space_option` database migration are verified live.
+
+Candidate changes: capture an explicit selected-suite size range; edit minimum,
+maximum and proposed SF separately; use proposed area for monthly calculations;
+re-enter total quotes after an area change; open Master App to confirm combined
+suite members. Office/loading from the whole source are not assigned to an
+unspecified portion. Existing data and notes-only updates remain compatible.
+Refresh the Survey Area screenshot for the new range fields and Master App combine
+link when Store assets are next updated. No changes to permissions, hosts, external
+recipients or existing data categories; size metadata remains property data.
+
+Package and test evidence will be recorded in PROJECT.md. Do not treat a local
+package or disposable-profile smoke test as installed/public extension verification.
+
 ## 1.4.0 release — September 18
 
 Uploaded and submitted on 2026-09-18 at 18:08 MST. Upload HTTP 200 / SUCCESS,

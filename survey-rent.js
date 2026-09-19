@@ -47,6 +47,18 @@
     return amount === null ? null : amount * (match[2] ? 1000 : 1);
   }
   function resolveSurveyRentArea(area) {
+    const option = area.space_option;
+    if (option != null) {
+      if (!["fixed", "range", "combined"].includes(option.kind) || option.review) return null;
+      if (option.kind === "range") {
+        const min = parseNumericInput(option.min, { integer: true, min: 1 });
+        const max = parseNumericInput(option.max, { integer: true, min: 1 });
+        const proposed = parseNumericInput(option.proposed, { integer: true, min: 1 });
+        return min.valid && max.valid && proposed.valid && proposed.value !== null && min.value !== null && max.value !== null && proposed.value >= min.value && proposed.value <= max.value ? proposed.value : null;
+      }
+      // Explicit offering metadata always uses the offered area, including ST.
+      return positive(parseSuiteArea(area.suite_size));
+    }
     if (area.tenancy === 'ST') return positive(area.building_sf);
     if (area.tenancy === 'MT' || area.tenancy == null || area.tenancy === '') {
       if (typeof area.suite_size !== 'string' || positive(parseSuiteArea(area.suite_size)) === null) return null;

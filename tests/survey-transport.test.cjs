@@ -442,3 +442,35 @@ for (const monthly of ['26000', '0']) {
     assert.ok(scraped.selectedSpace.rawText.length <= 500);
   });
 }
+
+for (const inline of [false, true]) {
+  test(`explicit selected-space range transfers to metadata, retains advertising and leaves allocation/pricing blank (${inline ? 'inline' : 'lines'})`, async () => {
+    let text = spaceDetailsFixture.replace('Available\n40,000 SF Industrial', 'Available\n62,784 - 174,769 SF Industrial (Will Divide)').replace('Floor\nPartial', 'Suite\n1\nFloor\nPartial');
+    if (inline) text=text.replaceAll('\n',' ');
+    const scraped=await selectedSpaceFixture(text);
+    assert.deepEqual(json(scraped.selectedSpace.availableRange),{min:'62784',max:'174769'});
+    assert.equal(scraped.selectedSpace.canPrefill,false);assert.equal(scraped.selectedSpace.availableSf,null);
+    const h=harness();h.c.state={survey:{id:surveyId,survey_type:'lease'}};
+    const panel=fs.readFileSync(path.join(root,'panel.js'),'utf8');
+    for(const name of ['surveyReviewSource','surveySpaceLeaseType','scrapeInternalNotes','recordFromScrape','applyNnnExpenseDefault','makeSurveyDraft']) vm.runInContext(panel.match(new RegExp(`^function ${name}\\([^]*?^}`, 'm'))[0],h.c);
+    const record=h.c.recordFromScrape(scraped),draft=h.c.makeSurveyDraft(record,true,scraped);
+    assert.equal(record.suite_size,'62,784–174,769 SF');assert.equal(record.suite_number,'1');
+    assert.equal(record.space_option.proposed,'');assert.equal(record.office_sf,null);
+    assert.equal(draft.model.rentDraft.rent.amount,'');assert.equal(record.loading,undefined);
+    assert.ok(record.internal_notes.includes('3,200 SF'),'source allocation is retained only as private source evidence');
+    const result=h.c.SurveyFields.serializeDraft(draft.model);assert.equal(result.valid,true,JSON.stringify(result.issues));
+    const req=S.createBatchRequest({accountId,surveyId,rows:[json(result.values)]});
+    const saved=await h.c.saveSurveyRequest(req);assert.equal(saved.status,'saved');
+    assert.equal(h.writes[0].rows[0].space_option.min,'62784');assert.equal(h.writes[0].rows[0].space_option.proposed,'');
+  });
+}
+test('property summary smallest-to-total availability cannot become a divisible suite', async () => {
+  const data=await selectedSpaceFixture('Available SF\n21,600 - 64,800\nMax Contig SF\n43,200');
+  assert.equal(data.selectedSpace,null);
+});
+test('each discrete suite keeps exact size without inferred member links from contiguous SF', async () => {
+  for(const suite of ['1','3','4']) {
+    const text=spaceDetailsFixture.replace('Available\n40,000 SF Industrial','Available\n21,600 SF Industrial').replace('Floor\nPartial',`Suite\n${suite}\nFloor\nPartial`).replaceAll('40,000 SF','43,200 SF');
+    const data=await selectedSpaceFixture(text);assert.equal(data.selectedSpace.availableSf,'21600');assert.equal(data.selectedSpace.availableRange,null);assert.equal(data.selectedSpace.suite,suite);
+  }
+});

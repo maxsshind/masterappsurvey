@@ -26,7 +26,7 @@
     longitude: { label: 'Longitude', min: -180, max: 180 },
   };
   const SURVEY_RENT_FIELDS = ['lease_rate_psf', 'monthly_base_rent', 'monthly_opex_psf', 'total_monthly_opex', 'total_lease_rate'];
-  const RENT_AREA_FIELDS = ['tenancy', 'building_sf', 'suite_size'];
+  const RENT_AREA_FIELDS = ['tenancy', 'building_sf', 'suite_size', 'space_option'];
   const SURVEY_AVAILABILITY_OPTIONS = ['Available', 'Confirmed', 'Confirming Availability', 'Not Available', 'Available/Interested'];
   const SURVEY_TENANCY_OPTIONS = ['ST', 'MT'];
   const SURVEY_LEASE_TYPES = ['Full Service Gross', 'Modified Gross', 'Industrial Gross', 'NNN'];
@@ -35,7 +35,7 @@
   // Deliberately excludes client feedback/votes/comments and server-maintained fields.
   const EDITABLE_FIELDS = [
     'address', 'city', 'state', 'zip', 'latitude', 'longitude',
-    'tenancy', 'building_sf', 'land_area_ac', 'suite_number', 'suite_size', 'office_sf',
+    'tenancy', 'building_sf', 'land_area_ac', 'suite_number', 'suite_size', 'office_sf', 'space_option',
     'sale_price', 'cap_rate', 'zoning', 'lease_type', 'for_sale_or_lease',
     'availability', 'date_available', 'notes', 'notes_2', 'internal_notes', 'internal_status',
     'power', 'loading', 'clear_height', 'yard_area', 'flyer_url', 'photo_url', 'num_private_offices',
@@ -156,6 +156,28 @@
     const values = { ...input, ...parsed.values };
     const issues = [...parsed.issues];
     const resulting = { ...(previous || {}), ...values };
+    const spaces = root.SurveySpaces || (typeof require === 'function' ? require('./survey-spaces.js') : null);
+    const areaKeys = ['address', 'city', 'state', 'building_sf', 'tenancy', 'suite_number', 'suite_size', 'space_option', 'availability', 'date_available'];
+    const changed = key => own(input, key) && !structuralEqual(input[key], previous?.[key]);
+    if (spaces && (!previous || changed('space_option') || changed('suite_size') || changed('building_sf'))) {
+      const error = spaces.validateSpaceOption(resulting.space_option, resulting);
+      if (error) issues.push({ field: 'space_option', message: error });
+    }
+    if ((!previous || changed('suite_number')) && !resulting.space_option && /^combined(?:\s|:)/i.test(resulting.suite_number || ''))
+      issues.push({ field: 'space_option', message: 'Create a combined option in Master App so the included suites are linked and confirmed.' });
+    if (resulting.space_option && !['fixed','range'].includes(resulting.space_option.kind) && (!previous || [...areaKeys, ...SURVEY_RENT_FIELDS, 'rent_calculation'].some(changed))) {
+      issues.push({ field: 'space_option', message: 'Create or change a linked combined option in Master App, where its included suites can be confirmed. Other notes can still be edited here.' });
+    }
+    if (resulting.space_option?.kind === 'range' && (changed('space_option') || changed('rent_calculation') || SURVEY_RENT_FIELDS.some(changed))) {
+      const area = rent.resolveSurveyRentArea(resulting);
+      for (const group of ['rent', 'expenses']) {
+        const quote = resulting.rent_calculation?.[group];
+        if (quote?.basis === 'total' && quote.amount != null && (group !== 'expenses' || quote.treatment === 'additional') &&
+            (!area || Number(resulting.space_option.quoteArea) !== area)) {
+          issues.push({ field: 'space_option', message: 'Choose proposed SF, then enter the monthly quote for that area.' }); break;
+        }
+      }
+    }
     if ((!previous || own(input, 'address')) && (typeof resulting.address !== 'string' || !resulting.address.trim())) {
       issues.push({ field: 'address', message: 'Enter the property address.' });
     }
@@ -165,7 +187,7 @@
     if (own(input, 'for_sale_or_lease') && input.for_sale_or_lease !== null && (!Array.isArray(input.for_sale_or_lease) || input.for_sale_or_lease.some(value => typeof value !== 'string'))) {
       issues.push({ field: 'for_sale_or_lease', message: 'Choose the property offering types.' });
     }
-    const sizeChanged = !previous || ['tenancy', 'suite_size', 'office_sf'].some(field => own(input, field) && !structuralEqual(values[field], previous[field]));
+    const sizeChanged = !previous || ['tenancy', 'suite_size', 'space_option', 'office_sf'].some(field => own(input, field) && !structuralEqual(values[field], previous[field]));
     if (sizeChanged && resulting.tenancy === 'MT') {
       const area = rent.resolveSurveyRentArea(resulting);
       if (area !== null && typeof resulting.office_sf === 'number' && resulting.office_sf > area) {
@@ -202,6 +224,9 @@
         const parsed = parseNumericInput(raw, surveyNumericOptions(field, raw, isNew ? undefined : baseline[field]));
         if (!parsed.valid) { issues.push({ field, message: parsed.error }); continue; }
         value = parsed.value;
+      } else if (field === 'space_option') {
+        const spaces = root.SurveySpaces || (typeof require === 'function' ? require('./survey-spaces.js') : null);
+        value = spaces ? spaces.normalizeSpaceOption(raw) : raw;
       } else if (typeof raw === 'string' && !raw.trim()) value = null;
       if (!isNew && structuralEqual(value, baseline[field])) continue;
       patch[field] = clone(value);

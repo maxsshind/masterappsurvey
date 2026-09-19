@@ -13,7 +13,7 @@
   // property_name is a Comp column and is not part of survey_properties.
   const WRITE_FIELDS = new Set([
     "address", "city", "state", "zip", "latitude", "longitude",
-    "building_sf", "land_area_ac", "suite_size", "suite_number", "office_sf",
+    "building_sf", "land_area_ac", "suite_size", "suite_number", "office_sf", "space_option",
     "sale_price", "cap_rate", "zoning", "tenancy", "lease_rate_psf", "lease_type",
     "total_lease_rate", "num_private_offices", "monthly_base_rent", "monthly_opex_psf",
     "total_monthly_opex", "rent_calculation", "power", "loading", "clear_height",
@@ -22,6 +22,53 @@
   ]);
   const clone = (value) => value === undefined ? undefined : JSON.parse(JSON.stringify(value));
   const normalizeIdentityPart = (value) => String(value ?? "").trim().replace(/\s+/gu, " ").toLowerCase();
+  // Only an explicit individual-space source is eligible for range metadata.
+  // Property headers commonly show smallest-to-total availability instead.
+  function sourceRange(space) {
+    if (space?.scope !== "space-details" || !space.availableRange) return null;
+    const range = space.availableRange;
+    const min = wholeArea(range.min), max = wholeArea(range.max);
+    if (!min || !max || min > max) return null;
+    return { kind: "range", min: String(min), max: String(max), proposed: "", members: [], review: false, quoteArea: "" };
+  }
+  function wholeArea(value) {
+    if (typeof value !== "string" || !/^(?:\d{1,3}(?:,\d{3})+|\d+)$/.test(value.trim())) return null;
+    const n = Number(value.replaceAll(",", ""));
+    return Number.isSafeInteger(n) && n > 0 ? n : null;
+  }
+  function normalizeSpaceOption(option) {
+    if (option?.kind !== "range") return clone(option);
+    const normalized = clone(option);
+    for (const key of ["min", "max", "proposed", "quoteArea"]) {
+      if (typeof option[key] !== "string") continue;
+      const area = wholeArea(option[key]);
+      normalized[key] = area ? String(area) : option[key].trim();
+    }
+    return normalized;
+  }
+  function rangeLabel(option) {
+    const min = wholeArea(option?.min), max = wholeArea(option?.max);
+    return min && max ? `${min.toLocaleString("en-US")}–${max.toLocaleString("en-US")} SF` : "";
+  }
+  function validateSpaceOption(option, row) {
+    if (option == null) return null;
+    if (!option || typeof option !== "object" || Array.isArray(option) || !["fixed", "range", "combined"].includes(option.kind))
+      return "This saved space format is not supported. Review it in Master App.";
+    if (["min", "max", "proposed", "quoteArea"].some(k => typeof option[k] !== "string") || !Array.isArray(option.members) || typeof option.review !== "boolean")
+      return "Space details are incomplete. Review this space in Master App.";
+    if (option.kind === "range") {
+      const min = wholeArea(option.min), max = wholeArea(option.max), proposed = wholeArea(option.proposed);
+      if (!min || !max || min > max) return "Enter a valid minimum and maximum suite size.";
+      if (option.proposed.trim() && (!proposed || proposed < min || proposed > max)) return "Proposed SF must be within the advertised range.";
+      if (Number(row.building_sf) > 0 && max > Number(row.building_sf)) return "Maximum suite size cannot exceed Total Building SF.";
+      if (option.members.length) return "A divisible suite cannot contain combined-suite members.";
+      if (row.suite_size !== rangeLabel(option)) return "Suite size must match the advertised range.";
+    }
+    if (option.kind === "combined" && (option.members.length < 2 || new Set(option.members).size !== option.members.length || option.members.some(id => !UUID.test(id))))
+      return "Confirm at least two distinct combined-suite members in Master App.";
+    if (option.quoteArea && !wholeArea(option.quoteArea)) return "The quoted area must be a positive whole number.";
+    return null;
+  }
   function surveyBuildingKey(property) {
     return JSON.stringify([property.address, property.city, property.state].map(normalizeIdentityPart));
   }
@@ -123,6 +170,6 @@
     if (sameValue(current, request.baseline)) return { status: "none", properties: scoped, current };
     return { status: "changed", properties: scoped, current };
   }
-  return { surveyBuildingKey, groupSurveySpaces, availableSpaceSeed, getSpaceLabel, normalizeSpaceLabel,
+  return { sourceRange, wholeArea, normalizeSpaceOption, rangeLabel, validateSpaceOption, surveyBuildingKey, groupSurveySpaces, availableSpaceSeed, getSpaceLabel, normalizeSpaceLabel,
     SurveySpaceConflictError, assertUniqueSpaces, sameValue, createBatchRequest, createUpdateRequest, validateRequest, classifyReadback };
 });

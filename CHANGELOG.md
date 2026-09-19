@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.4.1 candidate — 2026-09-18 — Divisible survey spaces
+
+Prepared locally; not uploaded, submitted, installed, or publicly verified.
+
+- The single open CoStar Space Details can carry an explicit divisible range into
+  Survey minimum/maximum SF. Property summary smallest-to-total ranges and
+  contiguous figures never create a divisible suite or combined option.
+- Minimum, maximum and optional proposed SF are separate controls. The advertised
+  range remains visible; linked monthly pricing uses only the proposed SF, even
+  for a Single tenant entry. A monthly total is bound to that area; changing the
+  proposed area clears total-based base rent and expenses for fresh entry.
+- Source office/loading details are not allocated to a proposed portion. The
+  existing private source evidence is retained; saved metadata, including optional
+  feature-area certification, survives unrelated edits.
+- Combine suites opens the survey in Master App for explicit member selection.
+  Existing linked combinations remain readable; member-dependent fields and rent
+  are edited in Master App. Notes remain editable. Older free-text combinations
+  stay readable; new unlinked Combined drafts are rejected.
+- No new permissions, hosts, analytics, recipients, or Comp capture changes.
+  Install/distribution must follow the web/database rollout supporting space_option.
+
 ## 1.4.0 — 2026-09-18 — Survey workflow and pop-out
 
 - Moved Attach open CoStar flyer (PDF) into the fixed bottom action bar, directly

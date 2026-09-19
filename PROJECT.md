@@ -1,3 +1,57 @@
+# Divisible space extension candidate — 2026-09-18 19:10:20 MST (America/Phoenix)
+
+Current scope: support the approved Master App suite-range model and keep combined
+suite relationships owned by the app's explicit member picker. User authorized
+making the preview live and updating documentation. Parent Codex task owns web/
+database rollout and extension release; this subtask performed no push, upload,
+Store submission, installation/reload or production-record write.
+
+- Isolated worktree: `/Users/maxschumacher/.codex/worktrees/survey-extension-space-options-20260918`
+- Canonical source remains `/Users/maxschumacher/Developer/chrome extensions/Master App Survey`.
+- Branch: `codex/survey-space-options-20260918`; base `bc543fd` (1.4.0 submission checkpoint).
+- Parent checkout's existing AGENTS.md, PROJECT.md and STORE_LISTING.md edits were
+  not changed. Preserve them when integrating this branch.
+- Candidate manifest: **1.4.1**, not publicly/installed verified. Check current Store
+  draft and public state before any release; do not blindly reuse its number.
+
+Implemented: selected Space Details captures an explicit min/max range into
+`space_option`, separate optional proposed SF, area-bound total rent/expenses,
+minimal patches preserving existing metadata/feedback, strict numeric boundaries,
+no allocated office/loading or guessed pricing. Ranges shown only in property
+summary/contiguity never become suite metadata. Combine action opens the actual
+survey in Master App; saved linked options allow notes-only changes here and
+member-dependent edits there. Legacy free-text combinations remain readable;
+new unlinked Combined drafts are blocked. Comp capture/save remains unchanged.
+
+**Deployment dependency:** `survey_properties.space_option` and the web app's
+range/combination validation and projection must be live first. Contract:
+`{kind,min,max,proposed,members,review,quoteArea}`, with optional `featuresArea`
+preserved but never filled from capture. Ranges use canonical whole-SF strings,
+empty proposed/quoteArea initially and advertised `suite_size` text. No backfill
+or auto-inference is part of this extension change.
+
+Prepared ZIP: `output/masterappsurvey-v1.4.1.zip` — **96,919 bytes**; SHA-256
+`08508a0a41667eb9cff1f5a40d212315e8fc35c0292d766d7fff2f5c3b14ca3c`.
+Extracted folder: `output/review/space-extension-1.4.1`.
+All 14 runtime/icon files match source and ZIP; no credentials/tests/docs in ZIP.
+
+Verification: **181 unit/transport tests** pass in source and extracted ZIP.
+The final package passes **46 mounted browser scenarios** (27 Survey, 6 Yard,
+13 Comp property linking), **6 real Chrome pop-out scenarios**, and MV3 worker/
+panel smoke. Disposable fixture profiles only; remote requests blocked. Verified
+range capture → insert, save/reopen, notes-only update, quote invalidation and
+320/390/720px range layout; source Office SF retained privately without allocation.
+Evidence: `output/review/space-{unit-source.txt,unit-package.txt,browser-package.json,popout-package.json,extension-package.json,package.json}`.
+Screenshots: `output/review/space-range-320.png`, `space-range-390.png`,
+`space-range-720.png`.
+
+Updated local CHANGELOG.md and CHROMEWEBSTORE.md. Parent handles shared playbook,
+ops log, and app wiki using verified live state. Next step: parent reviews this
+branch, verifies the backend dependency, integrates/rechecks candidate version,
+and owns the authorized distribution. No installed or public rollout is claimed.
+
+---
+
 # September 18 Survey extension alignment
 
 ## Current release checkpoint — 2026-09-18 18:06:22 MST (America/Phoenix)
