@@ -1,5 +1,29 @@
 # Chrome Web Store — CoStar → Survey Pusher
 
+## 1.4.10 local candidate — 2026-09-18 — Reviewed Power sources and clean Loading
+
+- Power uses Sale Highlights, Sale Notes or listing descriptions first. In an open
+  suite, only that space's Highlights/Space Notes qualify. Property Power remains
+  blank until **Use property value** is selected; **Keep blank** is a deliberate clear.
+- Bounded property fields exclude Utilities/walkability and Levelators; Levelators
+  never appear in Loading. Power keeps qualifiers, scope, ranges and wire counts.
+  Power Road and Suite100A are not electrical evidence. Heavy power is independent.
+- Re-read, updates, pending retries and pop-outs preserve reviewed values/clears.
+  Divisible portions do not inherit whole-building Power or its property fallback.
+- Retains complete1.4.9 flyer scope flags, suite safeguards and shared building flyers.
+  Backend237c98a separately fixes generic32KB errors; existing1.4.9 can retry analysis
+  without reloading. The rejected68thAve field is not yet established.
+- Verified301units,92mounted scenarios,8actualpopouts,10propertyMV3,12suite/flyerMV3,
+  5SalesMV3,flyerworker and MV3smoke; screenshot320/390px. All isolated fixtures,
+  zero real-record writes. Source/ZIP/extracted18fileparity verified.
+- ZIP `/Users/maxschumacher/Developer/chrome extensions/Master App Survey/masterappsurvey-v1.4.10.zip`
+  and extracted `output/review/space-extension-1.4.10` under the same directory.
+  115743bytes;SHA256 `1df36750bc1b2788eac007c9e99d104b071d6ac2584b7f307f21a2173890ec48`.
+- Local package only. Installed1.4.9 and user drafts remain untouched; no Store
+  upload/publication. Save/cancel active work before in-place replacement and Reload
+  of the same existing extension. Reverify its ID/path; preserve local storage.
+
+
 ## 1.4.9 local candidate — 2026-09-18 — Offered-space safeguards and clean highlights
 
 - Includes the full1.4.8 flyer feature and tested1.4.7 property updates.
@@ -33,7 +57,7 @@
   protected lease-area defaults, advertised office capture ignoring Property Mix,
   previous Sales/suite/shared-flyer behavior. No installed update or Store submission.
 
-## Current local candidate1.4.7
+## Historical local candidate1.4.7
 
 ZIP: `/Users/maxschumacher/Developer/chrome extensions/Master App Survey/masterappsurvey-v1.4.7.zip`
 Extracted: `/Users/maxschumacher/Developer/chrome extensions/Master App Survey/output/review/space-extension-1.4.7`

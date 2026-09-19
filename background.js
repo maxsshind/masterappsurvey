@@ -285,17 +285,18 @@ async function readCoStar(options = {}) {
         "Marketing Brochure", "Tenants", "Market Conditions", "Analytics",
         "Demographics", "Loan & Financials", "Loan and Financials", "Area", "Traffic",
         "Public Transportation", "Help with Features", "Request Training", "Share Feedback",
-        "Terms of Use",
+        "Terms of Use", "Description", "Property Description", "Listing Description",
+        "Space Notes", "Highlights", "Leasing Contacts", "Listing Details", "Property", "Amenities",
       ];
-      const sectionLines = (heading) => {
+      const sectionLines = (heading, sourceLines = lines) => {
         const headingKey = (line) => line.replace(/\s*>{1,2}\s*$/, "").replace(/:$/, "").trim().toLowerCase();
-        const start = lines.findIndex((line) => headingKey(line) === heading.toLowerCase());
+        const start = sourceLines.findIndex((line) => headingKey(line) === heading.toLowerCase());
         if (start < 0) return [];
         const stops = new Set(marketingSectionStops.map((line) => line.toLowerCase()));
         const out = [];
-        for (let i = start + 1; i < lines.length; i++) {
-          if (stops.has(headingKey(lines[i]))) break;
-          out.push(lines[i]);
+        for (let i = start + 1; i < sourceLines.length; i++) {
+          if (stops.has(headingKey(sourceLines[i]))) break;
+          out.push(sourceLines[i]);
         }
         return out;
       };
@@ -317,7 +318,7 @@ async function readCoStar(options = {}) {
       // when no selected-space modal is open. Never borrow loading/office totals
       // from an underlying building for a selected suite.
       const buildingFacts = txt.match(/(?:^|\n)Building(?: Details)?[ \t]*(?:\n|\t)([\s\S]*?)(?=\n(?:Amenities|Transportation|Availabilities|Transaction History|Space Details|Documents)\b|\nLocation[ \t]*\n(?=\s*(?:Submarket|Market|County)\b)|$)/i)?.[1] || '';
-      const factLabels = /\b(?:Has Truckwell or Dock|Truck Wells|Clear Height|Office SF|Rail Served|Heavy Power|Has Rail|Rail Line|Rail Spots|Building Size|Typical Floor|Owner Occupier|CoStar Estimate|Opportunity Zone|Land Acres|Parking Ratio|Parking Spaces|Property Mix|Floor Contig|Bldg Contig|Lease Status|Time on Market|Space Features|Rent\s*\/\s*(?:Month|Mo|Year|Yr)|Service Type|Year Built|Drive Ins|Cross Docks|Sprinklers|Construction|Build-Out|Condition|Occupancy|Tenancy|Loading|Docks|Power|Office|Available|Suite(?: Number)?|Floor|Rent|Type|Term|Services|Stories|Columns|Elevators|Levelers|Cranes|Class|RBA)\b/gi;
+      const factLabels = /\b(?:Has Truckwell or Dock|Truck Wells|Clear Height|Office SF|Rail Served|Heavy Power|Has Rail|Rail Line|Rail Spots|Building Size|Typical Floor|Owner Occupier|CoStar Estimate|Opportunity Zone|Land Acres|Parking Ratio|Parking Spaces|Property Mix|Floor Contig|Bldg Contig|Lease Status|Time on Market|Space Features|Rent\s*\/\s*(?:Month|Mo|Year|Yr)|Service Type|Year Built|Drive Ins|Cross Docks|Sprinklers|Construction|Build-Out|Condition|Occupancy|Tenancy|Loading|Docks|Power|Office|Available|Suite(?: Number)?|Floor|Rent|Type|Term|Services|Stories|Columns|Elevators|Levelators|Levelers|Utilities|Pedestrian Friendly|Cycling Friendly|Car Friendly|Transit Friendly|Cranes|Class|RBA)\b/gi;
       // Max's source rule: exclude Property Mix completely. Its Office allocation
       // is neither an office measurement nor conflicting evidence to present.
       const mixStops = factLabels.source.replace('Office SF|','').replace('Office|','').replace('Property Mix|','');
@@ -332,10 +333,47 @@ async function readCoStar(options = {}) {
       const propertyFacts={scope:selectedFactSection===null?'building':'selected-space',
         clearHeight:facts.get('clear height')||'',officeSf:facts.get('office sf')||facts.get('office')||'',
         loading:loadingParts.join('; '),docks:facts.get('docks')||'',truckWells:facts.get('truck wells')||'',
-        power:facts.get('power')||'',railLine:facts.get('rail line')||'',
+        power:'',powerSource:'',powerFallback:(facts.get('power')||'').length<=4000?(facts.get('power')||''):'',railLine:facts.get('rail line')||'',
         heavyPower:facts.get('heavy power')||'',hasRail:facts.get('has rail')||facts.get('rail served')||'',
         hasTruckwellOrDock:facts.get('has truckwell or dock')||'',
         classA:/^A$/i.test(facts.get('class')||'')?'Yes':/^[BC]$/i.test(facts.get('class')||'')?'No':''};
+
+      // Only relevant marketing clauses may prefill Power. Preserve qualifiers,
+      // ranges and thousands separators; never synthesize electrical specifications.
+      const powerClauses = sourceLines => {
+        const electrical = /\b(?:power|electrical|amperage|voltage)\b|\d\s*(?:amps?|amperes?|volts?|kva|kw|[av]|[- ]?phases?|ph|p)\b|\b(?:single|three)[- ]phase\b/i;
+        const isElectrical = part => electrical.test(part
+          .replace(/\bPower\s+(?:Road|Rd|Street|St|Drive|Dr|Avenue|Ave|Blvd|Boulevard|Lane|Ln|Court|Ct|Way|Parkway|Pkwy)\b/gi,'')
+          .replace(/\b(?:Suite|Unit|Building)\s*#?\s*[\w-]+\b/gi,''));
+        const qualifier = /\b(?:not|unverified|verify|verification|confirm\w*|subject|per|shared|serv\w*|upgrad\w*|transformer\w*|panels?|capacity|includ\w*|exclud\w*|propos\w*|planned|future|estimat\w*|approx\w*|allocat\w*|currently|existing)\b|\d[- ]?wire\b/i;
+        const unrelated = /\b(?:offices?|parking|truck court|loading|docks?|drive[- ]ins?|sprinklers|restrooms?|occupied|landscap\w*|roof|clear height)\b/i;
+        const snippets = sourceLines.flatMap(line => line.replace(/^[•·▪◦*-]\s*/, '').split(/[.!?]\s+/).flatMap(sentence => {
+          const parts = sentence.split(/\s*;\s*|,(?!\d{3}(?:\D|$))|\s+(?:and|with)\s+(?=(?:\d[\d,.]*\s*)?(?:drive[- ]ins?|docks?|sprinklers|clear height|parking|offices?|restrooms)\b)/i)
+            .map(part => part.trim().replace(/[.;]$/, ''));
+          const out = []; let group = [], hasPower = false;
+          const flush = () => { if (hasPower) out.push(group.join(', ')); group = []; hasPower = false; };
+          for (const part of parts) {
+            const evidence = isElectrical(part);
+            const qualification = /^(?:subject to|per\b|shared (?:between|with)|serv(?:es|ing)\b|not\b|unverified|verify)/i.test(part);
+            if (evidence || (qualifier.test(part) && (!unrelated.test(part) || qualification))) { group.push(part); hasPower ||= evidence; }
+            else flush();
+          }
+          flush(); return out;
+        }));
+        const value = [...new Set(snippets)].join(', ');
+        return value.length <= 4000 ? value : '';
+      };
+      // Marketing text behind an open suite cannot establish that suite's power.
+      const selectedLines = spaceHeadings.length === 1
+        ? txt.slice(spaceHeadings[0].index).split(/\bLeasing Contacts\b/i)[0].split(/\n/).map(line=>line.trim()).filter(Boolean) : [];
+      const marketingPowerSources = selectedFactSection === null
+        ? [['Sale highlights', saleHighlightLines], ['Sale notes', saleNoteLines],
+           ...['Description','Property Description','Listing Description'].map(heading=>[heading,sectionLines(heading)])]
+        : [['Space highlights',sectionLines('Highlights',selectedLines)],['Space notes',sectionLines('Space Notes',selectedLines)]];
+      for (const [source, content] of marketingPowerSources) {
+        const power = powerClauses(content);
+        if (power) { propertyFacts.power = power; propertyFacts.powerSource = source; break; }
+      }
 
       if (selectedFactSection === null) {
         const officeAmounts = [...saleHighlights.matchAll(/(?:±\s*)?((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)\s*(?:SF|sq\.?\s*ft\.?|square feet)\s+(?:of\s+)?office\b/gi)]

@@ -4,6 +4,44 @@ const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
 const root=path.resolve(process.env.EXTENSION_ROOT||path.join(__dirname,'..'));
 const profile=fs.mkdtempSync(path.join(os.tmpdir(),'survey-property-facts-'));
 const building='<h1>100 Fixture Way</h1><p>Phoenix, AZ 85040</p><p>North Airport Submarket</p><h2>Building</h2><div>RBA</div><div>31,600 SF</div><div>Clear Height</div><div>24\'6"</div><div>Office SF</div><div>6,600 SF</div><div>Docks</div><div>10 ext</div><div>Truck Wells</div><div>None</div><div>Drive Ins</div><div>1 tot.</div><div>Class</div><div>B</div><div>Power</div><div>200 amps</div><div>Rail Line</div><div>Union Pacific</div><div>Year Built</div><div>1980</div>';
+const airportFacts = `2330 S Airport Blvd
+Chandler, AZ 85286
+Building
+RBA
+13,472 SF
+Docks
+None
+Drive Ins
+7 tot.
+Levelators
+None
+Construction
+Masonry
+Clear Height
+14'
+Elevators
+None
+Rail Spots
+None
+CoStar Estimate
+$1.39 - 1.70/IG (Industrial)
+Power
+800a/120 - 208v 3p Heavy
+Utilities
+Lighting, Sewer, Water
+Pedestrian Friendly
+30 - Somewhat friendly
+Cycling Friendly
+60 - Moderately friendly
+Car Friendly
+100 - Exceptionally friendly
+Transit Friendly
+0 - Not friendly
+Parking Spaces
+Surface · Available
+Amenities
+Air Conditioning
+`;
 function modal(n,area,extra=''){return `<section id="space"><p>${n} of 3 Spaces</p><h2>Space Details</h2><div>Available</div><div>${area} SF Industrial</div><div>Suite</div><div>${n}</div><div>Floor</div><div>Partial 1st</div>${extra}<div>Floor Contig</div><div>2,400 SF</div><div>Rent</div><div>Withheld</div><div>Type</div><div>Direct</div><h2>Documents</h2></section>`;}
 (async()=>{let context;const results=[],errors=[],blocked=[];try{
  context=await chromium.launchPersistentContext(profile,{headless:true,viewport:{width:390,height:950},executablePath:process.env.EXTENSION_CHROMIUM_PATH,args:[`--disable-extensions-except=${root}`,`--load-extension=${root}`]});
@@ -46,15 +84,30 @@ function modal(n,area,extra=''){return `<section id="space"><p>${n} of 3 Spaces<
  await costar.goto('https://product.costar.com/listings/for-sale/detail/university/property');
  await costar.evaluate(()=>{document.body.innerHTML=`<h1>1840 E University Dr</h1><p>Tempe, AZ 85281</p><p>Tempe Southwest Submarket</p><h2>Building</h2><div>Type</div><div>3 Star Industrial Warehouse</div><div>Location</div><div>Urban</div><div>RBA</div><div>31,426 SF</div><div>Class</div><div>B</div><div>Year Built</div><div>1985</div><div>Docks</div><div>None</div><div>Drive Ins</div><div>6 tot.</div><div>Clear Height</div><div>17'</div><div>Truck Wells</div><div>None</div><div>Property Mix</div><div>Industrial ･ 25,141 SF ･ 80.0%Office ･ 6,285 SF ･ 20.0%</div><div>Power</div><div>600a/277 - 480v 3p</div><div>Opportunity Zone</div><div>Yes</div><h2>Availabilities</h2><h3>For Sale</h3><div>Price</div><div>Individual Property ･ $8,000,000 ($254.57/SF)</div><div>Sale Type</div><div>Investment</div><div>Status</div><div>Active</div><h3>Sale Highlights</h3><p>±31,426 SF total: ±21,426 SF warehouse and ±10,000 SF office space.</p><p>600AMP 277/480V 3-Phase power, 6 drive-ins, sprinklers, up to 17' clear height.</p><h3>External Links</h3><p>Offering Memorandum</p>`;});
  await panel.evaluate(()=>scanComp());
- assert.equal(await panel.locator('#comp_office_sf').inputValue(),'10,000');assert.equal(await panel.locator('#comp_clear_height').inputValue(),"17'");assert.equal(await panel.locator('#comp_power').inputValue(),'600a/277 - 480v 3p');
+ assert.equal(await panel.locator('#comp_office_sf').inputValue(),'10,000');assert.equal(await panel.locator('#comp_clear_height').inputValue(),"17'");assert.equal(await panel.locator('#comp_power').inputValue(),'600AMP 277/480V 3-Phase power');
  assert.match(await panel.locator('#comp_office_sf').locator('..').innerText(),/Sale highlights/);assert.equal(await panel.locator('#comp_heavy_power_answer').innerText(),'Unknown');assert.equal(await panel.locator('#comp_has_truckwell_or_dock_answer').innerText(),'No');
  await panel.locator('#compSave').click();await panel.waitForFunction(()=>fixtureSaves.length===3&&!comp.saving);
- saved=await panel.evaluate(()=>fixtureSaves.at(-1).p_comp);assert.equal(saved.office_sf,10000);assert.equal(saved.clear_height,"17'");assert.equal(saved.power,'600a/277 - 480v 3p');assert.equal(saved.heavy_power,null);
+ saved=await panel.evaluate(()=>fixtureSaves.at(-1).p_comp);assert.equal(saved.office_sf,10000);assert.equal(saved.clear_height,"17'");assert.equal(saved.power,'600AMP 277/480V 3-Phase power');assert.equal(saved.heavy_power,null);
  results.push('University Sales Property DOM ignores Property Mix; captures advertised10,000office,17ftheight,600Apower through save/readback without heavy-power inference');
  await costar.evaluate(()=>{document.body.innerHTML=document.body.innerHTML.replace('±10,000 SF office space.','renovated office space.');});
- await panel.evaluate(()=>{resetCompForm();return scanComp();});assert.equal(await panel.locator('#comp_office_sf').inputValue(),'');assert.equal(await panel.locator('#comp_power').inputValue(),'600a/277 - 480v 3p');
+ await panel.evaluate(()=>{resetCompForm();return scanComp();});assert.equal(await panel.locator('#comp_office_sf').inputValue(),'');assert.equal(await panel.locator('#comp_power').inputValue(),'600AMP 277/480V 3-Phase power');
  results.push('PropertyMix-only office allocation stays blank; valid fields after Property Mix still capture');
  await panel.locator('#comp_power').fill('3,400 amps, 277/480V, 3-phase');await panel.locator('#comp_office_sf').fill('9,500');await panel.evaluate(()=>scanComp());assert.equal(await panel.locator('#comp_power').inputValue(),'3,400 amps, 277/480V, 3-phase');assert.equal(await panel.locator('#comp_office_sf').inputValue(),'9,500');
  results.push('Manually reviewed Power and office size survive an actual worker re-read');
+
+ await costar.goto('https://product.costar.com/listings/for-sale/detail/byqk26b/property');
+ await costar.evaluate(text=>{document.body.innerHTML='<pre></pre>';document.querySelector('pre').textContent=text;},airportFacts);
+ await panel.evaluate(()=>scanComp());
+ assert.equal(await panel.locator('#comp_power').inputValue(),'');
+ assert.equal(await panel.locator('#compPowerFallbackValue').innerText(),'800a/120 - 208v 3p Heavy');
+ assert.equal(await panel.locator('#comp_loading').inputValue(),'Docks: None; Drive-ins: 7 tot.');
+ await panel.locator('#compSkipPropertyPower').click();await panel.evaluate(()=>scanComp());
+ assert.equal(await panel.locator('#comp_power').inputValue(),'');assert.equal(await panel.locator('#compPowerFallback').isVisible(),false);
+ results.push('Airport screenshot DOM bounds property Power at Utilities and excludes Levelators from Loading; Keep blank survives real re-read');
+ await panel.evaluate(()=>{resetCompForm();return scanComp();});await panel.locator('#compUsePropertyPower').click();
+ assert.equal(await panel.locator('#comp_power').inputValue(),'800a/120 - 208v 3p Heavy');
+ await panel.locator('#comp_sub_market').selectOption('North Airport');await panel.locator('#compSave').click();await panel.waitForFunction(()=>fixtureSaves.length===4&&!comp.saving);
+ saved=await panel.evaluate(()=>fixtureSaves.at(-1).p_comp);assert.equal(saved.power,'800a/120 - 208v 3p Heavy');assert.equal(saved.loading,'Docks: None; Drive-ins: 7 tot.');assert.equal(saved.heavy_power,null);
+ results.push('Explicit property choice alone sends clean Airport power through reviewed save/readback; no heavy-power inference');
  assert.deepEqual(errors,[]);assert.deepEqual(blocked,[]);console.log(JSON.stringify({result:'passed',results,errors,blocked},null,2));
 }finally{if(context)await context.close();fs.rmSync(profile,{recursive:true,force:true});}})().catch(e=>{console.error(e);process.exitCode=1;});

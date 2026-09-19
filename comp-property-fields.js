@@ -34,12 +34,15 @@ function fromScrape(d){
  for(const [field,raw] of [['clear_height',f.clearHeight],['office_sf',f.officeSf],['lease_area',d.selectedSpace?.availableRange?null:d.selectedSpace?.availableSf],['year_built',d.yearBuilt]]){
   if(raw==null||raw==='')continue;const p=parse(field,raw);if(p.error)unresolved.push(`${labels[field]}: ${raw}`);else values[field]=p.value;
  }
- for(const field of ['loading','power'])if(f[field]){const p=parse(field,f[field]);if(p.error)unresolved.push(`${labels[field]}: source text exceeds 4,000 characters.`);else values[field]=p.value;}
+ for(const field of ['loading','power'])if(f[field] && (field !== 'power' || ['Sale highlights','Sale notes','Description','Property Description','Listing Description','Space highlights','Space notes'].includes(f.powerSource))){const p=parse(field,f[field]);if(p.error)unresolved.push(`${labels[field]}: source text exceeds 4,000 characters.`);else values[field]=p.value;}
  for(const [field,raw] of [['class_a',f.classA],['heavy_power',f.heavyPower],['has_rail',f.hasRail],['has_truckwell_or_dock',f.hasTruckwellOrDock]]){const value=answer(raw);if(value!==null)values[field]=value;}
  if(values.has_truckwell_or_dock===undefined){const docks=count(f.docks),wells=count(f.truckWells);if(docks>0||wells>0)values.has_truckwell_or_dock=true;else if(docks===0&&wells===0)values.has_truckwell_or_dock=false;}
  // Raw power and rail names do not establish heavy power or usable rail access.
  if(f.railLine&&!Object.hasOwn(values,'has_rail'))unresolved.push(`Rail source: ${f.railLine}`);
- return {values,unresolved,sources};
+ if(values.power)sources.power=f.powerSource;
+ // Older scrape caches have no source marker: re-read before offering their text.
+ const fallback=parse('power',f.powerFallback);
+ return {values,unresolved,sources,powerFallback:!values.power&&!fallback.error?fallback.value:null};
 }
 function rowValue(row,field){return field==='clear_height'?(row.clear_height??(row.clear_height_ft==null?null:String(row.clear_height_ft))):row[field];}
 return {fields,flags,labels,rowValue,propertyTypes,normalizePropertyTypes,height,area,parse,serialize,fromScrape};

@@ -573,13 +573,13 @@ Sold Price	$5,000,000`;
 for(const tabular of [false,true])test(`Sales Property ${tabular?'tabular':'lines'} ignores Property Mix and captures advertised office/height/power`,async()=>{
  const data=await salesListingFixture(tabular?universityFacts:universityFacts.replaceAll('\t','\n'),'property');
  assert.equal(data.propertyFacts.officeSf,'10000');assert.equal(data.propertyFacts.officeSource,'Sale highlights');
- assert.equal(data.propertyFacts.clearHeight,"17'");assert.equal(data.propertyFacts.power,'600a/277 - 480v 3p');
+ assert.equal(data.propertyFacts.clearHeight,"17'");assert.equal(data.propertyFacts.power,'600AMP 277/480V 3-Phase power');
  assert.equal(data.propertyFacts.loading,'Docks: None; Truck wells: None; Drive-ins: 6 tot.');
  assert.equal(data.propertyFacts.heavyPower,'');assert.equal(data.propertyFacts.officeReview,undefined);
 });
 test('Property Mix alone never fills office; fields following the excluded section still capture',async()=>{
  const d=await salesListingFixture(universityFacts.replace('±10,000 SF office space.','renovated offices.'),'property');
- assert.equal(d.propertyFacts.officeSf,'');assert.equal(d.propertyFacts.power,'600a/277 - 480v 3p');
+ assert.equal(d.propertyFacts.officeSf,'');assert.equal(d.propertyFacts.power,'600AMP 277/480V 3-Phase power');
 });
 test('Selected suite cannot borrow advertised whole-building office or power',async()=>{
  const d=await salesListingFixture(universityFacts+'\n2 of 2 Spaces\nSpace Details\nAvailable\n1,200 SF Industrial\nSuite\n7\nFloor\nPartial 1st\nFloor Contig\n1,200 SF\nRent\nWithheld\nDocuments','property');
@@ -602,4 +602,92 @@ test('marketing sections remain separate and recognize colon and chevron heading
  const d = await salesListingFixture(salesHeader + 'Sale Highlights:\nBuilding 100% air-conditioned\nSale Notes >\nRenovated offices with private entrances.\nTransaction History >>\nSale\n3\nPrior Sales');
  assert.equal(d.saleHighlights, '• Building 100% air-conditioned');
  assert.equal(d.saleNotes, 'Renovated offices with private entrances.');
+});
+
+const airportFacts = `2330 S Airport Blvd
+Chandler, AZ 85286
+Building
+RBA
+13,472 SF
+Docks
+None
+Drive Ins
+7 tot.
+Levelators
+None
+Construction
+Masonry
+Clear Height
+14'
+Elevators
+None
+Rail Spots
+None
+CoStar Estimate
+$1.39 - 1.70/IG (Industrial)
+Power
+800a/120 - 208v 3p Heavy
+Utilities
+Lighting, Sewer, Water
+Pedestrian Friendly
+30 - Somewhat friendly
+Cycling Friendly
+60 - Moderately friendly
+Car Friendly
+100 - Exceptionally friendly
+Transit Friendly
+0 - Not friendly
+Parking Spaces
+Surface · Available
+Amenities
+Air Conditioning
+`;
+for(const inline of [false,true])test(`Airport power fallback excludes neighboring facts; Loading omits levelators (${inline?'inline':'lines'})`,async()=>{
+ const d=await salesListingFixture(inline?airportFacts.replace(/\n(?!Building|Amenities)/g,'\t').replace('Building\t','Building\n'):airportFacts,'property');
+ // Building headings use tab/line delimiters; the same field boundaries work in both.
+ assert.equal(d.propertyFacts.power,'');
+ assert.equal(d.propertyFacts.powerFallback,'800a/120 - 208v 3p Heavy');
+ assert.equal(d.propertyFacts.loading,'Docks: None; Drive-ins: 7 tot.');
+});
+for(const [heading,text,expected] of [
+ ['Sale Highlights','600AMP 277/480V 3-Phase power, 6 drive-ins, sprinklers, up to 17\' clear height.','600AMP 277/480V 3-Phase power'],
+ ['Sale Notes','3,400 amps, 277/480V, 3-phase. Six loading doors.','3,400 amps, 277/480V, 3-phase'],
+ ['Description','Up to 4,000 - 6,000 amps available; 20 parking spaces.','Up to 4,000 - 6,000 amps available'],
+ ['Property Description','Heavy power, 800 amps and 2 drive-ins.','Heavy power, 800 amps'],
+ ['Listing Description','Power to be verified. Excellent freeway access.','Power to be verified'],
+ ['Sale Highlights','600 amps, 277/480 volts, three-phase power and sprinklers.','600 amps, 277/480 volts, three-phase power'],
+])test(`Marketing power from ${heading}: ${text}`,async()=>{
+ const d=await salesListingFixture(airportFacts+`${heading}\n${text}\nTransaction History\nPower\n9,000 amps`);
+ assert.equal(d.propertyFacts.power,expected);assert.equal(d.propertyFacts.powerSource,heading==='Sale Highlights'?'Sale highlights':heading==='Sale Notes'?'Sale notes':heading);
+});
+test('Highlights take precedence over description and unreliable property power',async()=>{
+ const d=await salesListingFixture(airportFacts+'Sale Highlights\n1,000 amps\nDescription\n2,000 amps\nDocuments');
+ assert.equal(d.propertyFacts.power,'1,000 amps');assert.equal(d.propertyFacts.powerFallback,'800a/120 - 208v 3p Heavy');
+});
+test('Unrelated marketing and historical power do not suppress the explicit property choice',async()=>{
+ const d=await salesListingFixture(airportFacts+'Sale Highlights\nPowerful location\nSale Notes\nNew offices\nTransaction History\nPower\n9000 amps');
+ assert.equal(d.propertyFacts.power,'');assert.equal(d.propertyFacts.powerFallback,'800a/120 - 208v 3p Heavy');
+});
+test('Selected-space marketing wins and property fallback is limited to the selected suite',async()=>{
+ const d=await salesListingFixture(airportFacts+'Sale Highlights\n800 amps\n2 of 2 Spaces\nSpace Details\nAvailable\n1,200 SF Industrial\nSuite\n7\nFloor\nPartial 1st\nPower\n100 amps\nUtilities\nWater\nDocuments\nSpace Notes\n200 amps, 120/208V, three-phase power.\nHighlights\nNew offices\nLeasing Contacts\nPower 500 amps');
+ assert.equal(d.propertyFacts.power,'200 amps, 120/208V, three-phase power');assert.equal(d.propertyFacts.powerFallback,'100 amps');assert.equal(d.propertyFacts.powerSource,'Space notes');
+});
+test('Ambiguous visible suites never receive whole-building power or a fallback',async()=>{
+ const d=await salesListingFixture(airportFacts+'Sale Highlights\n800 amps\nSpace Details\nSuite\n1\nSpace Notes\n200 amps\nSpace Details\nSuite\n2\nSpace Notes\n400 amps');
+ assert.equal(d.propertyFacts.power,'');assert.equal(d.propertyFacts.powerFallback,'');
+});
+
+for(const text of ['Power: 800 amps, not verified.','Power available, subject to utility approval.','120/208V, 400 amps, per suite','480V, 3-phase, 4-wire','Unverified, 800 amps','800 amps; shared between suites'])test(`Power retains scope and qualifications: ${text}`,async()=>{
+ const d=await salesListingFixture(airportFacts+'Description\n'+text+'\nDocuments');assert.equal(d.propertyFacts.power,text.replace(/[.]$/,'').replace('; ', ', '));
+});
+
+for(const text of ['Power Road frontage with convenient freeway access','Located near Power Road and the Loop 202.','Suite 100A has a private office.'])test(`Location and suite labels are not electrical evidence: ${text}`,async()=>{
+ const d=await salesListingFixture(airportFacts+'Sale Highlights\n'+text+'\nDocuments');assert.equal(d.propertyFacts.power,'');assert.equal(d.propertyFacts.powerFallback,'800a/120 - 208v 3p Heavy');
+});
+for(const tail of ['Includes 4 offices and 20 parking spaces.','Currently occupied by an auto shop.','Shared truck court.'])test(`Unrelated sentences cannot attach themselves to Power: ${tail}`,async()=>{
+ const d=await salesListingFixture(airportFacts+'Description\n600 amps. '+tail+'\nDocuments');assert.equal(d.propertyFacts.power,'600 amps');
+});
+
+for(const text of ['600 amps, subject to verification by tenant','800 amps, shared with other tenants','Power: 800 amps, not verified by tenant','200 amps, per office','800 amps, shared between offices'])test(`Power qualifiers retain who they apply to: ${text}`,async()=>{
+ const d=await salesListingFixture(airportFacts+'Description\n'+text+'. Includes new offices.\nDocuments');assert.equal(d.propertyFacts.power,text);
 });

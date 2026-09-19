@@ -156,7 +156,25 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     assert.equal(await target.locator('#comp_has_rail_answer').innerText(),'No');
     assert.equal(await target.locator('#comp_class_a').evaluate(n=>n.indeterminate),true);
     results.push('Comp handoff preserves raw text, selected existing deal and original property link, skip choice, checkboxes, notes and flyer without rescraping');
+
+
     await target.close();
+    for (const dismissed of [false,true]) {
+      source=await openPanel();
+      await source.evaluate(async dismissed=>{
+        await setAppMode('comp');comp.mode='insert';comp.updateId=null;comp.baseline=null;
+        comp.propertyFieldsEdited=dismissed?{power:true}:{};comp.powerFallbackDismissed=dismissed;
+        comp.scrape={costarId:'airport',propertyFacts:{powerFallback:'800a/120 - 208v 3p Heavy'}};
+        setCompPropertyValue('power',null,null);syncCompReviewState();
+      },dismissed);
+      assert.equal(await source.locator('#compPowerFallback').isVisible(),!dismissed);
+      target=await pop(source);
+      assert.equal(await target.locator('#compPowerFallback').isVisible(),!dismissed);assert.equal(await target.locator('#comp_power').inputValue(),'');
+      if(!dismissed)assert.equal(await target.locator('#compPowerFallbackValue').innerText(),'800a/120 - 208v 3p Heavy');
+      assert.equal(await target.evaluate(()=>comp.powerFallbackDismissed),dismissed);
+      results.push(dismissed?'Keep blank and its deliberate-clear state survive actual pop-out':'Unaccepted property-power choice survives actual pop-out without silently filling Power');
+      await target.close();
+    }
 
     const staleKey = 'panel_handoff:other-account';
     await worker.evaluate(key => chrome.storage.session.set({ [key]: { status: 'opening', accountId: 'different-account', email: 'other@example.invalid', createdAt: Date.now(), compControls: [] } }), staleKey);

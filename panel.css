@@ -623,3 +623,9 @@ body:has(#screen-form:not(.hidden)) #toast { bottom: 64px; }
   #screen-comp [data-sec="ptype"] .chip-grid { display:grid; grid-column:1 / -1; grid-template-columns:repeat(2,minmax(0,1fr)); }
   #screen-comp [data-sec="ptype"] .chip-grid label { width:auto; min-width:0; }
 }
+
+/* A property-table power value is a separate, explicit choice. */
+.power-fallback { margin-top:6px; padding:8px; background:#fff8eb; border:1px solid #e8cf9c; border-radius:6px; font-size:12px; }
+.power-fallback p { margin:0 0 6px; }
+.power-fallback-value { white-space:pre-wrap; overflow-wrap:anywhere; font-weight:600; margin-bottom:6px; }
+.power-fallback-actions { display:flex; flex-wrap:wrap; gap:6px; }

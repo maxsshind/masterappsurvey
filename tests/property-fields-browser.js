@@ -87,7 +87,7 @@ async (page) => {
     results.push('Untouched facts remain null; lease area alone gets the labeled building default');
 
     await fresh();
-    await p.evaluate(async()=>fillCompForm({...fixture.scrape,yearBuilt:'1980',propertyFacts:{clearHeight:'24\'6"',officeSf:'6,600 SF',loading:'Docks: 10 ext',docks:'10 ext',classA:'Yes',power:'200 amps',railLine:'Union Pacific'}}));
+    await p.evaluate(async()=>fillCompForm({...fixture.scrape,yearBuilt:'1980',propertyFacts:{clearHeight:'24\'6"',officeSf:'6,600 SF',loading:'Docks: 10 ext',docks:'10 ext',classA:'Yes',power:'200 amps',powerSource:'Sale highlights',railLine:'Union Pacific'}}));
     assert.equal(await p.locator('#comp_clear_height').inputValue(),'24\'6"' );
     assert.equal(await p.locator('#comp_office_sf').inputValue(),'6,600');
     assert.equal(await p.locator('#comp_class_a').isChecked(),true);

@@ -1,3 +1,48 @@
+# Power source and clean Loading — 2026-09-18 22:01 MST (America/Phoenix)
+
+Owner root/task01a0b71e-3d1a-7b80-bbc2-bfad6a26985a, Codex isolated worktree
+`/Users/maxschumacher/.codex/worktrees/survey-power-source-20260918`, branch
+`codex/survey-power-source-20260918`, based on final combined1.4.9 commit9007344.
+
+Implemented marketing-first Power; property-table value requires explicit Use
+property value choice; Keep blank, typed clears, accepted values and saved rows
+are protected. Utilities/walkability stop field capture; Levelators are boundary
+only and absent from Loading. Power qualifiers/wire counts/suite scope retained;
+Power Road and Suite100A do not count as electrical evidence. Independent review
+found clause issues, repaired with exact regression cases. No flyer-module changes.
+
+Source301units,92mounted scenarios,8actual pop-outs,10propertyMV3,12suite/flyerMV3,
+5SalesMV3,flyer-worker and smoke pass. Screenshot320/390px visually checked.
+Delivered local1.4.10 ZIP and extracted folder under canonical Master App Survey;
+18files match source/archive/folder. Final extracted301units,10propertyMV3,
+flyerworker and smoke all pass.
+SHA2561df36750bc1b2788eac007c9e99d104b071d6ac2584b7f307f21a2173890ec48;
+115743bytes. Installed1.4.9 remains unchanged (read-only verified22:00MST), ID
+njbgfmlglenidopldbegbckagnbncjpg, pathDefault/UnpackedExtensions/masterappsurvey-v1.4.9_9P7Zbt.
+No reload, record writes or Store submission. Preserve active user draft.
+
+Flyer owner task01a0b7db-a7e9-7651-8554-e51208268673 deployed backend237c98a to
+replace generic32KB validation error with actual field/link/scope diagnostics;
+true oversized metadata alone gets413. Root reviewed code; exact rejected68thAve
+payload remains unknown. No extension update needed for that backend correction.
+
+Shared docs saved and verified under prior approval: Surveys reference, Comp
+reference (candidate section only), live https://www.sshteam.app/wiki/surveys and
+OneDrive mirror. MD5 76ea7b8d4c0781fc067fb8d20ef5b1ca. Approved flyer backend ops
+entry amended with237c98a diagnostics; monthly count remains57 (no new entry).
+Flyer owner's Analyze flyer paragraphs preserved. Root independently reran all37
+backend route tests; all pass. Source-review exact qualifiers and suite labels
+covered by301units. No production business-record writes.
+
+Next: user can retry Analyze flyer immediately on installed1.4.9; any remaining
+error should identify its field/link/scope. Original68thAve payload unavailable.
+For new Power/Loading behavior save/cancel current draft, then update the same
+installed extension in place from1.4.10 and Reload its existingcard; do not remove
+or clearstorage. Reverify current installedpath/ID before doing so. No installation
+or Store upload done in this effort. Final candidate complete, awaiting userupdate.
+
+---
+
 # Flyer analysis candidate1.4.9 — 2026-09-18 21:38 MST (America/Phoenix)
 
 Task01a0b7db-a7e9-7651-8554-e51208268673; Codex isolated worktree

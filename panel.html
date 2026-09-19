@@ -383,7 +383,13 @@
         <div class="fld two"><span><label for="comp_lease_area">Available lease SF</label></span><input id="comp_lease_area" inputmode="decimal" aria-describedby="compLeaseDefaultHint" /><small id="compLeaseDefaultHint" class="field-hint hidden">Defaults to Building SF. Review the offered area.</small></div>
         <div class="fld two"><span><label for="comp_year_built">Year built</label></span><input id="comp_year_built" inputmode="numeric" /></div>
         <div class="fld"><span><label for="comp_loading">Loading</label></span><textarea id="comp_loading" rows="2" maxlength="4000"></textarea></div>
-        <div class="fld"><span><label for="comp_power">Power</label></span><textarea id="comp_power" rows="2" maxlength="4000" placeholder="e.g. 3,400 amps, 277/480V, 3-phase"></textarea></div>
+        <div class="fld"><span><label for="comp_power">Power</label></span><textarea id="comp_power" rows="2" maxlength="4000" placeholder="e.g. 3,400 amps, 277/480V, 3-phase"></textarea>
+          <div id="compPowerFallback" class="hidden power-fallback">
+            <p>No power details found in the listing text. Use CoStar’s property field?</p>
+            <div id="compPowerFallbackValue" class="power-fallback-value"></div>
+            <p class="hint">Property details may be outdated. Review before using.</p>
+            <div class="power-fallback-actions"><button type="button" id="compUsePropertyPower" class="btn btn-ghost btn-sm">Use property value</button><button type="button" id="compSkipPropertyPower" class="btn btn-ghost btn-sm">Keep blank</button></div>
+          </div></div>
         <small id="compPropertySource" class="field-hint hidden"></small>
       </div>
     </div>

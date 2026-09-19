@@ -1625,6 +1625,7 @@ const comp = {
   yardEdited: false,  // distinguishes intentional Unknown from an omitted scrape value
   siteFieldsEdited: {},
   propertyFieldsEdited: {},
+  powerFallbackDismissed: false,
   leaseAreaOrigin: null, // building default, source, saved or manual; never infer from equality
   propertyTypeEdited: false,
   propertyMode: "auto",
@@ -1720,6 +1721,7 @@ function setCompPropertyValue(field, value, source) {
 function resetCompPropertyFields() {
   comp.propertyFieldsEdited = {};
   comp.leaseAreaOrigin = null;
+  comp.powerFallbackDismissed = false;
   for (const field of CompPropertyFields.fields) setCompPropertyValue(field,null,null);
   syncCompFeatureChecks(); $('compPropertySource').classList.add('hidden');
 }
@@ -1737,6 +1739,13 @@ function fillCompPropertyFields(d) {
   }
   const source = $('compPropertySource'); source.textContent = capture.unresolved.join(' · ');
   source.classList.toggle('hidden', !source.textContent); syncCompFeatureChecks();
+}
+function syncCompPowerFallback() {
+  const value = CompPropertyFields.fromScrape(comp.scrape || {}).powerFallback;
+  const show = !!value && comp.mode !== 'update' && !comp.propertyFieldsEdited.power &&
+    !comp.powerFallbackDismissed && !$('comp_power').value.trim() && !comp.pendingSave && !comp.saving;
+  $('compPowerFallback').classList.toggle('hidden', !show);
+  $('compPowerFallbackValue').textContent = show ? value : '';
 }
 function syncCompLeaseDefault() {
   const hint = $('compLeaseDefaultHint');
@@ -2169,6 +2178,7 @@ function syncCompModeUI() {
 }
 
 function syncCompReviewState() {
+  syncCompPowerFallback();
   syncCompFeatureChecks();
   syncCompLeaseDefault();
   const tracked = ["comp_address", "comp_sub_market", "comp_building_sf", "comp_sale_price", "comp_rent_psf"];
@@ -2609,6 +2619,7 @@ function compDraftSnapshot() {
     yardEdited: comp.yardEdited, siteFieldsEdited: comp.siteFieldsEdited, propertyFieldsEdited: comp.propertyFieldsEdited,
     propertyTypeEdited: comp.propertyTypeEdited,
     leaseAreaOrigin: comp.leaseAreaOrigin,
+    powerFallbackDismissed: comp.powerFallbackDismissed,
     costarId: comp.costarId, sourceUrl: comp.sourceUrl, flyerUrl: comp.flyerUrl,
   };
 }
@@ -2636,7 +2647,7 @@ async function restorePendingCompSave() {
     $(container).querySelectorAll("input").forEach((input) => { input.checked = choices.includes(input.value); });
   }
   comp.propertyTypeEdited = draft.propertyTypeEdited || false;
-  for (const field of ["baseline", "originalPropertyId", "propertyMode", "propertyId", "yardEdited", "siteFieldsEdited", "propertyFieldsEdited", "leaseAreaOrigin", "costarId", "sourceUrl", "flyerUrl"]) {
+  for (const field of ["baseline", "originalPropertyId", "propertyMode", "propertyId", "yardEdited", "siteFieldsEdited", "propertyFieldsEdited", "leaseAreaOrigin", "powerFallbackDismissed", "costarId", "sourceUrl", "flyerUrl"]) {
     if (Object.hasOwn(draft, field)) comp[field] = draft[field];
   }
   if (comp.propertyFieldsEdited?.clear_height_ft) comp.propertyFieldsEdited.clear_height = true;
@@ -2739,6 +2750,20 @@ async function saveComp() {
 // ─── Comp-mode wiring (guarded — panel.html owns these elements) ──────────────────
 
 function initCompMode() {
+  $('compUsePropertyPower').addEventListener('click', () => {
+    if (comp.pendingSave || comp.saving || $('compPowerFallback').classList.contains('hidden')) return;
+    const value = CompPropertyFields.fromScrape(comp.scrape || {}).powerFallback;
+    if (!value) return;
+    comp.propertyFieldsEdited.power = true;
+    setCompPropertyValue('power', value, 'Property field · accepted');
+    syncCompReviewState();
+  });
+  $('compSkipPropertyPower').addEventListener('click', () => {
+    if (comp.pendingSave || comp.saving) return;
+    comp.powerFallbackDismissed = true;
+    comp.propertyFieldsEdited.power = true;
+    syncCompReviewState();
+  });
   populateCompSubmarkets();
   syncCompFeatureChecks();
   document.querySelectorAll('[data-clear-comp-feature]').forEach(button => button.addEventListener('click', () => {
