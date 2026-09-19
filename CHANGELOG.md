@@ -2,13 +2,15 @@
 
 ## Unreleased — September 18 Survey alignment review
 
+- Requested pricing simplification: removed area-calculation helper, source callout, empty-total waiting message and monthly-confirmation checkbox/save gate. Normal Save accepts valid pricing; exact monthly prefill and numeric/source safeguards remain.
+
 - Requested layout revision: Area → Monthly pricing → Availability/client Notes/Date. Saved layouts migrate to v3 with a separate prior-preferences backup; Comp layout and draft values remain intact.
 
 - Follow-up rent fix: prefer the open CoStar Space Details over the property summary; prefill exact monthly rent and offered size for review, preserve existing/edited quotes, and retain separate drafts per selected space. Source/extracted checks: 167 unit tests and 41 browser scenarios. No installed or Store update.
 
 - Linked editable monthly total, per-SF and per-acre rent; explicitly offered acreage;
   separate/included/unknown expenses; version-1 source metadata and exact decimal math.
-- Strict complete-number entry, explicit monthly source review, legacy values and
+- Strict complete-number entry, exact selected-space monthly prefill, legacy values and
   unknown choices preserved, minimal unrelated patches, coordinated area/rent writes.
 - Deliberate suite selection, independent MT drafts and combined alternatives,
   stable-ID atomic saves, durable reviewed retries, stale-update review and account isolation.

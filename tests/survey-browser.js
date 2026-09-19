@@ -48,7 +48,6 @@ async (page) => {
   const fresh=async(row={},isNew=true)=>{
     await p.evaluate(({row,isNew})=>{surveyEditor.pending=null;surveyEditor.saving=false;surveyEditor.bundle=null;surveyEditor.archives={};state.pendingDup=null;state.scraped=null;fixture.scenario='ok';fixture.pending=null;setupForm(isNew?'insert':'update',row,{key:'test:'+crypto.randomUUID(),noSource:true});}, {row:{address:'100 Fixture Way',city:'Phoenix',state:'AZ',for_sale_or_lease:['lease','sale'],...row},isNew});
   };
-  const confirm=async()=>{if(await p.locator('#monthlyReview').isVisible())await p.locator('#fMonthlyConfirmed').check();};
   try{
     await p.goto('http://127.0.0.1:8898/panel.html');await p.waitForFunction(()=>state.survey?.id);
     // Selected-space monthly quote: header/body rent must never supply the offer.
@@ -61,15 +60,15 @@ async (page) => {
     });
     assert.equal(await value('fMonthlyBase'),'26000');assert.equal(await value('fSuiteSize'),'40000');assert.equal(await value('fOfficeSf'),'3200');
     assert.equal(await value('fBuildingSf'),'380569');assert.equal(await p.evaluate(()=>activeSurveyDraft().model.values.tenancy),null);
-    assert.equal(await value('fTotalLeaseRate'),'');assert.equal(await p.locator('#fMonthlyConfirmed').isChecked(),false);
+    assert.equal(await value('fTotalLeaseRate'),'');assert.equal(await p.locator('#fMonthlyConfirmed').count(),0);
     assert.ok((await p.locator('#labelMonthlyBase').innerText()).includes('CoStar'));
     await choose('fTenancy','MT');await fill('fSuiteNumber','Sublease');assert.equal(await value('fLeaseRate'),'0.65');
     await p.locator('#surveyPricing').scrollIntoViewIfNeeded();await p.screenshot({path:'output/review/rent-fix-selected-space-390.png'});
-    await p.locator('#btnSave').click();assert.ok((await p.locator('#formError').innerText()).includes('monthly quote'));
-    await fill('fMonthlyBase','27000');await fill('fNotes','Keep this review');await confirm();
+    assert.equal(await p.locator('#rentArea, #sourceQuote, #monthlyReview').count(),0);assert.equal(await p.locator('#labelTotalLeaseRate').innerText(),'');
+    await fill('fMonthlyBase','27000');await fill('fNotes','Keep this review');
     await p.evaluate(()=>{fixture.scrape.selectedSpace.monthlyRent='28000';fixture.scrape.leaseQuote.amountText='28000';fixture.scrape.leaseQuote.rawText='Space Details Rent/Mo $28,000';});
-    await p.locator('#btnRefresh').click();assert.equal(await value('fMonthlyBase'),'27000');assert.equal(await value('fNotes'),'Keep this review');assert.equal(await p.locator('#fMonthlyConfirmed').isChecked(),false);
-    results.push('Open space prefills monthly total, suite/office size; building stays separate, review required, edited quote survives source changes');
+    await p.locator('#btnRefresh').click();assert.equal(await value('fMonthlyBase'),'27000');assert.equal(await value('fNotes'),'Keep this review');assert.equal(await p.locator('#fMonthlyConfirmed').count(),0);
+    results.push('Open space prefills monthly total, suite/office size; building stays separate, removed source/area/confirmation UI stays absent, edited quote survives source changes');
 
     await p.evaluate(()=>{fixture.scrape.selectedSpace.identity='suite-2|10000|direct';fixture.scrape.selectedSpace.suite='2';fixture.scrape.selectedSpace.availableSf='10000';fixture.scrape.selectedSpace.monthlyRent='10000';fixture.scrape.leaseQuote.rawText='Space Details Rent/Mo $10,000';});
     await p.locator('#btnRefresh').click();assert.equal(await value('fMonthlyBase'),'10000');assert.equal(await value('fSuiteSize'),'10000');assert.equal(await value('fNotes'),'');
@@ -79,7 +78,7 @@ async (page) => {
     results.push('Different selected spaces at one building retain independent drafts; intentional cleared rent stays cleared');
 
     await p.evaluate(()=>{surveyEditor.bundle=null;surveyEditor.archives={};fixture.scrape.selectedSpace.canPrefill=false;fixture.scrape.selectedSpace.issue='Conflicting source rates';state.scraped=structuredClone(fixture.scrape);matchAndShowForm();});
-    assert.equal(await value('fMonthlyBase'),'');assert.ok((await p.locator('#sourceQuote').innerText()).includes('Conflicting source rates'));
+    assert.equal(await value('fMonthlyBase'),'');assert.equal(await p.locator('#sourceQuote').count(),0);
     await p.evaluate(()=>{
       surveyEditor.bundle=null;surveyEditor.archives={};fixture.scrape.selectedSpace.canPrefill=true;state.scraped=structuredClone(fixture.scrape);
       setupForm('update',{id:'30000000-0000-4000-8000-000000000095',address:'100 Fixture Way',city:'Phoenix',state:'AZ',monthly_base_rent:12345,lease_rate_psf:1.1,rent_calculation:null,for_sale_or_lease:['lease']});
@@ -118,21 +117,21 @@ async (page) => {
     results.push('Legacy conflicting pricing, historical precision, custom choices, null yard and feedback survive notes-only; Cancel restores');
 
     await p.evaluate(()=>{surveyEditor.bundle=null;surveyEditor.archives={};state.scraped=structuredClone(fixture.scrape);matchAndShowForm();});
-    assert.equal(await value('fLeaseRate'),'');assert.ok((await p.locator('#sourceQuote').innerText()).includes('$18/SF/YR'));await choose('fTenancy','ST');await fill('fLeaseRate','1.5');
-    await p.locator('#btnSave').click();assert.ok((await p.locator('#formError').innerText()).includes('monthly quote'));await confirm();
-    await p.evaluate(()=>{fixture.scrape.leaseQuote.rawText='$20/SF/YR';fixture.scrape.leaseRate='20';});await p.locator('#btnRefresh').click();assert.equal(await value('fLeaseRate'),'1.5');assert.equal(await p.locator('#fMonthlyConfirmed').isChecked(),false);
-    results.push('Annual source evidence remains private/unadopted; explicit monthly review; reread preserves edits and resets stale confirmation');
+    assert.equal(await value('fLeaseRate'),'');assert.ok((await p.evaluate(()=>activeSurveyDraft().source.leaseQuote.rawText)).includes('$18/SF/YR'));await choose('fTenancy','ST');await fill('fLeaseRate','1.5');
+    await p.evaluate(()=>{fixture.scrape.leaseQuote.rawText='$20/SF/YR';fixture.scrape.leaseRate='20';});await p.locator('#btnRefresh').click();assert.equal(await value('fLeaseRate'),'1.5');assert.equal(await p.locator('#fMonthlyConfirmed').count(),0);
+    await p.locator('#btnSave').click();await p.waitForFunction(()=>!surveyEditor.saving);assert.equal(await p.evaluate(()=>fixture.rows.at(-1).monthly_base_rent),60000);
+    results.push('Annual source stays private/unadopted; typed monthly rent survives reread and saves without confirmation checkbox');
 
-    await fresh({tenancy:'MT',building_sf:40000,suite_size:'5000',suite_number:'101'});await fill('fLeaseRate','1.4');await choose('fAvailability','Available');await fill('fNotes','Suite one');await confirm();await p.locator('#btnAddSpace').click();
+    await fresh({tenancy:'MT',building_sf:40000,suite_size:'5000',suite_number:'101'});await fill('fLeaseRate','1.4');await choose('fAvailability','Available');await fill('fNotes','Suite one');await p.locator('#btnAddSpace').click();
     assert.equal(await value('fLeaseRate'),'');assert.equal(await value('fSuiteSize'),'');assert.equal(await value('fNotes'),'');assert.equal(await value('fOfferedAcres'),'');
-    await fill('fSuiteNumber','102');await fill('fSuiteSize','3000');await fill('fLeaseRate','2');await choose('fAvailability','Confirmed');await confirm();
+    await fill('fSuiteNumber','102');await fill('fSuiteSize','3000');await fill('fLeaseRate','2');await choose('fAvailability','Confirmed');
     await p.locator('#spaceDrafts [data-draft="0"]').click();assert.equal(await value('fLeaseRate'),'1.4');assert.equal(await value('fNotes'),'Suite one');
-    await p.locator('#spaceDrafts [data-draft="1"]').click();await fill('fOfficeSf','4000');const writes=await p.evaluate(()=>fixture.writes);await p.locator('#btnSave').click();assert.equal(await p.evaluate(()=>fixture.writes),writes);await fill('fOfficeSf','500');await confirm();
+    await p.locator('#spaceDrafts [data-draft="1"]').click();await fill('fOfficeSf','4000');const writes=await p.evaluate(()=>fixture.writes);await p.locator('#btnSave').click();assert.equal(await p.evaluate(()=>fixture.writes),writes);await fill('fOfficeSf','500');
     await p.locator('#btnSave').click();await p.waitForFunction(()=>!surveyEditor.saving&&!surveyEditor.pending&&state.mode==='update');
     const saved=await p.evaluate(()=>fixture.rows.slice(-2));assert.equal(saved[0].monthly_base_rent,7000);assert.equal(saved[1].monthly_base_rent,6000);assert.equal(saved[0].availability,'Available');assert.equal(saved[1].availability,'Confirmed');
     results.push('Two independent spaces: shared building, blank sibling offering terms, independent rents/statuses, invalid suite blocks batch, saved rows hydrate');
 
-    await fresh({tenancy:'ST',building_sf:10000});await fill('fMonthlyBase','12000');await confirm();await p.evaluate(()=>fixture.scenario='lostAfterWorkerVerified');await p.locator('#btnSave').click();await p.waitForFunction(()=>!surveyEditor.saving);assert.ok(await p.locator('#pendingSurvey').isVisible());
+    await fresh({tenancy:'ST',building_sf:10000});await fill('fMonthlyBase','12000');await p.evaluate(()=>fixture.scenario='lostAfterWorkerVerified');await p.locator('#btnSave').click();await p.waitForFunction(()=>!surveyEditor.saving);assert.ok(await p.locator('#pendingSurvey').isVisible());
     const stable=await p.evaluate(()=>surveyEditor.pending.request.rows[0].id);const count=await p.evaluate(()=>fixture.rows.length);await p.reload();await p.waitForFunction(()=>surveyEditor.pending);assert.equal(await p.evaluate(()=>surveyEditor.pending.request.rows[0].id),stable);
     await p.locator('#btnRecoverSurvey').click();await p.waitForFunction(()=>!surveyEditor.pending&&!surveyEditor.saving);assert.equal(await p.evaluate(()=>fixture.rows.length),count);
     results.push('Worker verified commit then lost response + panel reload recovers exact reviewed stable ID without duplicate');
@@ -164,7 +163,7 @@ async (page) => {
     await p.evaluate(async()=>{fixture.lookupFail=true;state.scraped=null;await doRead();});assert.equal(await p.evaluate(()=>state.propsLookupOk),false);const beforeLookupSave=await p.evaluate(()=>fixture.requests.filter(r=>r.type.startsWith('SAVE_SURVEY')).length);await p.locator('#btnSave').click();assert.equal(await p.evaluate(()=>fixture.requests.filter(r=>r.type.startsWith('SAVE_SURVEY')).length),beforeLookupSave);assert.ok((await p.locator('#formError').innerText()).includes('lookup failed'));await p.evaluate(async()=>{fixture.lookupFail=false;await reloadProps();});
     results.push('Failed property lookup cannot become an empty-survey new-insert decision');
 
-    await fresh({tenancy:'MT',building_sf:40000,suite_number:'A',suite_size:'1000'});await fill('fMonthlyBase','1500');await confirm();await p.locator('#btnCombinedSpace').click();assert.equal(await value('fSuiteNumber'),'Combined: ');assert.equal(await value('fSuiteSize'),'');assert.equal(await value('fMonthlyBase'),'');await p.locator('#btnSave').click();assert.ok((await p.locator('#formError').innerText()).includes('combined'));await fill('fSuiteNumber','Combined: A + B');await fill('fSuiteSize','6000');await fill('fMonthlyBase','9000');await confirm();assert.equal(await p.evaluate(()=>SurveyFields.serializeDraft(activeSurveyDraft().model).values.monthly_base_rent),9000);assert.equal(await p.evaluate(()=>surveyEditor.bundle.drafts[0].model.rentDraft.rent.amount),'1500');
+    await fresh({tenancy:'MT',building_sf:40000,suite_number:'A',suite_size:'1000'});await fill('fMonthlyBase','1500');await p.locator('#btnCombinedSpace').click();assert.equal(await value('fSuiteNumber'),'Combined: ');assert.equal(await value('fSuiteSize'),'');assert.equal(await value('fMonthlyBase'),'');await p.locator('#btnSave').click();assert.ok((await p.locator('#formError').innerText()).includes('combined'));await fill('fSuiteNumber','Combined: A + B');await fill('fSuiteSize','6000');await fill('fMonthlyBase','9000');assert.equal(await p.evaluate(()=>SurveyFields.serializeDraft(activeSurveyDraft().model).values.monthly_base_rent),9000);assert.equal(await p.evaluate(()=>surveyEditor.bundle.drafts[0].model.rentDraft.rent.amount),'1500');
     results.push('Combined alternative needs explicit included-suite label, combined size and independent quote; no automatic sums');
 
     await fresh({tenancy:'ST',building_sf:10000});await fill('fNotes','Keep across surveys');await p.evaluate(async()=>{await selectSurvey({id:'10000000-0000-4000-8000-000000000002',name:'Other fixture survey',survey_type:'sale'});});assert.equal(await p.evaluate(()=>surveyEditor.bundle),null);await p.evaluate(async()=>{await selectSurvey({id:'10000000-0000-4000-8000-000000000001',name:'Disposable Survey',survey_type:'lease_and_sale'});});assert.equal(await value('fNotes'),'Keep across surveys');

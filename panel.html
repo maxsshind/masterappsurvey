@@ -150,9 +150,7 @@
       <div class="fieldset">
         <div class="fld" data-layout-key="fLeaseType"><span id="leaseTypeLabel">Lease type</span><div id="fLeaseType" class="survey-choices" role="radiogroup" aria-labelledby="leaseTypeLabel"></div></div>
         <div id="surveyPricing" class="fld survey-pricing" data-layout-key="surveyPricing">
-          <p id="rentArea" class="field-hint"></p>
           <p id="rentCompatibility" class="hint hidden"></p>
-          <div id="sourceQuote" class="source-quote hidden"></div>
           <div class="rent-grid">
             <div class="rent-field"><label for="fMonthlyBase">Base rent ($/month)</label><input id="fMonthlyBase" inputmode="decimal" /><small id="labelMonthlyBase"></small><button type="button" data-adopt-rent="total" class="adopt-amount hidden">Use this amount</button></div>
             <div class="rent-field"><label for="fLeaseRate">Rent ($/SF/month)</label><input id="fLeaseRate" inputmode="decimal" /><small id="labelLeaseRate"></small><button type="button" data-adopt-rent="sf" class="adopt-amount hidden">Use this amount</button></div>
@@ -165,7 +163,6 @@
             <div class="rent-field"><label for="fOpexPsf">Expenses / SF / month</label><input id="fOpexPsf" inputmode="decimal" /><small id="labelOpexPsf"></small><button type="button" data-adopt-expenses="sf" class="adopt-amount hidden">Use this amount</button></div>
           </div>
           <div class="rent-field total-rent"><label for="fTotalLeaseRate">Total monthly rent</label><input id="fTotalLeaseRate" readonly /><small id="labelTotalLeaseRate"></small></div>
-          <label id="monthlyReview" class="chk hidden"><input id="fMonthlyConfirmed" type="checkbox" /><span>I reviewed this as a monthly quote for this offering and basis.</span></label>
           <button id="btnResetRent" class="btn btn-ghost btn-sm" type="button">Reset quote to draft baseline</button>
         </div>
       </div>

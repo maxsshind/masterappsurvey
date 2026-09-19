@@ -1,6 +1,6 @@
 # September 18 Survey extension alignment
 
-## Current checkpoint — 2026-09-18 17:18:18 MST (America/Phoenix)
+## Current checkpoint — 2026-09-18 17:22:02 MST (America/Phoenix)
 
 **Local implementation and review package complete. Distribution and live authenticated verification remain outside this task.**
 
@@ -10,7 +10,17 @@ Authorized: implement and test Survey alignment; prepare a review ZIP. **No Stor
 
 Verified starting HEAD and fetched `origin/main`: `ecf1b6776fc5a0bf2f11bd5aaa5db1e72ee4e70f`. Manifest stays **1.3.3**, solely as the review baseline; this is not a newly numbered release. Current Store draft, public version and installed runtime were not rechecked.
 
-## Follow-up: Area → Monthly pricing → Availability — current build
+## Follow-up: simplified pricing — current build
+
+Max explicitly requested removal of the calculation-area explanation, yellow CoStar source box and monthly-review checkbox shown in his screenshots. Removed those elements, the empty-total waiting message, and the checkbox's save gate/event handler. Normal Save now submits valid amounts without that extra confirmation. Source evidence remains private; exact selected-space monthly prefill, strict numeric validation, linked calculations, uncertain-save recovery and existing-row protection remain. This request supersedes the original separate monthly-confirmation UI requirement; it does not authorize any Store/installation or production-data change.
+
+- [Current ZIP](/Users/maxschumacher/Developer/masterappsurvey/masterappsurvey-v1.3.3-clean-pricing-review-2026-09-18.zip) — 91,194 bytes; SHA-256 `c8596737d267bdac12317755cd70b8e63e8d981a728a7b64780e5e916b1f5eb4`.
+- [Ready-to-load folder](/Users/maxschumacher/Developer/masterappsurvey/local-extension/survey-review-clean-pricing-2026-09-18); [pricing preview](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/clean-pricing/selected-space-390.png). Existing installed/review folders untouched.
+- **167 unit tests and 41 browser scenarios** pass on source and extracted ZIP. Mounted checks verify the removed elements are absent, monthly rent saves without a checkbox, annual source remains unadopted, and edited values survive re-read. [Source unit evidence](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/clean-pricing-unit-source.txt), [ZIP unit evidence](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/clean-pricing-unit-package.txt), [source browser](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/clean-pricing-browser-source.json), [ZIP browser](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/clean-pricing-browser-package.json), [actual MV3 smoke](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/clean-pricing-extension-package.json), [archive evidence](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/clean-pricing-package.json).
+
+The Area → Monthly pricing → Availability order is retained. No shared production release documentation needs updating for this local revision; prior live-authenticated save limitations remain. Next step: use this latest review folder for manual checking; installed code remains unchanged.
+
+## Follow-up: Area → Monthly pricing → Availability — earlier review build
 
 Max requested the Area section where Availability was, Monthly pricing directly below Area, and Availability/client Notes/Date below pricing. Implemented in both default HTML and saved-layout normalization. Layout v3 stores the exact previous preferences under `layout_prefs_survey_v2_backup`, retains the older v1 backup, and preserves Comp settings and draft values. This explicitly supersedes the earlier requirement to keep Availability/Notes/Date above the fold.
 
@@ -48,7 +58,7 @@ The archive contains only manifest/config, panel/worker/runtime scripts, stylesh
 ## Implemented behavior
 
 - Canonical linked monthly total/SF/acre calculations, explicit offered acreage and expense treatment. Suite SF supplies MT math; building/parcel facts do not silently become offered area. Zero, blank, historical precision and untouched legacy values remain distinct.
-- Scraped quote text retains period/basis as private evidence. General summary rent is not automatically adopted. The follow-up above prefills explicit selected-space monthly totals for review. Populated adopted quotes require explicit monthly review for the selected offering; source changes invalidate confirmation. No automatic annual conversion or expense-exclusive split is inferred.
+- Scraped quote text retains period/basis as private evidence. General summary rent is not automatically adopted. The follow-up above prefills explicit selected-space monthly totals for review. Exact selected-space monthly quotes can prefill; normal Save accepts valid entered amounts without a separate confirmation checkbox. No automatic annual conversion or expense-exclusive split is inferred.
 - Independent spaces and combined alternatives have their own terms, notes, flyer, validation and stable IDs. Building matches require a deliberate suite target. Shared building facts seed new spaces without copying sibling terms.
 - Atomic bulk inserts use stable IDs, ignore duplicates and full readback. Durable account/survey requests retain the reviewed payload through retries, reopen, another panel's pending request and lost responses. Uncertain dispatched saves stay locked. Existing-row writes require the selected ID, survey and original `updated_at`; stale rows require review.
 - Minimal dirty patches preserve metadata, custom/null choices and client feedback. Removed unsupported Survey `property_name` writes: the canonical SurveyProperty/table has no such column. Comp's separate property-name field remains supported.

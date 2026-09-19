@@ -427,7 +427,6 @@ for (const monthly of ['26000', '0']) {
     assert.equal(Number(draft.model.values.building_sf), 380569, 'whole building stays separate');
     assert.equal(Number(draft.model.values.suite_size), 40000);
     assert.equal(Number(draft.model.values.office_sf), 3200);
-    assert.equal(draft.reviewedQuote, null, 'suggestion still requires review');
     assert.equal(draft.prefilledMonthlyRent, monthly);
     assert.equal(h.c.SurveyFields.serializeDraft(draft.model).values.monthly_base_rent, Number(monthly));
     draft.model.values.tenancy = 'MT';
@@ -439,7 +438,6 @@ for (const monthly of ['26000', '0']) {
     assert.equal(result.values.total_monthly_opex, null);
     assert.equal(result.values.monthly_opex_psf, null);
     assert.equal(result.values.total_lease_rate, null);
-    assert.equal(draft.reviewedQuote, null);
     assert.ok(scraped.selectedSpace.rawText.length <= 500);
   });
 }

@@ -732,7 +732,7 @@ function surveyReviewSource(source) {
 }
 function makeSurveyDraft(row, isNew, source = null) {
   source = surveyReviewSource(source);
-  const draft = { id: crypto.randomUUID(), model: SurveyFields.hydrateDraft(row, { isNew }), source, reviewedQuote: null };
+  const draft = { id: crypto.randomUUID(), model: SurveyFields.hydrateDraft(row, { isNew }), source };
   const space = source?.selectedSpace;
   // Only a new blank offering gets an explicit monthly source suggestion. Never
   // replace a saved quote or restore a cleared/edited quote during a re-read.
@@ -894,11 +894,11 @@ function matchAndShowForm() {
   const d = state.scraped, key = surveySourceKey(d), archived = surveyEditor.archives[key];
   if (archived?.targetId) {
     const target = state.props.find(p => p.id === archived.targetId);
-    if (target) { setupForm('update',target); const draft = activeSurveyDraft(); draft.reviewSourceChanged = !sameVal(draft.source?.leaseQuote || draft.source?.leaseRate,d?.leaseQuote || d?.leaseRate); draft.source = surveyReviewSource(d); renderSurveyRent(); queueSurveyDraft(); return; }
+    if (target) { setupForm('update',target); const draft = activeSurveyDraft(); draft.source = surveyReviewSource(d); renderSurveyRent(); queueSurveyDraft(); return; }
   }
   if (archived?.destinationKey && surveyEditor.archives[archived.destinationKey]) { surveyEditor.bundle = surveyEditor.archives[archived.destinationKey]; mountSurveyDraft(); return; }
   setupForm('insert',null);
-  const draft = activeSurveyDraft(); draft.reviewSourceChanged = !sameVal(draft.source?.leaseQuote || draft.source?.leaseRate,d?.leaseQuote || d?.leaseRate); draft.source = surveyReviewSource(d); renderSurveyRent();
+  const draft = activeSurveyDraft(); draft.source = surveyReviewSource(d); renderSurveyRent();
   if (surveyEditor.bundle.decision !== 'new') { surveyEditor.bundle.decision = 'unresolved'; showSurveyCandidates(findMatch(d)); }
   queueSurveyDraft();
 }
@@ -950,7 +950,7 @@ async function showSurveyIssues(issues, index) {
   $('screen-form').querySelectorAll('.field-error').forEach(el => el.remove());
   $('screen-form').querySelectorAll('[aria-invalid]').forEach(el => el.removeAttribute('aria-invalid'));
   for (const issue of issues) {
-    const id = FIELDS[issue.field]?.[0] || ({ rent:'fMonthlyBase',rent_total:'fMonthlyBase',rent_sf:'fLeaseRate',rent_acre:'fRentAcre',expenses_total:'fOpexTotal',expenses_sf:'fOpexPsf',expenses:'fOpexTotal',offered_acres:'fOfferedAcres',review:'fMonthlyConfirmed' })[issue.field];
+    const id = FIELDS[issue.field]?.[0] || ({ rent:'fMonthlyBase',rent_total:'fMonthlyBase',rent_sf:'fLeaseRate',rent_acre:'fRentAcre',expenses_total:'fOpexTotal',expenses_sf:'fOpexPsf',expenses:'fOpexTotal',offered_acres:'fOfferedAcres' })[issue.field];
     const node = $(id); if (!node) continue;
     node.setAttribute('aria-invalid','true'); const error = document.createElement('span'); error.className = 'field-error'; error.textContent = issue.message; node.parentElement.append(error);
   }
@@ -1010,7 +1010,6 @@ async function save() {
     if (!result.values.address?.trim()) result.issues.push({field:'address',message:'Address is required.'});
     if (!result.values.for_sale_or_lease?.length) result.issues.push({field:'for_sale_or_lease',message:'Select For Sale and/or For Lease.'});
     if (d.combined && (!String(result.values.suite_number || '').replace(/^Combined:\s*/i,'').trim() || !SurveyRent.resolveSurveyRentArea(result.values))) result.issues.push({field:'suite_size',message:'A combined option needs its included-suite wording and one confirmed combined size.'});
-    if (surveyQuoteNeedsReview(d) && d.reviewedQuote !== surveyQuoteFingerprint(d)) result.issues.push({field:'review',message:'Review the monthly quote, its basis and the selected offering, then confirm below pricing.'});
     result.valid = result.issues.length === 0; return result;
   });
   const bad = results.findIndex(r => !r.valid); if (bad >= 0) return showSurveyIssues(results[bad].issues,bad);
@@ -1058,7 +1057,7 @@ $('btnReviewLatest').addEventListener('click',async () => {
 });
 $('btnCancelDraft').addEventListener('click',() => {
   const d = activeSurveyDraft(); if (!d || surveyEditor.pending) return;
-  d.model = SurveyFields.hydrateDraft(d.model.baseline,{isNew:d.model.isNew}); d.reviewedQuote = null; mountSurveyDraft(); queueSurveyDraft();
+  d.model = SurveyFields.hydrateDraft(d.model.baseline,{isNew:d.model.isNew}); mountSurveyDraft(); queueSurveyDraft();
 });
 
 const SURVEY_RENT_INPUTS = {
@@ -1068,23 +1067,12 @@ const SURVEY_RENT_INPUTS = {
   fOpexTotal: ['expenses','total','total_monthly_opex','labelOpexTotal'],
   fOpexPsf: ['expenses','sf','monthly_opex_psf','labelOpexPsf'],
 };
-function surveyQuoteFingerprint(d) {
-  return JSON.stringify([SurveyRent.draftCalculation(d.model.rentDraft,false), d.model.values.address,d.model.values.city,d.model.values.state,d.model.values.tenancy,d.model.values.suite_number,d.model.values.suite_size,d.model.values.building_sf,d.source?.leaseQuote || d.source?.leaseQuoteRaw || d.source?.leaseRate || null]);
-}
-function surveyQuoteNeedsReview(d) {
-  if (!d.model.rentSupported || !d.model.rentDraft) return false;
-  const calc = SurveyRent.draftCalculation(d.model.rentDraft,false);
-  if (calc?.rent?.amount == null && calc?.expenses?.amount == null) return false;
-  return d.model.isNew || !sameVal(calc,d.model.baseline.rent_calculation ?? null) || Boolean(d.source && d.reviewSourceChanged);
-}
 function renderSurveyRent() {
   const d = activeSurveyDraft(); if (!d) return;
   const m = d.model, rd = m.rentDraft;
   const rawBuilding = SurveyFields.parseNumericInput(m.values.building_sf,SurveyFields.surveyNumericOptions('building_sf',m.values.building_sf,m.baseline.building_sf));
   const area = { ...m.values, building_sf: rawBuilding.valid ? rawBuilding.value : null };
-  const sf = SurveyRent.resolveSurveyRentArea(area);
   const values = m.rentSupported ? SurveyRent.preview(rd,area,m.baseline) : m.baseline;
-  $('rentArea').textContent = sf == null ? 'Offered SF is unresolved. Per-SF calculations wait for one confirmed size.' : `Calculating from ${area.tenancy === 'ST' ? 'whole building' : area.suite_number || 'offered suite'} · ${sf.toLocaleString('en-US')} SF`;
   $('rentCompatibility').classList.toggle('hidden',m.rentSupported);
   $('rentCompatibility').textContent = m.compatibilityMessage ? m.compatibilityMessage + ' The database may reject unrelated edits to this format; no pricing will be overwritten.' : '';
   for (const [id,[group,basis,col,label]] of Object.entries(SURVEY_RENT_INPUTS)) {
@@ -1093,7 +1081,7 @@ function renderSurveyRent() {
     if (document.activeElement !== input) input.value = isSource ? quote.amount : SurveyRent.displayed(values[col],basis,!quote);
     input.disabled = !m.rentSupported || Boolean(surveyEditor.pending || surveyEditor.saving);
     const amount = isSource ? SurveyFields.parseNumericInput(quote.amount,SurveyRent.quoteOptions(quote)).value : values[col];
-    $(label).textContent = amount == null ? '' : !quote ? 'Saved · unlinked' : isSource ? (id === 'fMonthlyBase' && quote.amount === d.prefilledMonthlyRent ? 'CoStar · review' : 'Entered') : 'Calculated · editable';
+    $(label).textContent = amount == null ? '' : !quote ? 'Saved · unlinked' : isSource ? (id === 'fMonthlyBase' && quote.amount === d.prefilledMonthlyRent ? 'CoStar' : 'Entered') : 'Calculated · editable';
     const adopt = input.parentElement.querySelector('button');
     if (adopt) adopt.classList.toggle('hidden',Boolean(quote) || values[col] == null || !m.rentSupported);
   }
@@ -1103,19 +1091,7 @@ function renderSurveyRent() {
   surveyChoice('fExpenseTreatment',treatment);
   $('expenseAmounts').classList.toggle('hidden',Boolean(treatment) && treatment !== 'additional');
   $('fTotalLeaseRate').value = SurveyRent.displayed(values.total_lease_rate,'total',!rd);
-  $('labelTotalLeaseRate').textContent = values.total_lease_rate == null ? 'Awaiting reviewed rent and expenses' : !rd ? 'Saved · unlinked' : 'Calculated';
-  const quote = d.source?.leaseQuote;
-  const raw = d.source?.selectedSpace ? (quote?.rawText || d.source.selectedSpace.issue || 'Selected space details are unresolved') : quote?.rawText || d.source?.leaseQuoteRaw || d.source?.leaseRate;
-  $('sourceQuote').classList.toggle('hidden',!raw);
-  const space = d.source?.selectedSpace;
-  const spaceSummary = space?.canPrefill ? [space.suite ? `Suite ${space.suite}` : space.floor,
-    space.availableSf == null ? null : `${Number(space.availableSf).toLocaleString('en-US')} SF`,
-    `$${Number(space.monthlyRent).toLocaleString('en-US')}/month`, space.serviceType].filter(Boolean).join(' · ') : raw;
-  $('sourceQuote').textContent = raw ? (space
-    ? `Open CoStar space: ${spaceSummary}. ${space.canPrefill ? 'Confirm tenancy and the offered size, then review the monthly quote below. Review expenses separately.' : 'Check this quote before entering monthly rent. ' + (space.issue || '')}`
-    : `CoStar source: ${raw}. Period: ${quote?.period || 'unconfirmed'}; basis: ${quote?.basis || 'unconfirmed'}. Enter the reviewed monthly amount below. Annual amounts must be converted and reviewed before entry.`) : '';
-  $('monthlyReview').classList.toggle('hidden',!surveyQuoteNeedsReview(d));
-  $('fMonthlyConfirmed').checked = d.reviewedQuote === surveyQuoteFingerprint(d);
+  $('labelTotalLeaseRate').textContent = values.total_lease_rate == null ? '' : !rd ? 'Saved · unlinked' : 'Calculated';
   surveyDetailsIndicators();
 }
 function recordSurveyInput(col,id,type) {
@@ -1164,20 +1140,9 @@ $('fExpenseTreatment').addEventListener('change',e => {
   d.model.rentDraft = SurveyRent.changeExpenseTreatment(d.model.rentDraft,$('fExpenseTreatment').value);
   renderSurveyRent(); queueSurveyDraft();
 });
-$('fMonthlyConfirmed').addEventListener('change',() => {
-  const d = activeSurveyDraft(); d.reviewedQuote = $('fMonthlyConfirmed').checked ? surveyQuoteFingerprint(d) : null;
-  if ($('fMonthlyConfirmed').checked && d.source) {
-    const quote = d.source.leaseQuote?.rawText || d.source.leaseQuoteRaw || d.source.leaseRate;
-    const evidence = quote ? `Reviewed CoStar source quote: ${String(quote).slice(0,400)}${d.source.sourceUrl ? '\nCoStar: ' + d.source.sourceUrl : ''}` : '';
-    if (evidence && !String(d.model.values.internal_notes || '').includes(evidence)) {
-      d.model.values.internal_notes = [d.model.values.internal_notes,evidence].filter(Boolean).join('\n'); $('fInternalNotes').value = d.model.values.internal_notes;
-    }
-  }
-  queueSurveyDraft();
-});
 $('btnResetRent').addEventListener('click',() => {
   const d = activeSurveyDraft(); if (!d || !d.model.rentSupported || surveyEditor.pending) return;
-  d.model.rentDraft = SurveyRent.createSurveyRentDraft(d.model.baseline.rent_calculation,d.model.isNew); d.reviewedQuote = null; renderSurveyRent(); queueSurveyDraft();
+  d.model.rentDraft = SurveyRent.createSurveyRentDraft(d.model.baseline.rent_calculation,d.model.isNew); renderSurveyRent(); queueSurveyDraft();
 });
 $('screen-form').querySelectorAll('[data-adopt-rent],[data-adopt-expenses]').forEach(button => button.addEventListener('click',() => {
   const d = activeSurveyDraft(); if (!d || surveyEditor.pending) return;

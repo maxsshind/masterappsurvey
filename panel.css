@@ -533,7 +533,6 @@ body.layout-editing #compFlyer, body.layout-editing #compRescan, body.layout-edi
 #screen-form .offered-acre input { width: 96px; }
 .offered-acre .field-hint { flex-basis: 100%; }
 #screen-form .total-rent input { background: #f1f3f8; }
-.source-quote { font-size: 11px; line-height: 1.4; padding: 8px; background: #fff5da; border-radius: 5px; overflow-wrap: anywhere; }
 .space-drafts { display: flex; gap: 5px; flex-wrap: wrap; padding: 6px 0; }
 .space-tab { padding: 6px 8px; border: 1px solid #d9d9e5; background: white; border-radius: 5px; font-size: 11px; cursor: pointer; }
 .space-tab[aria-selected="true"] { color: #8B1538; border-color: #8B1538; background: #f9eaf0; }
