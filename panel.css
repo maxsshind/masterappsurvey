@@ -721,3 +721,7 @@ body:has(#screen-comp:not(.hidden)) { max-width: 840px; }
   #screen-comp > [data-sec="space-specs"]:has(+ [data-sec="ptype"]:not(.u-hidden)) .fld:has(textarea),
   #screen-comp > [data-sec="ptype"]:not(.u-hidden) + [data-sec="space-specs"] .fld:has(textarea) { grid-column: 1 / -1; }
 }
+
+.comp-listing-analysis { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:11px; padding:6px 0; }
+.comp-listing-analysis > span { min-width:0; }
+.comp-listing-analysis > button { flex-shrink:0; }

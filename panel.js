@@ -81,7 +81,7 @@ function bgSend(type, extra = {}, opts = {}, attempt = 0) {
     activeMessages++;
     let settled = false;
     const finish = (v) => { if (!settled) { settled = true; activeMessages--; resolve(v); } };
-    const timeoutMs = type === "ANALYZE_COMP_FLYER" ? 90000 : isWrite ? 60000 : (attempt === 0 ? 2000 : 3000);
+    const timeoutMs = ["ANALYZE_COMP_FLYER","ANALYZE_COMP_LISTING"].includes(type) ? 90000 : isWrite ? 60000 : (attempt === 0 ? 2000 : 3000);
     const timeoutId = setTimeout(async () => {
       if (settled) return;
       if (!isWrite && attempt < 1) finish(await bgSend(type, extra, opts, attempt + 1));
@@ -359,6 +359,7 @@ function restorePopoutComp() {
   for (const [id, source] of Object.entries(popoutHandoff.compSources)) setCompFieldSource(id, source);
   if (comp.unmappedSubmarket) setCompSubmarket(comp.unmappedSubmarket);
   syncCompReviewState();
+  document.dispatchEvent(new Event('comp-listing-read'));
 }
 
 async function finishPopoutHandoff() {
@@ -2092,6 +2093,7 @@ async function fillCompForm(d) {
   syncCompFieldVisibility();
   await runCompDedup(d);
   syncCompReviewState();
+  document.dispatchEvent(new Event("comp-listing-read"));
 }
 
 // Show only the economics that match the status: sale statuses hide the lease
@@ -3072,5 +3074,70 @@ installCompFlyerReview({
       setCompNeedsReview('comp_'+row.field,false);
     }
     syncCompFeatureChecks();syncCompReviewState();
+  },
+});
+
+const compListingExtraFields = ['building_sf','land_area','yard_included','multi_tenant','partial_site_override','suite','property_type','sale_type','sale_price','cap_rate','rent_psf','lease_format'];
+const compListingFields = [...CompPropertyFields.fields,...compListingExtraFields];
+function parseCompListingField(field,value) {
+  if(CompPropertyFields.fields.includes(field))return CompPropertyFields.parse(field,value);
+  if(['yard_included','multi_tenant','partial_site_override'].includes(field))return typeof value==='boolean'?{value}:{error:'Expected a confirmed Yes or No'};
+  if(['property_type','sale_type'].includes(field)) {
+    const allowed=field==='property_type'?CompPropertyFields.propertyTypes:['Owner User','Investment','Sale Leaseback'];
+    return Array.isArray(value)&&value.length>0&&value.every(v=>allowed.includes(v))?{value:[...new Set(value)]}:{error:'Unsupported selection'};
+  }
+  if(field==='lease_format')return ['NNN','Gross','Modified Gross'].includes(value)?{value}:{error:'Unsupported lease format'};
+  if(field==='suite')return typeof value==='string'&&value.trim()&&value.length<=200?{value:value.trim()}:{error:'Invalid suite'};
+  if(['building_sf','land_area','sale_price','cap_rate','rent_psf'].includes(field)) {
+    return typeof value==='number'&&Number.isFinite(value)&&value>=0&&value<=Number.MAX_SAFE_INTEGER&&(field!=='cap_rate'||value<=100)?{value}:{error:'Invalid amount'};
+  }
+  return {error:'Unsupported field'};
+}
+installCompListingReview({
+  fields:compListingFields,
+  labels:{...CompPropertyFields.labels,building_sf:'Building SF',land_area:'Land (acres)',yard_included:'Yard included',multi_tenant:'Multi-tenant building',partial_site_override:'Portion of site',suite:'Suite / unit',property_type:'Property type',sale_type:'Deal type',sale_price:'Asking price',cap_rate:'Cap rate',rent_psf:'Asking rent / SF / month',lease_format:'Lease format'},
+  parse:parseCompListingField,
+  locked:()=>!!(comp.saving||comp.pendingSave||poppingOut||document.body.inert),
+  snapshot:()=>{
+    const record=compFormRecord();
+    const currentValues=Object.fromEntries(compListingFields.map(field=>[field,record[field]??null]));
+    currentValues.property_type=CompPropertyFields.normalizePropertyTypes(compChecked('comp_ptypes'));
+    currentValues.sale_type=compChecked('comp_sale_types');
+    return {
+      identity:[state.email,comp.mode,comp.updateId,comp.costarId,comp.sourceUrl,comp.lookupSequence],
+      request:{
+        listing_text:comp.scrape?.listingAnalysisText || (comp.scrape?.selectedSpace?{sale_notes:'',sale_highlights:''}:{sale_notes:comp.saleNotes||'',sale_highlights:comp.saleHighlights||''}),
+        offered_sf:Number(comp.scrape?.offeredSf)>0 &&
+          (comp.scrape?.selectedSpace
+            ? !comp.scrape.selectedSpace.availableRange && $('comp_suite').value.trim() === String(comp.scrape.selectedSpace.suite||'').trim()
+            : !$('comp_suite').value.trim() && record.partial_site_override!==true)
+          ? Number(comp.scrape.offeredSf):null,
+        address:$('comp_address').value,city:$('comp_city').value,state:$('comp_state').value,
+        suite:$('comp_suite').value,status:$('comp_status').value,
+        partial_site_override:record.partial_site_override,multi_tenant:record.multi_tenant,currentValues,
+      },
+      raw:Object.fromEntries(COMP_INPUT_IDS.map(id=>[id,$(id)?.value])),
+    };
+  },
+  analyze:async draft=>{
+    const result=await bg('ANALYZE_COMP_LISTING',{draft},{write:true});
+    if(handleAuthFailure(result))return {ok:false,error:'Sign in again'};
+    return result;
+  },
+  apply:rows=>{
+    for(const row of rows) {
+      if(['property_type','sale_type'].includes(row.field)) {
+        const id=row.field==='property_type'?'comp_ptypes':'comp_sale_types';
+        for(const n of $(id).querySelectorAll('input[type=checkbox]'))n.checked=row.value.includes(n.value);
+        // Suggestions set only the reviewed fields; do not implicitly change yard.
+      } else {
+        const id='comp_'+row.field,n=$(id);if(!n)continue;
+        n.value=typeof row.value==='number'&&['building_sf','office_sf','lease_area','sale_price'].includes(row.field)?row.value.toLocaleString('en-US'):String(row.value);
+        if(n.type==='checkbox')n.checked=row.value===true;
+        markCompFieldEdited(id);setCompFieldSource(id,'Listing notes');
+        if(row.field==='lease_area')comp.leaseAreaOrigin='source';
+      }
+    }
+    syncCompFeatureChecks();syncCompFieldVisibility();syncCompReviewState();resizeCompTextareas();
   },
 });

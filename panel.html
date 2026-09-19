@@ -289,6 +289,11 @@
     <div id="compModeNote" class="comp-mode-note hidden"></div>
 
     <!-- Property choices stay visible even with a customized/hidden form layout. -->
+    <div id="compListingAnalysis" class="comp-listing-analysis hidden">
+      <span id="compListingStatus" role="status">Read Sale Notes and Highlights for listing details</span>
+      <button id="compAnalyzeListing" type="button" class="btn btn-ghost btn-sm">Analyze listing</button>
+    </div>
+
     <section id="compPropertyLink" class="comp-property-link" aria-labelledby="compPropertyTitle">
       <div class="comp-property-heading">
         <strong id="compPropertyTitle">Property link</strong>
@@ -508,6 +513,19 @@
     <details id="compFlyerWarnings"></details>
   </dialog>
 
+  <dialog id="compListingReview" class="flyer-review" aria-labelledby="compListingReviewTitle">
+    <header class="flyer-review-header">
+      <strong id="compListingReviewTitle">Review listing details</strong>
+      <div class="flyer-review-actions">
+        <button id="compCloseListing" type="button" class="btn btn-ghost btn-sm">Close</button>
+        <button id="compApplyListing" type="button" class="btn btn-primary btn-sm">Select fields</button>
+      </div>
+      <p>Sale Notes and Highlights are preferred over generic property facts. Select the evidence-backed changes to use. Save comp when ready.</p>
+    </header>
+    <div id="compListingSuggestions"></div>
+    <div id="compListingWarnings"></div>
+  </dialog>
+
   <div id="toast" class="toast hidden"></div>
 
   <!-- Layout customization bar (only visible while editing a form's layout) -->
@@ -532,6 +550,7 @@
   <script src="comp-property-fields.js"></script>
   <script src="layout.js"></script>
   <script src="comp-flyer.js"></script>
+  <script src="comp-listing.js"></script>
   <script src="panel.js"></script>
 </body>
 </html>

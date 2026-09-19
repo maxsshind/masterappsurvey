@@ -16,3 +16,21 @@ async function analyzeCompFlyerDraft(draft) {
     return result;
   } finally {compFlyerAnalysisRunning=false;}
 }
+
+let compListingAnalysisRunning = false;
+async function analyzeCompListingDraft(draft) {
+  if (compListingAnalysisRunning) throw new Error('Listing analysis is already running. Try again shortly.');
+  compListingAnalysisRunning = true;
+  try {
+    const session = await sbGetSession();
+    const response = await fetch(`${CONFIG.APP_URL}/api/extension/listing-analysis`, {
+      method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},
+      body:JSON.stringify(draft),credentials:'omit',redirect:'error',signal:AbortSignal.timeout(75000),
+    });
+    if (response.status === 401) { const error=new Error('Sign in again to analyze listing notes.');error.code='AUTH_REQUIRED';throw error; }
+    const result=await response.json().catch(()=>null);
+    if (!response.ok || result?.error) throw new Error(result?.error || 'Listing analysis is unavailable. Try again.');
+    if (!Array.isArray(result?.suggestions)||!Array.isArray(result?.warnings)) throw new Error('Listing analysis returned an incomplete response.');
+    return result;
+  } finally { compListingAnalysisRunning=false; }
+}

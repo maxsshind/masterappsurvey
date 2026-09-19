@@ -6,10 +6,10 @@ python3 - "${1:-}" <<'PY'
 from pathlib import Path
 import hashlib, json, re, struct, sys, zipfile
 root = Path.cwd()
-files = ['manifest.json','config.js','supabase.js','background.js','panel.html','panel.js','panel.css','layout.js','survey-fields.js','survey-rent.js','survey-spaces.js','survey-flyers.js','comp-property-fields.js','comp-flyer.js','comp-flyer-background.js','icons/icon16.png','icons/icon48.png','icons/icon128.png']
+files = ['manifest.json','config.js','supabase.js','background.js','panel.html','panel.js','panel.css','layout.js','survey-fields.js','survey-rent.js','survey-spaces.js','survey-flyers.js','comp-property-fields.js','comp-flyer.js','comp-listing.js','comp-flyer-background.js','icons/icon16.png','icons/icon48.png','icons/icon128.png']
 manifest = json.loads((root/'manifest.json').read_text())
 assert manifest['manifest_version'] == 3
-assert manifest['version'] == '1.4.14', 'Manifest differs from the prepared candidate version.'
+assert manifest['version'] == '1.4.15', 'Manifest differs from the prepared candidate version.'
 for size, icon in manifest['icons'].items():
     data=(root/icon).read_bytes()
     assert data[:8] == b'\x89PNG\r\n\x1a\n' and struct.unpack('>II',data[16:24]) == (int(size),int(size))

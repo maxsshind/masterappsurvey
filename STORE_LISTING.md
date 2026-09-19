@@ -19,3 +19,7 @@ CoStar pages are read-only. The extension does not send client messages. Flyer a
 Privacy policy: https://github.com/maxsshind/masterappsurvey/blob/main/PRIVACY_POLICY.md
 Homepage: https://www.sshteam.app
 Preserve existing visibility and category; do not change them based on historical documentation.
+
+## Prepared 1.4.15 listing update (not saved to Store)
+
+Comp mode reads Sale Notes and Highlights for supported listing details and offers evidence-backed changes for review. Calculate proposed Office SF from an explicit office percentage and confirmed offered area. Preserve manual choices, flag uncertain scope/conflicts, and save only when you choose Save comp. Listing notes analysis uses Anthropic through the signed-in Master App.

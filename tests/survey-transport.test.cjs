@@ -691,3 +691,13 @@ for(const tail of ['Includes 4 offices and 20 parking spaces.','Currently occupi
 for(const text of ['600 amps, subject to verification by tenant','800 amps, shared with other tenants','Power: 800 amps, not verified by tenant','200 amps, per office','800 amps, shared between offices'])test(`Power qualifiers retain who they apply to: ${text}`,async()=>{
  const d=await salesListingFixture(airportFacts+'Description\n'+text+'. Includes new offices.\nDocuments');assert.equal(d.propertyFacts.power,text);
 });
+
+test('Listing analysis receives full sale narratives and exact offered SF from Summary',async()=>{
+ const d=await salesListingFixture('Listing Details\nAvailable Size\n26,282 SF\nSale Notes\n26,282 SF Light Distribution Facility\n60% office / 40% warehouse\nOne grade level roll up door (12x14)\nSale Highlights\nFlex building\nMarketing Brochure\nUnrelated text');
+ assert.equal(d.offeredSf,'26282');assert.match(d.listingAnalysisText.sale_notes,/60% office/);assert.match(d.listingAnalysisText.sale_highlights,/Flex building/);assert.doesNotMatch(d.listingAnalysisText.sale_notes,/Unrelated/);
+});
+test('Selected suite analysis excludes underlying sale notes and ranged denominators',async()=>{
+ const d=await salesListingFixture(airportFacts+'Sale Notes\n60% office\n2 of 2 Spaces\nSpace Details\nAvailable\n1,200 SF Industrial\nSuite\n7\nFloor\nPartial 1st\nDocuments\nSpace Notes\n100 SF office\nHighlights\nSuite has one dock\nLeasing Contacts');
+ assert.equal(d.offeredSf,'1200');assert.match(d.listingAnalysisText.sale_notes,/100 SF office/);assert.doesNotMatch(d.listingAnalysisText.sale_notes,/60%/);assert.match(d.listingAnalysisText.sale_highlights,/one dock/);
+ const r=await salesListingFixture('Listing Details\nAvailable Size\n10,000-20,000 SF\nSale Notes\n60% office\nMarketing Brochure');assert.equal(r.offeredSf,null);
+});

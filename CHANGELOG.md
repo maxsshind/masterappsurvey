@@ -1,3 +1,7 @@
+## 1.4.15 — Review all listing narrative fields (local extension)
+
+Automatically analyze Sale Notes/Highlights in Comp mode, with reviewable source quotations for24 supported backend fields. Office percentages use an exact offered-area denominator and a labeled calculation. All changes require selection and Apply; Save comp remains separate. Scoped suites, stale-form protection, enum/value validation, privacy disclosure and compact responsive review included. Backend endpoint /api/extension/listing-analysis is released separately; this ZIP is not installed or Store-submitted. See PROJECT.md for verification and production status.
+
 ## 1.4.14 — Property details beside type (local candidate)
 
 Wide panels pair these sections in either saved order, with feature checkboxes below type buttons. Narrow layout preserved. Browser regression and packaged MV3 checks passed; package delivered locally. Not installed or submitted to Store.

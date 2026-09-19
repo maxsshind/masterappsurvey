@@ -392,6 +392,12 @@ async function readCoStar(options = {}) {
       const _debug = { textLen: txt.length, sample: txt.slice(0, 400) };
       return {
         street, city, state, zip, submarket, rba, acLot, salePrice, leaseRate,
+        offeredSf: selectedFactSection === null
+          ? (txt.match(/\bAvailable Size\s*\n?\s*((?:\d{1,3}(?:,\d{3})+|\d+))\s*SF\b/i)?.[1]?.replaceAll(',', '') || null)
+          : selectedSpace?.availableRange ? null : selectedSpace?.availableSf || null,
+        listingAnalysisText: selectedFactSection === null
+          ? {sale_notes: saleNoteLines.join('\n'), sale_highlights: saleHighlightLines.join('\n')}
+          : {sale_notes: sectionLines('Space Notes',selectedLines).join('\n'), sale_highlights: sectionLines('Highlights',selectedLines).join('\n')},
         leaseType, leaseQuote, selectedSpace, propertyFacts, capRate, yearBuilt, saleHighlights, saleNotes, _debug,
       };
     },
@@ -803,6 +809,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
     case "SAVE_COMP":
       reply(saveCompWithProperty(msg.request));
+      return true;
+
+    case "ANALYZE_COMP_LISTING":
+      reply(analyzeCompListingDraft(msg.draft));
       return true;
 
     case "ANALYZE_COMP_FLYER":

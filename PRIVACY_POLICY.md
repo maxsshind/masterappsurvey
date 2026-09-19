@@ -65,6 +65,16 @@ an AI-provider API key. Suggested changes and source excerpts are returned for
 review; applying them edits the current form only. Business records change only
 when you explicitly save the comp. Flyer analysis does not send client messages.
 
+## Listing notes analysis
+In Comp mode, reading or refreshing a listing automatically sends its rendered Sale
+Notes and Sale Highlights, the listing identity, offered area, scope and current form
+values to the signed-in Master App and Anthropic for AI analysis. When a selected
+suite is open, only that suite's notes/highlights are used. The full web page is not
+sent. Suggestions include source quotations; office area calculated from a stated
+percentage is identified as calculated. You choose which changes to apply to the
+form. Analysis and applying suggestions do not save business records. No client
+messages are sent. You can retry analysis from the panel.
+
 ## Data the Extension sends
 - Reviewed property fields are written to **your own RGCRE master-app** using the
   sign-in session you authorized when you click Save / Add to survey. Flyer files are
@@ -82,8 +92,8 @@ The Extension never sees or stores your password.
 
 ## Data sharing
 The Extension does not sell your data. It moves data between the CoStar page you
-are viewing and your RGCRE Master App at your direction. On-demand flyer analysis
-also uses Anthropic as the Master App's AI processor, as described above.
+are viewing and your RGCRE Master App at your direction. Flyer and automatic listing-notes analysis
+also use Anthropic as the Master App's AI processor, as described above.
 
 ## Permissions
 `storage`, `tabs`, `scripting`, and `sidePanel`, plus host access to `*.costar.com`,

@@ -1,3 +1,15 @@
+## All-field listing narrative review — 2026-09-18T23:00:26.554650-07:00
+
+User requested Sale Notes and Highlights as preferred evidence for every supported field, including office percentages. Local extension 1.4.15 automatically submits scoped narrative text after a Comp read and shows a nonmodal Review listing button. 24 backend fields cover specs, site flags, types, scope and economics; unsupported useful facts appear as warnings. All changes start unselected and apply to the draft only. Existing raw description import remains optional. Stale form/suite/account results cannot apply. Percentage denominator is exact scraped offered SF, invalidated for manually changed suite/portion. Suite sources exclude underlying Sale Notes. No page-wide text sent.
+
+Verified 304 unit tests; 9 listing browser groups (automatic request, no writes, explicit reviewed Save, stale edit/suite, scope denominator, safe text,320/390/840px); existing10 flyer and5 compact groups; source and extracted-package MV3 smoke. Real backend model screenshot-derived fixture independently returned15,769 office SF and one12x14 grade-level door over contradictory table values (agent-owned backend worktree; production verification pending). Parent independently reviewed backend and reran18 targeted tests. All business writes in isolated fixtures only.
+
+Source `/Users/maxschumacher/.codex/worktrees/compact-comp-layout-20260918`, branch codex/compact-comp-layout-20260918. Backend owner `/Users/maxschumacher/.codex/worktrees/listing-notes-analysis-20260918`. Package `/Users/maxschumacher/Developer/chrome extensions/Master App Survey/masterappsurvey-v1.4.15.zip`; extracted sibling output/review/space-extension-1.4.15.121292bytes,19files,SHA2564060674f9e893304fb8014c864285baa1351fc4ef467807bb38041f8924b60aa. Not installed or submitted to Store. Earlier1.4.13 Store submission separate.
+
+Privacy policy and prepared Store copy updated for automatic narrative analysis. Shared playbook, ops history/index and wiki mirror checked; live wiki unchecked. Combined shared update proposal remains pending approval; no shared writes. Next: verify backend deployment and update this checkpoint; user installation of1.4.15 required for the new flow.
+
+---
+
 ## Property details beside type — 2026-09-18T22:42:27.300767-07:00
 
 Local candidate 1.4.14 pairs Property details and Property type at 680px+, in both default and user's type-first saved order. Features fills the space below type buttons; narrow panels stack. Verified 5 compact browser groups, 12 property-field groups, 8 yard scenarios and packaged MV3 smoke. Screenshot specs-type-first.png visually inspected. Wide 840px fixture height 1268px vs 1356px previously (88px shorter); no overflow. All tests isolated, no remote requests.

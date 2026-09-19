@@ -29,3 +29,22 @@ Prepend to /Users/maxschumacher/Library/CloudStorage/OneDrive-Rein&Grossoehme/ma
 **Validation:**301 unit tests; responsive/browser regression checks and packaged MV3 worker/panel smoke passed with fixtures. No production business-record writes or installed-copy replacement.
 
 **Rollback:** If needed before approval, cancel the submitted review through the authorized Store workflow; after release, submit a higher-version build restoring the last known-good behavior. Preserve extension identity and local storage. No business-data rollback.
+
+## Additional listing review update — pending approval
+
+Add to the same Surveys playbook and wiki destinations above:
+“Extension 1.4.15 reads Sale Notes and Highlights automatically for supported listing details. Choose Review listing and select the evidence-backed changes to use; Update fields edits the draft and Save comp saves it. Narrative facts take precedence over generic property-table facts. A stated office percentage can propose Office SF only with a confirmed offered area; the calculation is shown. Ambiguous suite scope or conflicting claims require review. Other useful narrative details appear as review notes. Automatic analysis uses Anthropic through the signed-in Master App. Version 1.4.15 is a local extension package, not an installed or Store-published update.”
+
+Proposed additional full operations entry (save only after verifying backend deployment):
+
+## 2026-09-18 — Add Sale Notes and Highlights analysis for Comp review
+
+**Category:** Web App / Chrome extension. **Records affected:** 0 production business records.
+
+**What changed:** Added an authenticated listing-analysis endpoint and prepared extension1.4.15. It reviews24 supported listing fields across Sale Notes/Highlights, prioritizes narrative evidence over generic property facts, and returns quoted suggestions. Office percentage arithmetic is independently checked. Extension reads automatically, but requires selected Apply and separate Save; uncertain scope/conflicts are withheld. Local package not installed or submitted to Store.
+
+**Why:** Brokers put office percentages, door dimensions, power and other material specifications in narrative notes; these should be reviewed across the entire form.
+
+**Validation:**304 extension unit tests;9 new listing browser groups,10 existing flyer groups,5 compact groups and packaged MV3 smoke. Backend targeted tests/typecheck and real-model fixture verified15,769 office SF from60%×26,282 and the correct grade-level door over contradictory generic table fields. No production business-record writes.
+
+**Rollback:** Disable use of the new analysis action or restore the prior extension package; existing saved records and the prior flyer-analysis workflow remain independent. Reverting the backend route requires a normal scoped app release.
