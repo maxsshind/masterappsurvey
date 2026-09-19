@@ -1,3 +1,19 @@
+## Independent parent review — 2026-09-18 20:39 MST
+
+Parent task `01a0b71e-3d1a-7b80-bbc2-bfad6a26985a` reviewed final runtime diff and
+independently reran all **206 unit/transport tests** and **5 actual MV3 Sales groups**
+against the delivered 1.4.4 folder. All passed; no external requests. Verified all
+15 source/ZIP/extracted files and recorded hash match. Earlier suite/flyer regression
+evidence was inspected; shared-flyer module is unchanged from tested 1.4.3.
+Evidence: `output/review/parent-review-1.4.4-{unit.txt,runtime.json}`.
+Updated shared Surveys and Comps data references and existing Surveys wiki candidate
+note under prior approval; wiki/mirror MD5 `2ef26d0bf98ba7428e81e9c64b32f2e7` verified.
+Ops index/month checked; no production event for this local-only package. Monitor
+`monitor-costar-sales-view-fix` paused after verified completion. Installed extension,
+Store status and active user draft unchanged. A separate new property-fields effort
+will start from this verified commit, coordinated with task
+`01a0b7bd-bc4b-7041-8e52-e32965450063`; no remaining Sales-fix work.
+
 # Sales-view capture — 2026-09-18 20:36 MST (America/Phoenix)
 
 Local **1.4.4** candidate prepared in Codex worktree
