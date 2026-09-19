@@ -1,31 +1,21 @@
-# Chrome Web Store listing — CoStar → Survey Pusher
+# CoStar → Survey Pusher — existing Store listing
 
-**Package to upload:** `/Users/maxschumacher/Developer/masterappsurvey/masterappsurvey-v1.0.0.zip`
+Existing item: https://chromewebstore.google.com/detail/hohikcikmjiopimpigebcbdileipbhhc
+Version1.4.13 uploaded and submitted for review via CLI on September18,2026. Public rollout not yet verified. Existing long description/screenshots were not changed; official Store API does not expose those edits.
 
-## Store listing tab
-- **Name:** CoStar → Survey Pusher
-- **Summary (132 char max):** Push the CoStar property on your screen into a master-app survey, then update its status — right from a side panel.
-- **Category:** Workflow & Planning
-- **Language:** English
+## Prepared description for the existing listing (not saved to Store)
 
-**Description:**
-```
-Internal R&G tool. While browsing a CoStar property page, this side panel reads the property (address, building SF, land acres, sale price, lease rate/type, cap rate) and pushes it into a survey in the master-app. Pick an existing survey or create one on the fly, attach the CoStar flyer PDF, and update availability/status on properties already in a survey — without leaving CoStar.
-```
+Review the CoStar property or selected space you are viewing and save it to RGCRE Master App surveys or market comps. Requires an authorized RGCRE Master App account.
 
-## Privacy tab
-- **Single purpose:** Capture the CoStar property record currently on screen and add or update it in the user's master-app survey.
-- **Permission justifications:**
-  - `storage` — store the user's sign-in session and last-used survey locally.
-  - `tabs` — detect which CoStar property page is active and find the open flyer PDF tab.
-  - `scripting` — read the visible text of the active CoStar tab to extract property fields (read-only, on user action).
-  - `sidePanel` — the entire UI is a docked side panel.
-  - Host `*.costar.com` — read the property page the user is viewing.
-  - Host `*.csgpimgs.com` — download the flyer PDF the user opened, to store it with the survey.
-  - Host `kavynghiailoduhulytq.supabase.co` — the master-app database/storage the properties are saved to.
-- **Data usage:** does not sell or transfer data; used only to perform the user's requested save into their own master-app.
-- **Privacy policy URL:** (reuse the costarpull privacy policy URL, or a simple one-pager — ask if you need one generated.)
+- Capture listing details, review changes, and save or update the intended property or space.
+- Keep individual suites and offered portions separate, with editable area and monthly pricing.
+- Attach a flyer and reuse a building flyer across its spaces.
+- Analyze an attached flyer, review suggested details and source excerpts, then choose what to apply before saving.
+- Review property type, yard, power, rail and dock details with explicit Yes, No and Unknown answers.
+- Use the wider side-panel layout, section shortcuts or a resizable pop-out to reduce scrolling.
 
-## Distribution tab
-- **Visibility: Unlisted** (team-only; installs from the direct link, not searchable/public).
-```
+CoStar pages are read-only. The extension does not send client messages. Flyer analysis is optional and uses the Master App's AI processor as described in the privacy policy.
+
+Privacy policy: https://github.com/maxsshind/masterappsurvey/blob/main/PRIVACY_POLICY.md
+Homepage: https://www.sshteam.app
+Preserve existing visibility and category; do not change them based on historical documentation.

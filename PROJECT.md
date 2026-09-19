@@ -1,3 +1,11 @@
+## Chrome Web Store submission1.4.13 — 2026-09-18T22:32:28.493908-07:00
+
+User explicitly authorized publishing and updating the existing listing; then required CLI use. Existing item hohikcikmjiopimpigebcbdileipbhhc was read through authenticated API: draft1.4.0. Exactly one1.4.13 upload returned HTTP200/SUCCESS; draft reread confirmed1.4.13; exactly one publish returned HTTP200/statusOK. Submitted for Google review, not confirmed public. No cancellation or installed update. Existing listing identity retained. Long description/screenshots cannot be changed through the official Store API and were not changed; user required CLI. Credentials read privately from canonical .secrets; no tokens logged.
+
+ZIP117445bytes SHA25645adf45d58cfa049b3b10d57bf6e48d8ba44532fb2fc45e55df2116e05946fbe. Credential-free evidence output/review/cws-1.4.13-{upload,read,publish}.json. Local implementation checks described below. Publication approval/public rollout remains Google-controlled. Shared documentation proposal pending approval; no shared writes.
+
+---
+
 # Wide panel field placement — 2026-09-18T22:28:24.408442-07:00
 
 User requested using extra panel width to bring fields up, based on widened-panel screenshot. Local candidate1.4.13 pairs Property with Size/pricing, property-link and optional description at top, property types with feature checkboxes, Deal details with Notes. Short property specs share a row; Loading/Power share a row. Breakpoint680px; narrower layout unchanged. Only adjacent visible sections pair; custom section order/hiding respected and layout editor remains full width.
