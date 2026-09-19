@@ -4,8 +4,9 @@ Last updated: 2026-09-18
 
 ## 1.4.0 release — September 18
 
-Authorized by Max; upload/submission pending. Existing public/draft version verified
-1.3.3. Final package and release verification are in PROJECT.md. Original Store
+Uploaded and submitted on 2026-09-18 at 18:08 MST. Upload HTTP 200 / SUCCESS,
+draft 1.4.0 verified, publication HTTP 200 / OK. Existing public/draft version was
+1.3.3 before release. Google review and public availability remain separate. Final package and release verification are in PROJECT.md. Original Store
 screenshot and description retained. No permission or host changes; hosted privacy
 policy covers local drafts, retry recovery and the session-memory pop-out handoff.
 `publish.sh` remains package-only; release uses separately checked API steps.

@@ -3,8 +3,8 @@
 ## Current release checkpoint — 2026-09-18 18:06:22 MST (America/Phoenix)
 
 Max explicitly authorized GitHub and Chrome Web Store release of the completed changes.
-This supersedes historical no-publication restrictions below. Release **1.4.0** is
-prepared; submission is pending. Worktree and branch remain as recorded below.
+This supersedes historical no-publication restrictions below. Release **1.4.0** was
+uploaded and submitted successfully on September 18, 2026 at 18:08 MST. Worktree and branch remain as recorded below.
 Public Store and authenticated draft both verified **1.3.3** before release; GitHub
 main remains the verified starting commit with no divergent changes. The original
 Store screenshot and description are retained; the attempted listing refresh was reverted.
@@ -16,8 +16,15 @@ Extracted ZIP passes **167 unit tests, 43 browser scenarios, 6 real Chrome pop-o
 scenarios and the MV3 runtime smoke** with synthetic data and blocked remote requests.
 Evidence: `output/review/release-1.4.0-{unit.txt,browser.json,popout.json,extension.json,package.json}`.
 Earlier database checks below are historical, not rerun for this version bump.
-Next: push release code/privacy policy, upload this exact ZIP, verify draft version,
-submit once and record actual review/public states. Shared documentation remains unsaved.
+Release commit [f421c6b](https://github.com/maxsshind/masterappsurvey/commit/f421c6b4d216375d889cb74c7ead4283356d4fdc)
+is verified on GitHub main and the feature branch; hosted privacy policy verified HTTP 200.
+Exactly one upload returned HTTP 200 / SUCCESS; draft version verified 1.4.0.
+Exactly one publication returned HTTP 200 / OK at 18:08 MST. Google review/public
+availability is separate; installed runtime was not changed or checked. Credential-free
+API evidence: `output/review/cws-1.4.0-upload.json` and `cws-1.4.0-publish.json`.
+Release ZIP saved with matching hash to `/Users/maxschumacher/Developer/masterappsurvey/masterappsurvey-v1.4.0.zip`.
+Checkpoint updated 2026-09-18 18:08:58 MST. No further release submission is needed.
+Shared documentation remains unsaved.
 
 ## Historical local-review checkpoint — 2026-09-18 17:48:25 MST (America/Phoenix)
 

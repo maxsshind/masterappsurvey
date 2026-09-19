@@ -32,7 +32,8 @@
   such column. Comp's separate property name remains supported.
 - Packaging separated from publication. Draft storage and retention disclosed locally.
 
-Release authorized; Store submission pending. Final extracted 1.4.0 package passes
+Uploaded and submitted 2026-09-18 at 18:08 MST: upload SUCCESS, draft 1.4.0,
+publication OK. GitHub release commit f421c6b. Final extracted 1.4.0 package passes
 167 unit tests, 43 browser scenarios, 6 pop-out scenarios and MV3 smoke.
 No installed-extension replacement, production business-data test or main-app changes.
 See PROJECT.md for current release status, artifacts and verification limits.
