@@ -70,8 +70,8 @@ async (page) => {
       if (prefs) {
         assert.deepEqual(await p.evaluate(() => fixture.storage.layout_prefs.comp), prefs.comp, 'Comp preferences unchanged');
         assert.equal(await p.evaluate(() => fixture.storage.layout_prefs.density), prefs.density, 'Density unchanged');
-        assert.equal(await p.evaluate(() => fixture.storage.layout_prefs.surveyLayoutVersion), 2, 'Survey migration applied');
-        assert.deepEqual(await p.evaluate(() => fixture.storage.layout_prefs_survey_v1_backup), prefs, 'Exact prior preferences backed up');
+        assert.equal(await p.evaluate(() => fixture.storage.layout_prefs.surveyLayoutVersion), 3, 'Survey migration applied');
+        assert.deepEqual(await p.evaluate(() => fixture.storage.layout_prefs_survey_v2_backup), prefs, 'Exact prior preferences backed up');
         assert.equal(await p.locator('#comp_building_sf').evaluate((node) => node.closest('[data-sec]').dataset.sec), 'c1');
         assert.equal(await p.locator('#screen-comp [data-sec="property"]').evaluate((node) => node.classList.contains('u-hidden')), true);
         assert.equal(await p.locator('#screen-comp [data-sec="yard"]').evaluate((node) => node.classList.contains('sec-collapsed')), false);

@@ -32,7 +32,7 @@ test('migration pins the required Survey flow, reconciles old sections, and keep
   assert.equal(migrated, true);
   assert.equal(p.surveyLayoutVersion, SURVEY_VERSION);
   assert.equal(p.surveyMigrationNoticePending, true);
-  assert.deepEqual(p.survey.order, ['setup', 'offering', 'size', 'lease', 'c1', 'more', 'notes']);
+  assert.deepEqual(p.survey.order, ['setup', 'size', 'lease', 'offering', 'c1', 'more', 'notes']);
   assert.deepEqual(p.survey.hiddenSecs, ['building', 'c1']);
   assert.deepEqual(p.survey.collapsedSecs, ['notes', 'c1']);
   assert.deepEqual(p.survey.openDetails, ['more']);
@@ -63,7 +63,7 @@ test('a second migration is identical and does not rearm a dismissed notice', ()
   assert.equal(migratePreferences(once).preferences.surveyMigrationNoticePending, false);
 });
 
-test('even version-2 preferences cannot hide, collapse, or relocate required Survey controls', () => {
+test('even current-version preferences cannot hide, collapse, or relocate required Survey controls', () => {
   const value = legacy();
   value.surveyLayoutVersion = SURVEY_VERSION;
   value.survey.order = ['more', 'lease', 'setup', 'offering', 'size'];
@@ -71,10 +71,10 @@ test('even version-2 preferences cannot hide, collapse, or relocate required Sur
   value.survey.fieldMoves.surveyPricing = 'more';
   value.survey.hiddenSecs.push('setup', 'offering');
   const p = migratePreferences(value).preferences.survey;
-  assert.deepEqual(p.order.slice(0, 4), ['setup', 'offering', 'size', 'lease']);
+  assert.deepEqual(p.order.slice(0, 4), ['setup', 'size', 'lease', 'offering']);
   assert.equal(p.hiddenFields.includes('surveyPricing'), false);
   assert.equal(Object.hasOwn(p.fieldMoves, 'surveyPricing'), false);
-  for (const key of ['setup', 'offering', 'size', 'lease']) {
+  for (const key of ['setup', 'size', 'lease', 'offering']) {
     assert.equal(p.hiddenSecs.includes(key), false);
     assert.equal(p.collapsedSecs.includes(key), false);
   }
@@ -84,7 +84,7 @@ test('malformed Survey lists do not discard compatible custom definitions or mod
   const p = normalizeSurvey({ order: null, hiddenFields: {}, fieldMoves: null, collapsedSecs: 1,
     customSecs: [null, { key: 'setup', title: 'Collision' }, { key: 'c1', title: '<b>Kept as text</b>' },
       { key: 'c1', title: 'Duplicate' }, { key: 'bad"selector', title: 'Invalid' }] });
-  assert.deepEqual(p.order, ['setup', 'offering', 'size', 'lease']);
+  assert.deepEqual(p.order, ['setup', 'size', 'lease', 'offering']);
   assert.deepEqual(p.customSecs, [{ key: 'c1', title: '<b>Kept as text</b>' }]);
   assert.deepEqual(p.fieldMoves, {});
 });
@@ -127,8 +127,11 @@ async function boot(store, failKey) {
 
 test('runtime persists an exact backup before migration and never overwrites it on reopen', async () => {
   const original = legacy();
-  const store = { layout_prefs: structuredClone(original) };
+  original.surveyLayoutVersion = 2;
+  const oldBackup = { v: 1, marker: 'Original layout backup' };
+  const store = { layout_prefs: structuredClone(original), layout_prefs_survey_v1_backup: oldBackup };
   const first = await boot(store);
+  assert.deepEqual(store.layout_prefs_survey_v1_backup, oldBackup);
   assert.deepEqual(Object.keys(first.writes[0]), [BACKUP_KEY]);
   assert.deepEqual(store[BACKUP_KEY], original);
   assert.equal(store.layout_prefs.surveyLayoutVersion, SURVEY_VERSION);

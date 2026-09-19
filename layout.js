@@ -4,9 +4,9 @@
 // (never cloned) so IDs, values, and listeners survive every rearrangement.
 (() => {
   const KEY = "layout_prefs";
-  const BACKUP_KEY = "layout_prefs_survey_v1_backup";
-  const SURVEY_VERSION = 2;
-  const SURVEY_TOP = ["setup", "offering", "size", "lease"];
+  const BACKUP_KEY = "layout_prefs_survey_v2_backup";
+  const SURVEY_VERSION = 3;
+  const SURVEY_TOP = ["setup", "size", "lease", "offering"];
   const SURVEY_SECTIONS = [...SURVEY_TOP, "sale", "building", "flyer", "notes", "more"];
   const SURVEY_REQUIRED = new Set(["fAddress", "fTenancy", "fAvailability", "fNotes", "fDateAvailable", "surveyPricing", "fForSale", "fForLease"]);
   const SECTION_ALIASES = { address: "setup", tenancy: "setup", status: "offering" };
@@ -132,7 +132,7 @@
     const summary = document.createElement("summary");
     summary.textContent = "Survey layout updated";
     const body = document.createElement("p");
-    body.textContent = "Setup, availability, client notes, size and linked pricing stay together and visible. Your other Survey sections, spacing and Comp layout were kept.";
+    body.textContent = "Area now comes before monthly pricing, followed by availability, client notes and date. Your other Survey sections, spacing and Comp layout were kept.";
     notice.append(summary, body);
     // A single compact line after the offering keeps primary review controls first.
     if (offering) offering.after(notice); else container("survey").appendChild(notice);

@@ -1,6 +1,6 @@
 # September 18 Survey extension alignment
 
-## Current checkpoint — 2026-09-18 17:12:12 MST (America/Phoenix)
+## Current checkpoint — 2026-09-18 17:18:18 MST (America/Phoenix)
 
 **Local implementation and review package complete. Distribution and live authenticated verification remain outside this task.**
 
@@ -10,7 +10,18 @@ Authorized: implement and test Survey alignment; prepare a review ZIP. **No Stor
 
 Verified starting HEAD and fetched `origin/main`: `ecf1b6776fc5a0bf2f11bd5aaa5db1e72ee4e70f`. Manifest stays **1.3.3**, solely as the review baseline; this is not a newly numbered release. Current Store draft, public version and installed runtime were not rechecked.
 
-## Follow-up: selected-space rent fix — current build
+## Follow-up: Area → Monthly pricing → Availability — current build
+
+Max requested the Area section where Availability was, Monthly pricing directly below Area, and Availability/client Notes/Date below pricing. Implemented in both default HTML and saved-layout normalization. Layout v3 stores the exact previous preferences under `layout_prefs_survey_v2_backup`, retains the older v1 backup, and preserves Comp settings and draft values. This explicitly supersedes the earlier requirement to keep Availability/Notes/Date above the fold.
+
+- [Current ZIP](/Users/maxschumacher/Developer/masterappsurvey/masterappsurvey-v1.3.3-area-first-review-2026-09-18.zip) — 92,297 bytes; SHA-256 `5a54fa185d4918998c98c28ff618a7df3fe409d133f032d3bc2258b01cb020eb`.
+- [Ready-to-load folder](/Users/maxschumacher/Developer/masterappsurvey/local-extension/survey-review-area-first-2026-09-18). Existing installed/review folders were not changed.
+- [390px preview](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/area-first/survey-st-390.png).
+- Verified **167 unit tests and 41 browser scenarios** on source and extracted ZIP, including saved-layout migration/backup, the requested order at 320×740, 390×844 and 560×900, accessible Save and no horizontal overflow. [Source tests](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/area-first-unit-source.txt), [ZIP tests](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/area-first-unit-package.txt), [source browser](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/area-first-browser-source.json), [ZIP browser](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/area-first-browser-package.json), [actual MV3 smoke](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/area-first-extension-package.json), [archive evidence](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/area-first-package.json).
+
+Rent-fix behavior is retained. No pricing/data/schema changes, Store publication or installed-extension replacement. Shared production documentation does not need a release entry for this local layout revision. Next step: load this review folder when ready and verify the requested order in the test extension. Prior live-authenticated save limitations remain unchanged.
+
+## Follow-up: selected-space rent fix — earlier review build
 
 Max reported the rent blank while CoStar's open Space Details showed 40,000 SF, Rent $0.65, Rent/Mo $26,000 and Triple Net. Read-only inspection of the actual open Chrome page confirmed those labels and a separate 380,569-SF building summary. The original scraper selected the summary first; the new draft intentionally did not adopt its ambiguous quote.
 
@@ -30,7 +41,7 @@ Next manual check after loading this review folder: open one CoStar Space Detail
 - [Review ZIP](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/masterappsurvey-survey-review-20260918.zip): **89,976 bytes**, 14 runtime/icon files.
 - SHA-256: `d4b3d82849d86a2fe34d66edcf682482cebcc773ef9c68191574fe8349fa80d4`.
 - [Package evidence](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/package.json).
-- Screenshots: [320px panel](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/survey-st-320.png), [390px panel](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/survey-st-390.png), [560px panel](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/survey-st-560.png), [MT monthly pricing](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/survey-mt-pricing-390.png).
+- Screenshot paths below are refreshed during current layout verification; they are not immutable initial-release captures. [320px panel](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/survey-st-320.png), [390px panel](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/survey-st-390.png), [560px panel](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/survey-st-560.png), [MT monthly pricing](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/survey-mt-pricing-390.png).
 
 The archive contains only manifest/config, panel/worker/runtime scripts, stylesheet and three icons. It excludes documentation, fixtures, drafts, environment files and credentials. `package.sh` checks imports, icons, archive integrity and source byte parity. `publish.sh --package-only` packages locally; any other invocation exits without networking. No upload or installation command was run.
 
@@ -41,7 +52,7 @@ The archive contains only manifest/config, panel/worker/runtime scripts, stylesh
 - Independent spaces and combined alternatives have their own terms, notes, flyer, validation and stable IDs. Building matches require a deliberate suite target. Shared building facts seed new spaces without copying sibling terms.
 - Atomic bulk inserts use stable IDs, ignore duplicates and full readback. Durable account/survey requests retain the reviewed payload through retries, reopen, another panel's pending request and lost responses. Uncertain dispatched saves stay locked. Existing-row writes require the selected ID, survey and original `updated_at`; stale rows require review.
 - Minimal dirty patches preserve metadata, custom/null choices and client feedback. Removed unsupported Survey `property_name` writes: the canonical SurveyProperty/table has no such column. Comp's separate property-name field remains supported.
-- Visible choices, early client Notes and Date Available, expandable Notes 2, errors, keyboard controls and persistent Save actions work at 320×740, 390×844 and 560×900. Survey layout v2 retains an exact prior backup and preserves Comp preferences/density.
+- Visible choices, Area and Monthly pricing before Availability/client Notes/Date, expandable Notes 2, errors, keyboard controls and persistent Save actions work at 320×740, 390×844 and 560×900. Survey layout v3 retains an exact prior backup and preserves Comp preferences/density.
 - Drafts persist by account/survey; Settings clears resolved drafts. Pending uncertain requests cannot be cleared as ordinary drafts. Local privacy text covers retention, private evidence and flyer upload timing.
 - Existing Comp property-linking/yard/separate-deal behavior is preserved. No new permissions, hosts, analytics or remote code.
 

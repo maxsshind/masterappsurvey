@@ -180,12 +180,12 @@ async (page) => {
 
     for(const [width,height] of [[320,740],[390,844],[560,900]]){
       await p.setViewportSize({width,height});await fresh({tenancy:'ST',building_sf:10000});await p.evaluate(()=>window.scrollTo(0,0));
-      const metrics=await p.evaluate(()=>({overflow:document.documentElement.scrollWidth>innerWidth,notes:document.querySelector('#fNotes').getBoundingClientRect().bottom,date:document.querySelector('#fDateAvailable').getBoundingClientRect().bottom,save:document.querySelector('#btnSaveBottom').getBoundingClientRect().bottom,height:innerHeight}));
+      const metrics=await p.evaluate(()=>({overflow:document.documentElement.scrollWidth>innerWidth,order:[...document.querySelectorAll('#screen-form > [data-sec]')].slice(0,4).map(n=>n.dataset.sec).join(','),area:document.querySelector('[data-sec="size"]').getBoundingClientRect().top,save:document.querySelector('#btnSaveBottom').getBoundingClientRect().bottom,height:innerHeight}));
       await p.evaluate(()=>document.getElementById('toast').classList.add('hidden'));
       if (typeof process !== 'undefined' && process.env.SURVEY_SCREENSHOT_DIR) await p.screenshot({path:process.env.SURVEY_SCREENSHOT_DIR + `/survey-st-${width}.png`});
-      assert.equal(metrics.overflow,false,`no overflow ${width}`);assert.ok(metrics.notes<height-60,`notes above footer ${width} ${metrics.notes}`);assert.ok(metrics.date<height-48,`date above footer ${width} ${metrics.date}`);assert.ok(metrics.save<=height,`save visible ${width}`);
+      assert.equal(metrics.overflow,false,`no overflow ${width}`);assert.equal(metrics.order,'setup,size,lease,offering',`area/pricing/availability order ${width}`);assert.ok(metrics.area<height-60,`area above footer ${width}`);assert.ok(metrics.save<=height,`save visible ${width}`);
     }
-    results.push('320×740, 390×844 and 560×900: tenancy/availability/notes/date above footer, Save reachable, no overflow');
+    results.push('320×740, 390×844 and 560×900: Area then pricing then availability, Area above fold, Save reachable, no overflow');
     await p.locator('#fTenancy input[value="ST"]').focus();await p.keyboard.press('ArrowRight');assert.equal(await p.evaluate(()=>document.activeElement.value),'MT');await p.keyboard.press('ArrowLeft');assert.equal(await p.evaluate(()=>document.activeElement.value),'ST');
     results.push('Native radio arrow-key focus survives selection');
     await p.setViewportSize({width:390,height:844});await fresh({tenancy:'MT',building_sf:40000,suite_size:'5000',suite_number:'101'});await fill('fLeaseRate','1.4');await choose('fExpenseTreatment','additional');await fill('fOpexPsf','0.25');await fill('fOfferedAcres','2');await p.locator('#leaseBlock').scrollIntoViewIfNeeded();

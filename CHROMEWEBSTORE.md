@@ -4,6 +4,8 @@ Last updated: 2026-09-18
 
 ## September 18 Survey review build — not released
 
+Current local layout: Area → Monthly pricing → Availability/client Notes/Date, including existing saved layouts. The area-first package and exact verification/hash are linked from PROJECT.md; rent-fix behavior remains included.
+
 Latest local package includes the selected-space rent fix: explicit Rent/Mo and offered size now prefill for review from the open Space Details. Existing edits and separate-space drafts are preserved. See PROJECT.md for the current rent-fix ZIP/extracted folder, hash, 167 unit tests and 41 browser scenarios. Earlier review ZIP remains historical. No installed extension or Store state changed.
 
 Implemented on `codex/survey-alignment-20260918`, based on verified `origin/main`
@@ -19,7 +21,7 @@ change occurred. Current public/installed versions were not rechecked.**
 Survey changes: editable linked monthly total/SF/acre rent, offered acreage, explicit
 expenses, source-period/basis review, independent spaces and explicit suite targets,
 atomic stable-ID batch retries, stale-update protection, strict numbers, visible
-choices, early availability/client notes, expandable Notes 2, local draft recovery,
+choices, availability/client notes below pricing, expandable Notes 2, local draft recovery,
 and Survey-only layout migration. Comp input behavior and its existing save safeguards
 remain unchanged; direct Comp rent intake does not inherit the separate web bridge's
 monthly/expense-exclusive confirmation safeguard.
