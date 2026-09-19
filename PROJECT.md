@@ -1,3 +1,11 @@
+## Property details beside type — 2026-09-18T22:42:27.300767-07:00
+
+Local candidate 1.4.14 pairs Property details and Property type at 680px+, in both default and user's type-first saved order. Features fills the space below type buttons; narrow panels stack. Verified 5 compact browser groups, 12 property-field groups, 8 yard scenarios and packaged MV3 smoke. Screenshot specs-type-first.png visually inspected. Wide 840px fixture height 1268px vs 1356px previously (88px shorter); no overflow. All tests isolated, no remote requests.
+
+Package `/Users/maxschumacher/Developer/chrome extensions/Master App Survey/masterappsurvey-v1.4.14.zip`; extracted sibling `output/review/space-extension-1.4.14`. 18 runtime files match source/archive/extracted. SHA256 db15275efe6c1f8d898a0a12b02d7b90a0de610ec4b33460bfcbe5bda001f8ca. Source Codex worktree `/Users/maxschumacher/.codex/worktrees/compact-comp-layout-20260918`, branch codex/compact-comp-layout-20260918. Not installed or submitted; earlier 1.4.13 submission is separate. Shared playbook/ops/wiki proposal remains pending approval; this local presentation correction needs no new production entry. Next: update same extension preserving identity and drafts; Store follow-up must check existing review status first.
+
+---
+
 ## CLI release verified
 
 Google accepted1.4.13 upload and publication request. Public Store still showed1.4.0 after submission. GitHub main verified pushed10b48b9; public privacy policy HTTP200 and Anthropic flyer-analysis disclosure verified. Existing Store long description/screenshots unchanged (no official CLI/API edit support); prepared copy in STORE_LISTING.md. Shared release documentation proposal remains pending approval below.

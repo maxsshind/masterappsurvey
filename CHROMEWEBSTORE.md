@@ -1,3 +1,7 @@
+## 1.4.14 — Property details beside type (local candidate)
+
+Wide panels pair these sections in either saved order, with feature checkboxes below type buttons. Narrow layout preserved. Browser regression and packaged MV3 checks passed; package delivered locally. Not installed or submitted to Store.
+
 ## Chrome Web Store submission1.4.13 — 2026-09-18T22:32:28.493908-07:00
 
 User explicitly authorized publishing and updating the existing listing; then required CLI use. Existing item hohikcikmjiopimpigebcbdileipbhhc was read through authenticated API: draft1.4.0. Exactly one1.4.13 upload returned HTTP200/SUCCESS; draft reread confirmed1.4.13; exactly one publish returned HTTP200/statusOK. Submitted for Google review, not confirmed public. No cancellation or installed update. Existing listing identity retained. Long description/screenshots cannot be changed through the official Store API and were not changed; user required CLI. Credentials read privately from canonical .secrets; no tokens logged.

@@ -702,3 +702,22 @@ body:has(#screen-comp:not(.hidden)) { max-width: 840px; }
 @media (min-width: 680px) {
   body.layout-editing #screen-comp:not(.hidden) { display: block; }
 }
+
+/* Keep specifications beside types in either the default or saved section order.
+   When Features follows, it fills the space below the type chips. */
+@media (min-width: 680px) {
+  #screen-comp > [data-sec="space-specs"]:not(.u-hidden):has(+ [data-sec="ptype"]:not(.u-hidden)),
+  #screen-comp > [data-sec="ptype"]:not(.u-hidden):has(+ [data-sec="space-specs"]:not(.u-hidden)) { grid-column: 1; }
+  #screen-comp > [data-sec="space-specs"]:not(.u-hidden) + [data-sec="ptype"]:not(.u-hidden),
+  #screen-comp > [data-sec="ptype"]:not(.u-hidden) + [data-sec="space-specs"]:not(.u-hidden) { grid-column: 2; }
+  #screen-comp > [data-sec="space-specs"]:not(.u-hidden):has(+ [data-sec="ptype"]:not(.u-hidden) + [data-sec="yard"]:not(.u-hidden)),
+  #screen-comp > [data-sec="ptype"]:not(.u-hidden) + [data-sec="space-specs"]:not(.u-hidden):has(+ [data-sec="yard"]:not(.u-hidden)) { grid-row: span 2; }
+  #screen-comp > [data-sec="space-specs"]:not(.u-hidden) + [data-sec="ptype"]:not(.u-hidden) + [data-sec="yard"]:not(.u-hidden) { grid-column: 2; }
+  #screen-comp > [data-sec="ptype"]:not(.u-hidden) + [data-sec="space-specs"]:not(.u-hidden) + [data-sec="yard"]:not(.u-hidden) { grid-column: 1; }
+  #screen-comp > [data-sec="space-specs"]:has(+ [data-sec="ptype"]:not(.u-hidden)) > .fieldset,
+  #screen-comp > [data-sec="ptype"]:not(.u-hidden) + [data-sec="space-specs"] > .fieldset { grid-template-columns: repeat(6,minmax(0,1fr)); }
+  #screen-comp > [data-sec="space-specs"]:has(+ [data-sec="ptype"]:not(.u-hidden)) .fld:has(input),
+  #screen-comp > [data-sec="ptype"]:not(.u-hidden) + [data-sec="space-specs"] .fld:has(input) { grid-column: span 2; }
+  #screen-comp > [data-sec="space-specs"]:has(+ [data-sec="ptype"]:not(.u-hidden)) .fld:has(textarea),
+  #screen-comp > [data-sec="ptype"]:not(.u-hidden) + [data-sec="space-specs"] .fld:has(textarea) { grid-column: 1 / -1; }
+}

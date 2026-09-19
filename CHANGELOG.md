@@ -1,3 +1,7 @@
+## 1.4.14 — Property details beside type (local candidate)
+
+Wide panels pair these sections in either saved order, with feature checkboxes below type buttons. Narrow layout preserved. Browser regression and packaged MV3 checks passed; package delivered locally. Not installed or submitted to Store.
+
 ## 1.4.13 — Wide panel layout (local candidate)
 
 At680px+, related sections and fields sit beside one another to reduce scrolling. Top description and feature checkboxes retained; narrow view stays stacked. ZIP masterappsurvey-v1.4.13.zip is delivered locally; no installation or Store submission. See PROJECT.md for verification.

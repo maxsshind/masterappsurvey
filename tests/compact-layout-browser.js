@@ -148,6 +148,26 @@ async (page) => {
     assert.equal(new Set(focused).size,missing.length,'Review cycles through missing fields');
     assert.ok(focused.every(id=>missing.includes(id)),'Review focuses only missing fields');
     results.push('Clickable missing-field summary cycles focus through missing controls');
+    for (const order of ['default', 'type-first']) {
+      await p.evaluate(order => {
+        const specs=document.querySelector('#screen-comp [data-sec="space-specs"]');
+        const types=document.querySelector('#screen-comp [data-sec="ptype"]');
+        if(order==='type-first') specs.before(types);
+      },order);
+      await p.setViewportSize({width:840,height:900});
+      await p.evaluate(()=>window.scrollTo(0,0));
+      const pos=await p.evaluate(()=>Object.fromEntries(['ptype','space-specs','yard'].map(k=>{
+        const r=document.querySelector('#screen-comp [data-sec="'+k+'"]').getBoundingClientRect();return [k,{x:r.x,y:r.y,right:r.right,bottom:r.bottom}];
+      })));
+      assert.ok(Math.abs(pos.ptype.y-pos['space-specs'].y)<2,'Specs and types share top: '+order);
+      assert.equal(pos.yard.x,pos.ptype.x,'Features below types: '+order);
+      assert.ok(pos.yard.y>=pos.ptype.bottom,'Features do not overlap types');
+      assert.ok(pos.ptype.right<=pos['space-specs'].x||pos['space-specs'].right<=pos.ptype.x,'Columns do not overlap');
+      await p.screenshot({path:'output/review/specs-'+order+'.png',fullPage:true});
+      await p.setViewportSize({width:390,height:900});
+      assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Narrow custom order has no overflow');
+    }
+    results.push('Property details and types pair in both section orders; Features fills below types');
     await fresh();
     for(const name of ['yard_included','class_a','heavy_power','has_rail','has_truckwell_or_dock']) {
       for(const value of ['true','false','']) {
