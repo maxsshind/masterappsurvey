@@ -1,26 +1,23 @@
 {
   "manifest_version": 3,
-  "name": "CoStar → Survey Pusher",
+  "name": "CoStar \u2192 Survey Pusher",
   "version": "1.4.5",
   "description": "Push the CoStar property on your screen into a master-app survey or the comps database. Read-only on CoStar.",
-
   "permissions": [
     "storage",
     "tabs",
     "scripting",
     "sidePanel"
   ],
-
   "host_permissions": [
     "https://*.costar.com/*",
     "https://*.csgpimgs.com/*",
-    "https://kavynghiailoduhulytq.supabase.co/*"
+    "https://kavynghiailoduhulytq.supabase.co/*",
+    "https://www.sshteam.app/*"
   ],
-
   "background": {
     "service_worker": "background.js"
   },
-
   "action": {
     "default_icon": {
       "16": "icons/icon16.png",
@@ -28,11 +25,9 @@
       "128": "icons/icon128.png"
     }
   },
-
   "side_panel": {
     "default_path": "panel.html"
   },
-
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

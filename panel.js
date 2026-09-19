@@ -81,7 +81,7 @@ function bgSend(type, extra = {}, opts = {}, attempt = 0) {
     activeMessages++;
     let settled = false;
     const finish = (v) => { if (!settled) { settled = true; activeMessages--; resolve(v); } };
-    const timeoutMs = isWrite ? 60000 : (attempt === 0 ? 2000 : 3000);
+    const timeoutMs = type === "ANALYZE_COMP_FLYER" ? 90000 : isWrite ? 60000 : (attempt === 0 ? 2000 : 3000);
     const timeoutId = setTimeout(async () => {
       if (settled) return;
       if (!isWrite && attempt < 1) finish(await bgSend(type, extra, opts, attempt + 1));
@@ -2925,3 +2925,34 @@ if (IS_EXTENSION_CONTEXT) void (async () => {
   }
 })();
 else initLocalPreview();
+
+
+installCompFlyerReview({
+  fields: CompPropertyFields.fields, labels: CompPropertyFields.labels, parse: CompPropertyFields.parse,
+  locked: () => !!(comp.saving || comp.pendingSave || poppingOut || document.body.inert),
+  snapshot: () => ({
+    identity: [state.email, comp.mode, comp.updateId, comp.costarId, comp.sourceUrl, comp.lookupSequence],
+    request: {
+      flyer_url: comp.flyerUrl || comp.baseline?.flyer_url || null,
+      address: $('comp_address').value, city: $('comp_city').value, state: $('comp_state').value,
+      suite: $('comp_suite').value, status: $('comp_status').value,
+      currentValues: compPropertyValues().values,
+    },
+    // Raw input also detects invalid/intermediate typing while the request runs.
+    raw: Object.fromEntries(CompPropertyFields.fields.map(field=>[field,$('comp_'+field)?.value])),
+  }),
+  analyze: async draft => {
+    const result=await bg('ANALYZE_COMP_FLYER',{draft},{write:true});
+    if(handleAuthFailure(result))return {ok:false,error:'Sign in again to analyze the flyer.'};
+    return result;
+  },
+  message: setCompMsg,
+  apply: rows => {
+    for(const row of rows) {
+      setCompPropertyValue(row.field,row.value,'Flyer');
+      comp.propertyFieldsEdited[row.field]=true;
+      setCompNeedsReview('comp_'+row.field,false);
+    }
+    syncCompFeatureChecks();syncCompReviewState();
+  },
+});

@@ -11,7 +11,7 @@
  *     No automated navigation, no CoStar APIs, no crawling.
  */
 
-importScripts("config.js", "supabase.js", "survey-fields.js", "survey-rent.js", "survey-spaces.js");
+importScripts("config.js", "supabase.js", "survey-fields.js", "survey-rent.js", "survey-spaces.js", "comp-flyer-background.js");
 
 // ─── CoStar read (on-demand, single DOM read of the active CoStar tab) ───────────
 
@@ -743,6 +743,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
     case "SAVE_COMP":
       reply(saveCompWithProperty(msg.request));
+      return true;
+
+    case "ANALYZE_COMP_FLYER":
+      reply(analyzeCompFlyerDraft(msg.draft));
       return true;
 
     case "ATTACH_COMP_FLYER":
