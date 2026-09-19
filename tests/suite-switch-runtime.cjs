@@ -20,6 +20,9 @@ change(1);
  const id=new URL(worker.url()).host;
  await worker.evaluate(({SURVEY,ACCOUNT})=>{
   globalThis.fixtureDB={rows:[],writes:[],account:ACCOUNT,survey:SURVEY};
+  globalThis.fixtureFlyerUploads=0;
+  downloadOpenFlyer=async()=>({blob:new Blob(['%PDF-1.4\nfixture']),name:'building.pdf'});
+  uploadToSurveyFiles=async()=>{fixtureFlyerUploads++;return 'https://fixture.invalid/building.pdf';};
   sbSelect=async()=>[]; // Comp's separate poll has no fixture rows.
   sbGetSession=async()=>({user_id:fixtureDB.account,access_token:'fixture-only'});
   sbEnsureAuthorized=async()=>({user_id:fixtureDB.account,access_token:'fixture-only'});
@@ -48,6 +51,7 @@ change(1);
  const suite=()=>panel.locator('#fSuiteNumber').inputValue();
  const rows=()=>worker.evaluate(()=>structuredClone(fixtureDB.rows));
  await read();assert.equal(await suite(),'Yard 3');await panel.locator('#fTenancy input[value="MT"]').click();
+ if(!baseline){await panel.locator('#btnAttachFlyer').click();await panel.waitForFunction(()=>surveyEditor.flyerUploads===0&&activeSurveyDraft().model.values.flyer_url);assert.equal(await panel.locator('#fFlyerScope').inputValue(),'building');}
  await panel.locator('#btnSave').click();await panel.waitForFunction(()=>state.mode==='update'&&!surveyEditor.saving);
  const yard=(await rows())[0];assert.equal(yard.suite_number,'Yard 3');
  await costar.locator('#next').click();
@@ -55,9 +59,9 @@ change(1);
  await panel.waitForFunction(()=>document.querySelector('#fSuiteNumber').value==='7');
  assert.equal(await panel.locator('#fSuiteSize').inputValue(),'1,200');assert.equal(await panel.locator('#fOfficeSf').inputValue(),'100');assert.equal(await panel.locator('#fMonthlyBase').inputValue(),'1680');
  assert.equal(await panel.locator('[data-update="0"]').isDisabled(),true);
- await panel.locator('[data-add="0"]').click();await panel.locator('#btnSave').click();await panel.waitForFunction(()=>state.mode==='update'&&!surveyEditor.saving&&document.querySelector('#fSuiteNumber').value==='7');
- let saved=await rows();assert.equal(saved.length,2);assert.deepEqual(saved[0],yard);assert.equal(saved[1].monthly_base_rent,1680);assert.equal(saved[1].office_sf,100);
- console.error('completed',results.length);results.push('Actual same-URL CoStar arrow -> worker DOM scraper -> automatic Suite 7 capture -> distinct row saved; Yard 3 unchanged');
+ await panel.locator('[data-add="0"]').click();assert.equal(await panel.locator('#fFlyerUrl').inputValue(),'https://fixture.invalid/building.pdf');await panel.locator('#btnSave').click();await panel.waitForFunction(()=>state.mode==='update'&&!surveyEditor.saving&&document.querySelector('#fSuiteNumber').value==='7');
+ let saved=await rows();assert.equal(saved.length,2);assert.deepEqual(saved[0],yard);assert.equal(saved[1].monthly_base_rent,1680);assert.equal(saved[1].office_sf,100);assert.equal(saved[0].flyer_url,'https://fixture.invalid/building.pdf');assert.equal(saved[1].flyer_url,saved[0].flyer_url);assert.equal(await worker.evaluate(()=>fixtureFlyerUploads),1);
+ console.error('completed',results.length);results.push('Actual same-URL CoStar arrow -> worker DOM scraper -> automatic Suite 7 capture -> distinct row saved with the building flyer reused after one upload; Yard 3 unchanged');
  await panel.locator('#fNotes').fill('Suite 7 edited');await panel.locator('#fOfficeSf').fill('');await read();await read();assert.equal(await panel.locator('#fNotes').inputValue(),'Suite 7 edited');assert.equal(await panel.locator('#fOfficeSf').inputValue(),'');
  // Delayed arrow updates ordinal first, fields later. Poll ultimately follows settled fields.
  await costar.evaluate(()=>window.delay=1300);await costar.locator('#back').click();await panel.waitForFunction(()=>document.querySelector('#fSuiteNumber').value==='Yard 3');await settle();

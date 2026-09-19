@@ -1259,7 +1259,7 @@ async function applySurveySaved(rows) {
         const key = surveySourceKey(draft.source);
         surveyEditor.archives[key] = {key,active:0,drafts:[structuredClone(draft)],targetId:row.id,targetLabel:SurveySpaces.normalizeSpaceLabel(row.suite_number),decision:'update'};
       }
-      surveyEditor.archives[`row:${row.id}`] = {key:`row:${row.id}`,active:0,drafts:[{...makeSurveyDraft(row,false,draft.source),sourceTargetLabel:SurveySpaces.normalizeSpaceLabel(row.suite_number)}]};
+      surveyEditor.archives[`row:${row.id}`] = {key:`row:${row.id}`,active:0,drafts:[{...makeSurveyDraft(row,false,draft.source),flyerMode:draft.flyerMode,flyerBuilding:draft.flyerBuilding,sourceTargetLabel:SurveySpaces.normalizeSpaceLabel(row.suite_number)}]};
     }
   }
   surveyEditor.pending = null; surveyEditor.saving = false;

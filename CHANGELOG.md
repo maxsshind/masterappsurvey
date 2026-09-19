@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.4.3 local candidate — 2026-09-18 — Follow suites and reuse a building flyer
+
+Prepared and verified locally; installed extension and Store submission unchanged.
+
+- Survey Push follows CoStar space arrows at the same URL after the visible details
+  settle. Saved sources retain their exact row. Save rechecks the source and blocks
+  a different suite; duplicate choices cannot update a differently labeled suite.
+  Add current CoStar space works even when the existing row has unknown tenancy.
+- The sticky title names the draft suite; the source line shows its captured suite.
+  Explicit edits, clears, manual siblings, delayed reads, pop-out source and
+  account/survey/view switches preserve their own state. Batch readback maps by ID.
+- For MT offerings, Building flyer attaches once and new spaces at that building
+  reuse the stored URL. Reuse flyer selects an existing same-building attachment
+  without opening/downloading it. This space only permits a separate flyer or none.
+  Replacing/removing a default never bulk-updates saved attachments. Defaults are
+  local to the signed-in account and survey, survive restart/pop-out, and can be
+  cleared without deleting uploaded files. Delayed uploads retain their original
+  target and cannot overwrite a newer choice. Save waits for an active upload.
+- Existing range capture and thousands separators remain. No new permissions,
+  hosts, external recipients, server table or Comp behavior changes. Privacy text
+  now documents visible-space monitoring and local building-flyer preferences.
+
+Final ZIP verification: 196 unit/transport tests, 56 mounted browser scenarios,
+6 real pop-out scenarios, 12 actual MV3 suite-switch/save groups, and MV3 smoke.
+The combined Yard 3 to Suite 7 test saves two distinct rows with one flyer upload.
+All tests use disposable fixtures; no production business records were changed.
+Live authenticated fixed-runtime behavior remains unverified until installation.
+
 ## 1.4.2 candidate — 2026-09-18 — Keep captured suites and format SF
 
 Prepared and tested locally; not uploaded, submitted, or installed by this effort.

@@ -1,3 +1,56 @@
+# Combined suite switching and shared flyers — 2026-09-18 20:22 MST (America/Phoenix)
+
+Current outcome: local **1.4.3** package complete and delivered. Parent handled
+flyers as Max requested; separate task handled suite switching. This checkpoint
+supersedes the older candidate records below. Installed extension is unchanged.
+
+- Codex local parent task `01a0b71e-3d1a-7b80-bbc2-bfad6a26985a`.
+- Working checkout: `/Users/maxschumacher/.codex/worktrees/survey-shared-flyers-20260918`,
+  branch `codex/survey-shared-flyers-20260918`.
+- Canonical project/delivery: `/Users/maxschumacher/Developer/chrome extensions/Master App Survey`.
+  Canonical source edits and user's installed 1.4.2 profile were not overwritten.
+- Flyer implementation `cebdb7f`; real pop-out verification `7d77573`; suite task
+  commit `ddfd00f` integrated as `92de144`, with both upload and save-source guards.
+- Attach Building flyer once for an MT building; new spaces reuse its URL.
+  Reuse flyer selects a saved building attachment without opening/uploading it.
+  This space only preserves an individual override/removal. Future defaults do
+  not rewrite saved rows. Account/survey identity, restart/pop-out and delayed
+  uploads are covered. Uploaded files are not deleted when detaching a link.
+- Same-URL space arrows now refresh the selected capture automatically. Save checks
+  the visible source; wrong-suite updates are blocked. See CHANGELOG.md for details.
+
+Delivered ZIP: `/Users/maxschumacher/Developer/chrome extensions/Master App Survey/masterappsurvey-v1.4.3.zip`.
+Extracted folder: `/Users/maxschumacher/Developer/chrome extensions/Master App Survey/output/review/space-extension-1.4.3`.
+**102,941 bytes**, SHA-256 `1b852fd3571b92f4e546e2e4f8c195385783681e5a7bb64ddc085a5e1ec915a0`.
+All 15 runtime/icon files match source, archive and delivered folder byte for byte.
+
+Final extracted-package verification: **196 unit/transport tests**, **56 mounted
+browser scenarios** (37 Survey, 6 Yard, 13 Comp), **6 actual Chrome pop-out scenarios**,
+**12 real MV3 suite-switch groups**, and MV3 worker/panel smoke pass. A real extension
+handler with fixture PDF/storage transport attaches once; DOM arrow moves Yard 3
+into Suite 7; the real save pipeline creates separate rows sharing that flyer.
+Wrong-source save and delayed rendering produce zero writes. Disposable profiles,
+fixture Supabase only, no external requests. Narrow 320px screenshot visually
+inspected; 390/560/720px checks also pass. Test browsers/loopback server closed.
+Evidence in `output/review/combined-{package.json,delivery.json,unit.txt,browser.json,popout.json,mv3.json,suite.json}`.
+Screenshot: `output/review/combined-popout/panel-320.png`.
+
+Documentation completed under Max's existing authorization: local changelog,
+release guide, privacy text, this checkpoint; shared Surveys playbook and existing
+Surveys wiki candidate note. Live wiki row and mirror verified identical MD5
+`9949c70b0b601d32e6c76a1a52378880`. Production ops index/September archive checked;
+no new production event is appropriate for an uninstalled local package.
+
+Next step: update files of the existing unpacked extension and reload that same
+extension after preserving the active draft. Keep its ID/storage; do not install
+a duplicate expecting old drafts to transfer. Current known installed path:
+`/Users/maxschumacher/Library/Application Support/Google/Chrome/Default/UnpackedExtensions/masterappsurvey-v1.4.2_u70oHn`.
+No automatic replacement/reload, Store upload/publication, main-app change, or
+production business-record test was performed. Fixed behavior in Max's authenticated
+CoStar session remains unverified until the installed version is updated.
+
+---
+
 # Suite-switch/save-target fix — 2026-09-18 20:17:57 MST (America/Phoenix)
 
 Current scoped task: fix automatic same-URL CoStar space switching and prevent

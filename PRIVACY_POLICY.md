@@ -12,9 +12,11 @@ to its building/site property record. It also updates survey-property statuses.
 ## Data the Extension reads
 - **From CoStar (`*.costar.com`):** the property's address, building size, land area,
   submarket, sale price, lease rate and type, cap rate, and the CoStar property ID
-  (from the page URL) shown on the CoStar tab you are actively viewing. Read only when
-  you open the extension or click Read, and only from the rendered page already on your
-  screen. The Extension makes no calls to CoStar's APIs and does not crawl CoStar.
+  (from the page URL) shown on the CoStar tab you are viewing. The Extension reads
+  the rendered page when opened or refreshed, while Survey Push is open to detect
+  suite changes, and again before saving to verify the selected space. A popped-out
+  editor retains its original source tab. The Extension makes no calls to CoStar's
+  APIs and does not crawl CoStar.
 - **From the flyer CDN (`*.csgpimgs.com`):** when you click "Attach flyer", the Extension
   downloads the flyer PDF you opened, in order to store it with the survey.
 - **From the master-app database (`kavynghiailoduhulytq.supabase.co`):** your surveys and

@@ -322,7 +322,7 @@ async (page) => {
     assert.equal(await p.evaluate(()=>fixture.rows.length),2);assert.equal(await p.evaluate(()=>fixture.rows.every(r=>r.flyer_url==='https://fixture.invalid/building.pdf')),true);
     await p.reload();await p.waitForFunction(()=>state.survey?.id);assert.equal(await value('fFlyerUrl'),'https://fixture.invalid/building.pdf');
     await p.evaluate(()=>{fixture.scrape={costarId:'555555',street:'500 Flyer Way',city:'Tempe',state:'AZ',rba:'10000',selectedSpace:{scope:'space-details',identity:'third-space',suite:'3',availableSf:'1500',canPrefill:false}};});
-    await p.locator('#btnRefresh').click();await p.locator('#spaceCandidates [data-add="0"]').click();assert.equal(await value('fFlyerUrl'),'https://fixture.invalid/building.pdf');
+    await p.locator('#btnRefresh').click();await p.waitForFunction(()=>surveyReadsInFlight===0);await p.locator('#spaceCandidates [data-add="0"]').click();assert.equal(await value('fFlyerUrl'),'https://fixture.invalid/building.pdf');
     await p.locator('#btnSave').click();await p.waitForFunction(()=>!surveyEditor.saving&&!surveyEditor.pending);assert.equal(await p.evaluate(()=>fixture.rows[2].flyer_url),'https://fixture.invalid/building.pdf');
     assert.equal(await p.evaluate(()=>fixture.requests.filter(r=>r.type==='ATTACH_FLYER').length),attachCount+1);
     results.push('One building PDF upload supplies manual and freshly captured next suites; each saved row retains URL after reload without reuploading');
