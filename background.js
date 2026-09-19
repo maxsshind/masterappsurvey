@@ -41,7 +41,8 @@ async function readCoStar(options = {}) {
     target: { tabId: tab.id },
     // This function runs IN the CoStar tab. It reads ONLY the already-rendered
     // text the user is looking at — no network calls, no navigation.
-    func: () => {
+    args: [Boolean((tab.url || "").match(/\/listings\/for-sale\/detail\//))],
+    func: (isSalesListing = false) => {
       const txt = document.body.innerText || "";
       const lines = txt.split(/\n/).map((s) => s.trim()).filter(Boolean);
 
@@ -85,6 +86,11 @@ async function readCoStar(options = {}) {
       let submarket = "";
       const sm = txt.match(/[-–]\s*([A-Za-z0-9/&'’ .]+?)\s+Submarket/);
       if (sm) submarket = sm[1].trim();
+      if (!submarket) {
+        const header = txt.match(/(?:^|[\n•･·])\s*([A-Za-z0-9/&'’ .-]+?)[ \t]+Submarket(?=\s*(?:[\n•･·]|$))/m);
+        const location = txt.match(/^Submarket[ \t]*(?:\n|\t)[ \t]*([^\n\t]+)/m) || txt.match(/\bSubmarket\s+(.+?)\s+Submarket Cluster\b/);
+        submarket = (header?.[1] || location?.[1] || '').trim();
+      }
 
       // ---- numeric stats : value appears just before its label ----
       // value BEFORE the label — property pages: "18,885\nSF RBA", "0.7\nAC Lot"
@@ -97,7 +103,7 @@ async function readCoStar(options = {}) {
         const m = txt.match(new RegExp(label + "\\s*\\n?\\s*([\\d,.]+)", "i"));
         return m ? m[1].replace(/,/g, "") : "";
       };
-      const rba = grab("SF RBA") || grab("RBA") || grabAfter("RBA");
+      const rba = grab("SF RBA") || grab("RBA") || grabAfter("RBA") || (isSalesListing ? grabAfter("Building Size") : "");
       const acLot = grab("AC Lot") || grabAfter("Land Acres") || grabAfter("AC Lot");
 
       // ---- sale price : "For Sale  $5,400,000" (Sale section) or header "$5.4M Sale Price" ----
@@ -111,6 +117,24 @@ async function readCoStar(options = {}) {
           if (/M/i.test(spHeader[2])) n *= 1e6; else if (/K/i.test(spHeader[2])) n *= 1e3;
           if (!isNaN(n)) salePrice = String(Math.round(n));
         }
+      }
+
+      if (isSalesListing) {
+        // Sales listing Summary and Property use different labeled sections.
+        // Never take Transaction History/Sold Price, market averages, or loan amounts.
+        const details = txt.match(/\bListing Details\b([\s\S]*?)(?=\b(?:Sale Notes|Marketing Brochure|Building Details|Transaction History)\b|$)/i)?.[1] || '';
+        const availability = txt.match(/\bAvailabilities\b([\s\S]*?)(?=\b(?:Transaction History|Tenants|Market Conditions|Demographics)\b|$)/i)?.[1] || '';
+        const asking = details.match(/\bAsking Price\s+([\s\S]*?)(?=\s+(?:Price\s*\/\s*SF|Sale Type|Time On Market|Status)\b|$)/i)?.[1];
+        const offered = availability.match(/\bFor Sale\s*(?:[>›»]\s*)?Price\s+([\s\S]*?)(?=\s+(?:Sale Type|Status|For Lease)\b|$)/i)?.[1];
+        const exactPrice = raw => {
+          const text = String(raw || '').trim().replace(/^Individual Property\s*[•･·]\s*/i,'');
+          const match = text.match(/^\$\s*((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)\s*([MK])?\s*(?:\(\$[\d,.]+\s*\/\s*SF\))?$/i);
+          if (!match) return '';
+          const value = Number(match[1].replaceAll(',','')) * (/m/i.test(match[2] || '') ? 1e6 : /k/i.test(match[2] || '') ? 1e3 : 1);
+          return Number.isFinite(value) && value >= 0 ? String(value) : '';
+        };
+        const prices = [asking,offered].filter(value => value !== undefined).map(exactPrice);
+        salePrice = prices.length && prices.every(value => value && value === prices[0]) ? prices[0] : '';
       }
 
       // ---- lease rate $/SF ----
@@ -292,6 +316,7 @@ async function readCoStar(options = {}) {
 
   const data = results[0]?.result || {};
   data.costarId = costarId;
+  data.listingId = (tab.url || "").match(/\/listings\/(for-sale|for-lease)\/detail\/([^/]+)/)?.slice(1).join(":") || "";
   data.sourceUrl = tab.url;
   data.scrapedTabUrl = tab.url;
   data.sourceTabId = tab.id;

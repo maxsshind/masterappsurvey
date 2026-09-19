@@ -502,3 +502,24 @@ test('Comp intake retains legacy most-recent-tab fallback independently of Surve
   h.c.chrome.scripting={executeScript:async options=>{selected=options.target.tabId;return[{result:{}}];}};
   await h.c.readCoStar();assert.equal(selected,11);
 });
+
+async function salesListingFixture(text, section='summary') {
+ const h=harness();h.c.document={body:{innerText:text}};
+ h.c.chrome.tabs={query:async()=>[{id:1,url:`https://product.costar.com/listings/for-sale/detail/zqev8pz/${section}`}]};
+ h.c.chrome.scripting={executeScript:async({func,args})=>[{result:func(...args)}]};
+ return h.c.readCoStar();
+}
+const salesHeader='2405 W Geneva Dr\n17,236 SF\n•\nFor Sale\n•\nIndustrial Property\n•\nTempe Southwest Submarket\n•\nTempe, AZ 85282\n';
+for(const [view,body] of [
+ ['summary','Listing Details\nAvailable Size\n17,236 SF\nAsking Price\n$4,309,000\nPrice/SF\n$250.00\nSale Type\nOwner User\nStatus\nActive\nBuilding Details\nBuilding Size\n17,236 SF'],
+ ['property','Property\nBuilding\nRBA\n17,236 SF\nLand Acres\n1.20 AC\nLocation\nSubmarket\nTempe Southwest\nSubmarket Cluster\nSoutheast\nAvailabilities\nFor Sale\nPrice\nIndividual Property ･ $4,309,000 ($250.00/SF)\nSale Type\nOwner User\nStatus\nActive\nTransaction History\nSold Price\n$575,000 ($33.36/SF)']
+]) for(const inline of [false,true])test(`Sales ${view} ${inline?'inline':'lines'} captures asking and submarket, never historical sale`,async()=>{
+ const data=await salesListingFixture(salesHeader+(inline?body.replaceAll('\n',' '):body),view);
+ assert.equal(data.salePrice,'4309000');assert.equal(data.submarket,'Tempe Southwest');assert.equal(data.rba,'17236');assert.equal(data.listingId,'for-sale:zqev8pz');assert.equal(data.costarId,'');
+});
+for(const raw of ['Upon Request','$4,309,000 - $5,000,000','$250/SF','$4,30,900','Portfolio ･ $4,309,000'])test(`Sales asking value ${raw} stays unresolved`,async()=>{
+ const data=await salesListingFixture(salesHeader+`Listing Details\nAsking Price\n${raw}\nPrice/SF\n$250.00\nSale Notes\nSold Price\n$575,000`);assert.equal(data.salePrice,'');
+});
+test('Sales Location-label submarket fallback ignores Submarket Cluster and old prices',async()=>{
+ const data=await salesListingFixture('2405 W Geneva Dr\nTempe, AZ 85282\nLocation\nSubmarket\nTempe Southwest\nSubmarket Cluster\nSoutheast\nTransaction History\nSold Price\n$575,000','property');assert.equal(data.submarket,'Tempe Southwest');assert.equal(data.salePrice,'');
+});

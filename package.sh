@@ -9,7 +9,7 @@ root = Path.cwd()
 files = ['manifest.json','config.js','supabase.js','background.js','panel.html','panel.js','panel.css','layout.js','survey-fields.js','survey-rent.js','survey-spaces.js','survey-flyers.js','icons/icon16.png','icons/icon48.png','icons/icon128.png']
 manifest = json.loads((root/'manifest.json').read_text())
 assert manifest['manifest_version'] == 3
-assert manifest['version'] == '1.4.3', 'Manifest differs from the prepared candidate version.'
+assert manifest['version'] == '1.4.4', 'Manifest differs from the prepared candidate version.'
 for size, icon in manifest['icons'].items():
     data=(root/icon).read_bytes()
     assert data[:8] == b'\x89PNG\r\n\x1a\n' and struct.unpack('>II',data[16:24]) == (int(size),int(size))

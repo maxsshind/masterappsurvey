@@ -1,3 +1,46 @@
+# Sales-view capture — 2026-09-18 20:36 MST (America/Phoenix)
+
+Local **1.4.4** candidate prepared in Codex worktree
+`/Users/maxschumacher/.codex/worktrees/survey-sales-view-20260918`, branch
+`codex/survey-sales-view-20260918`, based on combined 1.4.3 commit `afa2faf`.
+Canonical delivery: `/Users/maxschumacher/Developer/chrome extensions/Master App Survey`.
+Original canonical edits and installed extension were not touched.
+
+Verified user Sales listing Summary and Property layouts live with read-only DOM
+inspection in a temporary Chrome tab (closed afterward): asking **$4,309,000**,
+**Tempe Southwest**, building **17,236 SF**. Property also displays a historical
+**$575,000** sold price, which must not populate asking. Sales Summary uses Listing
+Details / Asking Price; Property uses Availabilities / For Sale / Price. Submarket
+uses a bullet-separated header and a Location label. Capture now supports both.
+
+Current implementation and checks are in CHANGELOG.md and
+`tests/sales-view-runtime.cjs`. 206 units, 56 mounted scenarios, 6 real popouts,
+12 actual MV3 suite/flyer groups and 5 actual MV3 Sales groups pass. Fixtures use
+an isolated browser and synthetic save transport, zero external requests. Final
+extracted runtime is checked separately with Sales groups and MV3 smoke. All15
+runtime/icon files match source/ZIP/extracted. Existing 1.4.3 behavior is preserved.
+
+Delivery: `masterappsurvey-v1.4.4.zip` (103,752 bytes), extracted at
+`output/review/space-extension-1.4.4` under canonical delivery directory.
+SHA256: `792b8663cc085efa3ca8f0673a9a0b86d2a2d94c5737a445a08b2bdadfa11c61`.
+Evidence: this checkout `output/review/sales-{unit.txt,browser.json,popout.json,suite.json,runtime.json,delivered-runtime.json,mv3.json,package.json,delivery.json}`.
+
+Shared documentation check: Surveys and Comp playbook references, production ops
+index/September archive and existing Surveys wiki mirror read. No production ops
+entry applies to this uninstalled build. Parent release owner retains live-wiki
+integration. Proposed candidate note: "Local 1.4.4 includes 1.4.3 and supports the
+Sales Summary/Property asking price and submarket layouts. Historical sold prices
+are excluded. It is locally tested and not installed or submitted to the Store."
+Shared save status remains pending coordination with parent; no shared writes here.
+
+Next step: preserve the open draft, update the existing unpacked extension in place
+and reload under a separately authorized installation step, retaining its ID/local
+storage. Then verify the actual authenticated Sales listing without saving a test
+record. No reload, installed-file replacement, Store submission or business-record
+write occurred here. Parent coordinating task: `01a0b71e-3d1a-7b80-bbc2-bfad6a26985a`.
+
+---
+
 # Combined suite switching and shared flyers — 2026-09-18 20:22 MST (America/Phoenix)
 
 Current outcome: local **1.4.3** package complete and delivered. Parent handled

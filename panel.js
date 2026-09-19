@@ -632,6 +632,8 @@ function costarRecordKey(url) {
   try {
     const u = new URL(url);
     if (!u.hostname.endsWith("costar.com")) return null;
+    const listing = u.pathname.match(/^\/listings\/(for-sale|for-lease)\/detail\/([^/]+)/);
+    if (listing) return `listing:${listing[1]}:${listing[2]}`;
     if (!u.pathname.includes("/detail/")) return null;
     const num = u.pathname.match(/\/(\d{4,})(?:\/|$)/);
     if (num) return num[1];
@@ -872,7 +874,7 @@ function surveyChoice(id, value, scope = activeSurveyDraft()?.id || 'initial') {
 }
 function surveyReviewSource(source) {
   if (!source) return null;
-  return Object.fromEntries(['costarId','street','city','state','zip','sourceUrl','rba','acLot','leaseQuote','leaseQuoteRaw','leaseRate','selectedSpace','sourceTabId'].filter(k => source[k] !== undefined).map(k => [k,source[k]]));
+  return Object.fromEntries(['costarId','listingId','street','city','state','zip','sourceUrl','rba','acLot','leaseQuote','leaseQuoteRaw','leaseRate','selectedSpace','sourceTabId'].filter(k => source[k] !== undefined).map(k => [k,source[k]]));
 }
 function makeSurveyDraft(row, isNew, source = null) {
   source = surveyReviewSource(source);
@@ -905,7 +907,7 @@ function surveySpaceLeaseType(raw) {
   return null;
 }
 function surveySourceKey(d) {
-  const building = d?.costarId ? `costar:${d.costarId}` : `address:${[d?.street,d?.city,d?.state].map(v => String(v || '').trim().toLowerCase()).join('|')}`;
+  const building = d?.listingId ? `listing:${d.listingId}` : d?.costarId ? `costar:${d.costarId}` : `address:${[d?.street,d?.city,d?.state].map(v => String(v || '').trim().toLowerCase()).join('|')}`;
   // The open space is a distinct offering, even when another suite shares its
   // CoStar building ID. Amount changes do not change the space's draft identity.
   return d?.selectedSpace?.identity ? `${building}:space:${d.selectedSpace.identity}` : building;
@@ -1977,8 +1979,8 @@ async function fillCompForm(d) {
   if (comp.pendingSave || comp.saving) return;
   d = d || {};
   // Navigating to a genuinely different CoStar record → clear the form and update state.
-  const newKey = d.costarId || normalizeCompAddress(d.street || "");
-  const oldKey = comp.costarId || normalizeCompAddress((comp.scrape && comp.scrape.street) || "");
+  const newKey = d.listingId || d.costarId || normalizeCompAddress(d.street || "");
+  const oldKey = comp.scrape?.listingId || comp.costarId || normalizeCompAddress((comp.scrape && comp.scrape.street) || "");
   if (comp.scrape && newKey && newKey !== oldKey) resetCompForm();
 
   comp.scrape = d;

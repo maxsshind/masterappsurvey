@@ -2,6 +2,24 @@
 
 Last updated: 2026-09-18
 
+## 1.4.4 local candidate — 2026-09-18 — CoStar Sales view
+
+- Sales Summary captures Listing Details → Asking Price; Sales Property captures
+  Availabilities → For Sale → Price. Historical sold prices, market averages,
+  price/SF-only quotes, ranges and withheld prices are not used as asking totals.
+- Submarket reads the bullet-separated header or Location label. Summary supports
+  Building Size. Manual Comp price/submarket edits survive re-read and section
+  switches; separate listing IDs keep different offerings at one address apart.
+  Listing slugs never become numeric CoStar property IDs for deduplication.
+- Includes all 1.4.3 suite-switching and shared-building-flyer changes. No additional
+  permission, host, schema, installation or Store publication.
+
+Verified live page layouts read-only, then 206 unit/transport tests, 56 mounted
+browser scenarios, 6 real pop-out scenarios, 12 actual MV3 suite/flyer groups and
+5 actual MV3 Sales groups using disposable fixtures. Final extracted package also
+passes Sales groups and MV3 smoke; its 15 files match source and ZIP byte for byte.
+Fixed behavior in the user's authenticated installed extension remains unverified.
+
 ## 1.4.3 local candidate — suite switching and shared flyers
 
 Prepared and verified locally; installed extension and Store submission unchanged.
