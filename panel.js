@@ -1710,8 +1710,6 @@ function compClearChecks(containerId) {
 function syncCompFeatureChecks() {
   for (const field of [...CompPropertyFields.flags, 'yard_included']) {
     const node = $('comp_' + field); node.checked = node.value === 'true'; node.indeterminate = !node.value;
-    const choice = $('comp_' + field + '_choice');
-    if (choice) { choice.value = node.value; choice.disabled = !!(comp.pendingSave || comp.saving); }
     $('comp_' + field + '_answer').textContent = !node.value ? 'Unknown' : node.checked ? 'Yes' : 'No';
   }
 }
@@ -2784,14 +2782,6 @@ function initCompMode() {
     const next = missing[(index + 1) % missing.length];
     if (next) { lastReviewId = next.id; revealCompTarget($(next.id)); }
   });
-  document.querySelectorAll('[data-comp-feature-select]').forEach(select => select.addEventListener('change', () => {
-    if (comp.saving || comp.pendingSave) { syncCompFeatureChecks(); return; }
-    const field = select.dataset.compFeatureSelect;
-    if (field === 'yard_included') comp.yardEdited = true;
-    else comp.propertyFieldsEdited[field] = true;
-    setCompPropertyValue(field, select.value === '' ? null : select.value === 'true', 'Edited');
-    syncCompReviewState();
-  }));
   for (const id of ['comp_loading', 'comp_power']) $(id).addEventListener('input', resizeCompTextareas);
   window.addEventListener('resize', resizeCompTextareas);
 

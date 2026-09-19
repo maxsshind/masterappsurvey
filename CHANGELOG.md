@@ -1,3 +1,7 @@
+## 1.4.12 — Restore feature checkboxes
+
+Restored all five feature checkboxes and Clear-to-Unknown while retaining compact layout and ISF/IOS yard default. Local candidate only; no installed or Store update.
+
 ## 1.4.11 — local compact Comp review candidate
 
 Also includes explicit ISF/IOS selection defaulting Yard included to Yes, while preserving later overrides, deselection and saved hydration.

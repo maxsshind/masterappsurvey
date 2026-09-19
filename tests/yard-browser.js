@@ -66,11 +66,11 @@ async (page) => {
       const yard = p.getByLabel('Yard included', { exact: true });
       assert.equal(await yard.isVisible(), true, 'Yard visible in default and legacy custom layouts');
       assert.equal(await yard.inputValue(), '', 'New listing defaults Unknown');
-      assert.equal(await yard.evaluate(n=>n.tagName),'SELECT');
-      assert.equal(await yard.inputValue(),'');
+      assert.equal(await yard.getAttribute('type'),'checkbox');
+      assert.equal(await yard.evaluate(n=>n.indeterminate),true);
       const chooseYard = async choice => {
-        if (!choice) { await p.locator('#comp_yard_included_choice').focus(); await p.locator('#comp_yard_included_choice').selectOption(''); }
-        else await yard.selectOption(choice);
+        if (!choice) await p.locator('[data-clear-comp-feature="yard_included"]').click();
+        else { await yard.check(); if(choice==='false') await yard.uncheck(); }
       };
       if (prefs) {
         assert.deepEqual(await p.evaluate(() => fixture.storage.layout_prefs.comp), prefs.comp, 'Comp preferences unchanged');
@@ -92,9 +92,9 @@ async (page) => {
         await p.evaluate(async () => { resetCompForm(); await fillCompForm(fixture.scrape); });
         const typeInput = p.locator(`#comp_ptypes label[title="${type}"]`);
         await typeInput.click();
-        assert.equal(await yard.inputValue(), "true", `${type} selects Yard included`);
+        assert.equal(await yard.isChecked(), true, `${type} checks Yard included`);
         assert.equal(await yard.inputValue(), 'true');
-        assert.equal(await yard.locator("option:checked").textContent(), "Yes");
+        assert.equal(await yard.evaluate(n => n.indeterminate), false);
         await p.locator('#compSave').click();
         await p.waitForFunction(() => document.getElementById('compMsg').textContent.includes('Comp saved'));
         assert.equal((await saves()).at(-1).request.p_comp.yard_included, true);
@@ -193,7 +193,7 @@ async (page) => {
       // Yard remains movable in the existing layout editor, with value and handlers intact.
       await chooseYard('false');
       await p.evaluate(() => Layout.enterEdit('comp'));
-      await p.locator('label[for="comp_yard_included_choice"]').click();
+      await p.locator('label[for="comp_yard_included"]').click();
       await p.locator('#lbMoveTo').selectOption('property');
       assert.equal(await yard.evaluate((node) => node.closest('[data-sec]').dataset.sec), 'property');
       await p.locator('#lbDone').click();

@@ -131,7 +131,7 @@ async (page) => {
 
     await fresh(); await p.locator('#comp_suite').fill('B');
     await p.locator('#comp_partial_site_override').selectOption('true'); await p.locator('#comp_multi_tenant').selectOption('true');
-    await p.locator('#comp_building_sf').fill('7500'); await p.locator('#comp_land_area').fill('0.5'); await p.locator('#comp_yard_included_choice').focus(); await p.locator('#comp_yard_included_choice').selectOption('true'); await p.locator('#comp_yard_included_choice').focus(); await p.locator('#comp_yard_included_choice').selectOption('false');
+    await p.locator('#comp_building_sf').fill('7500'); await p.locator('#comp_land_area').fill('0.5'); await p.locator('#comp_yard_included').check(); await p.locator('#comp_yard_included').uncheck();
     await p.locator('#compSave').click(); await p.waitForFunction(() => document.getElementById('compMsg').textContent.includes('Comp saved'));
     const portion = await lastSave(); assert.equal(portion.p_comp.suite, 'B'); assert.equal(portion.p_comp.partial_site_override, true);
     assert.equal(portion.p_comp.building_sf, 7500); assert.equal(portion.p_comp.yard_included, false);

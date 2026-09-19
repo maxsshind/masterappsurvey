@@ -99,7 +99,7 @@ async (page) => {
     await p.locator('#comp_lease_area').fill('12000'); await p.locator('#comp_office_sf').fill('4500');
     await p.locator('#comp_clear_height').fill('18\'6"');
     await p.locator('#comp_power').fill('3,400 amps, 277/480V, 3-phase'); await p.locator('#comp_year_built').fill('2001'); await p.locator('#comp_loading').fill('2 docks; 1 grade-level door');
-    await p.locator('#comp_heavy_power_choice').focus(); await p.locator('#comp_heavy_power_choice').selectOption('true'); await p.locator('#comp_has_rail_choice').focus(); await p.locator('#comp_has_rail_choice').selectOption('true'); await p.locator('#comp_has_rail_choice').focus(); await p.locator('#comp_has_rail_choice').selectOption('false');
+    await p.locator('#comp_heavy_power').check(); await p.locator('#comp_has_rail').check(); await p.locator('#comp_has_rail').uncheck();
     assert.equal(await p.locator('#comp_has_rail_answer').innerText(),'No');
     await p.locator('#comp_ptypes label[title="ISF"]').click(); await p.locator('#comp_ptypes label[title="Vintage"]').click();
     payload=await save('Comp saved');
@@ -111,7 +111,7 @@ async (page) => {
     await p.locator('#comp_notes').fill('Notes only'); payload=await save('Comp updated');
     for(const key of fields)assert.equal(Object.hasOwn(payload,key),false,'Notes save preserves '+key);
     await p.locator('#comp_office_sf').fill('0'); await p.locator('#comp_clear_height').fill(''); await p.locator('#comp_loading').fill('');
-    await p.locator('#comp_power').fill(''); await p.locator('#comp_heavy_power_choice').focus(); await p.locator('#comp_heavy_power_choice').selectOption('false'); await p.locator('#comp_has_rail_choice').focus(); await p.locator('#comp_has_rail_choice').selectOption('');
+    await p.locator('#comp_power').fill(''); await p.locator('#comp_heavy_power').uncheck(); await p.locator('[data-clear-comp-feature="has_rail"]').click();
     payload=await save('Comp updated');
     for(const [key,value] of Object.entries({office_sf:0,clear_height:null,clear_height_ft:null,loading:null,power:null,heavy_power:false,has_rail:null}))assert.equal(payload[key],value,key);
     for(const key of ['class_a','has_truckwell_or_dock','lease_area','year_built'])assert.equal(Object.hasOwn(payload,key),false,'Untouched saved '+key);
@@ -123,7 +123,7 @@ async (page) => {
     await p.evaluate(row=>{fixture.candidates=[row];enterCompUpdate(row);},baseline);
     assert.equal(await p.locator('#comp_ptypes input[value="Vintage"]').isChecked(),true);
     assert.equal(await p.locator('#comp_office_sf').inputValue(),'1,500'); assert.equal(await p.locator('#comp_heavy_power').isChecked(),true);
-    await p.locator('#comp_office_sf').fill('2500'); await p.locator('#comp_heavy_power_choice').focus(); await p.locator('#comp_heavy_power_choice').selectOption('');
+    await p.locator('#comp_office_sf').fill('2500'); await p.locator('[data-clear-comp-feature="heavy_power"]').click();
     await p.evaluate(async row=>{await fillCompForm({...fixture.scrape,propertyFacts:{officeSf:'6600 SF',heavyPower:'Yes'}});enterCompUpdate(row);},baseline);
     assert.equal(await p.locator('#comp_office_sf').inputValue(),'2,500'); assert.equal(await p.locator('#comp_heavy_power_answer').innerText(),'Unknown');
     await p.evaluate(row=>enterCompUpdate({...row,id:'30000000-0000-4000-8000-000000000002',office_sf:700,heavy_power:false}),baseline);
@@ -154,7 +154,7 @@ async (page) => {
 
     await fresh();
     await p.evaluate(async()=>fillCompForm({...fixture.scrape,selectedSpace:{identity:'suite-a',suite:'A',availableSf:'1200'},propertyFacts:{scope:'selected-space',officeSf:'100 SF',loading:'Docks: 2',docks:'2'}}));
-    await p.locator('#comp_heavy_power_choice').focus(); await p.locator('#comp_heavy_power_choice').selectOption('true');
+    await p.locator('#comp_heavy_power').check();
     await p.evaluate(async()=>fillCompForm({...fixture.scrape,selectedSpace:{identity:'suite-b',suite:'B',availableSf:'2400'},propertyFacts:{scope:'selected-space'}}));
     assert.equal(await p.locator('#comp_suite').inputValue(),'B'); assert.equal(await p.locator('#comp_lease_area').inputValue(),'2,400');
     for(const field of ['office_sf','loading','heavy_power','has_truckwell_or_dock'])assert.equal(await p.locator('#comp_'+field).inputValue(),'','Different suite '+field);
@@ -162,7 +162,7 @@ async (page) => {
     for(const field of ['office_sf','lease_area','loading','has_truckwell_or_dock'])assert.equal(await p.locator('#comp_'+field).inputValue(),'','Divisible suite '+field);
     results.push('Re-reading another selected suite resets offering facts; a divisible suite never inherits whole-source office/loading/flags');
 
-    await fresh('commitThenLose'); await p.locator('#comp_clear_height').fill("22-24'"); await p.locator('#comp_office_sf').fill('6500'); await p.locator('#comp_heavy_power_choice').focus(); await p.locator('#comp_heavy_power_choice').selectOption('true'); await p.locator('#comp_has_rail_choice').focus(); await p.locator('#comp_has_rail_choice').selectOption('true'); await p.locator('#comp_has_rail_choice').focus(); await p.locator('#comp_has_rail_choice').selectOption('false');
+    await fresh('commitThenLose'); await p.locator('#comp_clear_height').fill("22-24'"); await p.locator('#comp_office_sf').fill('6500'); await p.locator('#comp_heavy_power').check(); await p.locator('#comp_has_rail').check(); await p.locator('#comp_has_rail').uncheck();
     await p.locator('#compSave').click(); await p.waitForFunction(()=>$('compMsg').textContent.includes('Retry pending save'));
     const pending=await lastSave(); await p.reload(); await p.waitForFunction(()=>$('compSave').textContent==='Retry pending save');
     assert.equal(await p.locator('#comp_clear_height').inputValue(),"22-24'"); assert.equal(await p.locator('#comp_office_sf').inputValue(),'6,500'); assert.equal(await p.locator('#comp_heavy_power').isChecked(),true); assert.equal(await p.locator('#comp_has_rail_answer').innerText(),'No'); assert.equal(await p.locator('#comp_class_a').evaluate(n=>n.indeterminate),true);

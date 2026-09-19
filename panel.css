@@ -652,8 +652,6 @@ body:has(#screen-comp:not(.hidden)) { max-width: 840px; }
 .comp-import-option small { -webkit-line-clamp: 1; }
 .comp-screen .fieldset { gap: 7px; padding: 8px; }
 .comp-screen textarea#comp_loading, .comp-screen textarea#comp_power { min-height: 44px; max-height: 160px; resize: vertical; }
-.comp-feature > label input, .comp-feature > .field-hint, .comp-feature > button { display: none; }
-.comp-feature > select { flex: 0 0 100px; width: 100px; }
 #compCompleteness { border: 0; background: transparent; padding: 2px 0; text-align: left; font: inherit; font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 #compCompleteness:disabled { cursor: default; text-decoration: none; }
 #compFlyerState { min-width: 0; overflow-wrap: anywhere; text-align: right; }
@@ -673,4 +671,3 @@ body:has(#screen-comp:not(.hidden)) { max-width: 840px; }
 @media (max-width: 359px) {
   .comp-section-nav { margin-inline: -10px; padding-inline: 10px; }
 }
-.comp-screen .fld.comp-feature > .field-hint { display: none; }

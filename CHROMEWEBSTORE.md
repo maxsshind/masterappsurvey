@@ -1,3 +1,7 @@
+## Local correction1.4.12
+
+Supersedes local1.4.11: feature checkboxes restored at user request. Latest ZIP is masterappsurvey-v1.4.12.zip in canonical Master App Survey folder. No installed update or Store action. Preserve existing extension ID/storage during any separately authorized update.
+
 ## Local layout candidate 1.4.11
 
 Review ZIP: `masterappsurvey-v1.4.11.zip`; delivered under canonical Master App Survey. Preserve installed extension ID/storage and finish active drafts before any separately authorized replacement. Chrome owns docked side-panel width: drag its edge wider (target roughly50% more); form adapts through840px. Source301 units, browser regression/compact checks,8 pop-outs and packaged MV3 smoke passed. No Store upload/publication or installed-copy replacement. See PROJECT.md for evidence and exact source.

@@ -1,3 +1,13 @@
+# Feature checkbox correction — 2026-09-18T22:26:02.973085-07:00
+
+User explicitly requested feature checkboxes restored. Local candidate1.4.12 supersedes1.4.11: Yard included, Class A, Heavy power, Has rail and Has truckwell or dock use original checkboxes with Yes/No/Unknown and Clear. Compact layout, top description, section/review navigation and explicit ISF/IOS yard default retained. No installed replacement or Store submission.
+
+Verified301 units;4 compact layout groups (320/390/585/720px),8 yard groups including ISF/IOS+manual overrides,12 property field groups; actual extracted-package MV3 smoke. Parent visually checked585px screenshot. Isolated fixtures only, no production writes. Archive18 files match source/extracted. ZIP117116bytes SHA2565c4e6e3c5e7ea126f99dbdb716463fb49f7e7f2630c6bfa4eb07ef2720cb38b7.
+
+Delivery `/Users/maxschumacher/Developer/chrome extensions/Master App Survey/masterappsurvey-v1.4.12.zip`, extracted sibling `output/review/space-extension-1.4.12`. Source remains this worktree/branch as recorded below. Evidence `output/review/checkbox-*`. Next step: finish active draft before updating same installed extension, preserving ID/storage; no reload performed here. Local docs updated; shared playbook/ops/wiki need no new release claim for this local UI correction (live wiki unchecked). No shared writes.
+
+---
+
 # Compact Comp layout — 2026-09-18 22:11:12 MST
 
 Owner: Codex local isolated worktree `/Users/maxschumacher/.codex/worktrees/compact-comp-layout-20260918`, branch `codex/compact-comp-layout-20260918`; baseline cd40a4a (local candidate 1.4.10).

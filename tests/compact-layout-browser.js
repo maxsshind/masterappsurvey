@@ -76,14 +76,11 @@ async (page) => {
     await p.goto('http://127.0.0.1:8783/panel.html');
     await p.waitForFunction(() => $('comp_address').value === '100 Fixture Way');
     const pickFeature = async (name, value) => {
-      const selector = await p.evaluate(name => {
-        const hidden = document.getElementById('comp_' + name);
-        const candidates = [...document.querySelectorAll('[data-comp-feature-select]')];
-        const n = candidates.find(n => [name, 'comp_' + name].includes(n.dataset.compFeatureSelect)) || hidden.closest('label, .comp-feature-control, .comp-feature, .fld')?.querySelector('[data-comp-feature-select]');
-        if (!n) throw new Error('Missing feature select: ' + name);
-        return n.id ? '#' + n.id : '[data-comp-feature-select="' + n.dataset.compFeatureSelect + '"]';
-      }, name);
-      await p.locator(selector).selectOption(value);
+      const checkbox = p.locator('#comp_' + name);
+      assert.equal(await checkbox.getAttribute('type'), 'checkbox');
+      assert.equal(await checkbox.isVisible(), true);
+      if (value === '') await p.locator('[data-clear-comp-feature="' + name + '"]').click();
+      else { await checkbox.check(); if (value === 'false') await checkbox.uncheck(); }
     };
     const save = async () => {
       await p.locator('#compSave').click();
@@ -141,7 +138,7 @@ async (page) => {
         assert.equal(payload[name],value===''?null:value==='true',name+' tri-state payload '+value);
       }
     }
-    results.push('All five feature selectors serialize Yes/No/Unknown as true/false/null across repeated saves');
+    results.push('All five feature checkboxes serialize Yes/No/Unknown as true/false/null across repeated saves');
     await fresh();
     await p.locator('#comp_loading').fill('Two grade level doors');
     await p.locator('#comp_power').fill('600 amps, 480V, 3-phase');
