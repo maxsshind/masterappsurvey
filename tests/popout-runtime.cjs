@@ -138,6 +138,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     await source.locator('#comp_notes').focus(); // Existing blur formatting runs before a header click.
     await source.locator('#comp_clear_height').fill("22-24'");
     await source.locator('#comp_office_sf').fill('6,500');
+    await source.locator('#comp_power').fill('3,400 amps, 277/480V, 3-phase');
+    await source.locator('#comp_yard_included').check(); await source.locator('#comp_yard_included').uncheck();
     await source.locator('#comp_heavy_power').check();
     await source.locator('#comp_has_rail').check(); await source.locator('#comp_has_rail').uncheck();
     const compBefore = await source.evaluate(() => ({ model: comp, fields: compDraftSnapshot(), highlights: $('compIncludeHighlights').checked }));
@@ -148,6 +150,8 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     assert.equal(await target.locator('#compFlyerState').innerText(), 'Fixture flyer.pdf');
     assert.equal(await target.locator('#comp_clear_height').inputValue(),"22-24'");
     assert.equal(await target.locator('#comp_office_sf').inputValue(),'6,500');
+    assert.equal(await target.locator('#comp_power').inputValue(),'3,400 amps, 277/480V, 3-phase');
+    assert.equal(await target.locator('#comp_yard_included_answer').innerText(),'No');
     assert.equal(await target.locator('#comp_heavy_power').isChecked(),true);
     assert.equal(await target.locator('#comp_has_rail_answer').innerText(),'No');
     assert.equal(await target.locator('#comp_class_a').evaluate(n=>n.indeterminate),true);

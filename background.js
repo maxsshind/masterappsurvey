@@ -289,7 +289,8 @@ async function readCoStar(options = {}) {
         return out;
       };
       const saleHighlightLines = sectionLines("Sale Highlights", [
-        "Sale Notes", "Documents", "Sale Contacts", "Building", "For Lease",
+        "Sale Notes", "Documents", "Sale Contacts", "Building", "Building Details", "For Lease",
+        "External Links", "Transaction History", "Property Mix", "Location", "Marketing Brochure",
       ]);
       const saleNoteLines = sectionLines("Sale Notes", [
         "Documents", "Sale Contacts", "Building", "For Lease", "Lease Highlights", "Lease Notes",
@@ -309,9 +310,12 @@ async function readCoStar(options = {}) {
       // Optional facts are scoped to the selected space, or the Building table
       // when no selected-space modal is open. Never borrow loading/office totals
       // from an underlying building for a selected suite.
-      const buildingFacts = txt.match(/(?:^|\n)Building(?: Details)?[ \t]*\n([\s\S]*?)(?=\n(?:Amenities|Transportation|Location|Availabilities|Transaction History|Space Details|Documents)\b|$)/i)?.[1] || '';
-      const factSection = selectedFactSection === null ? buildingFacts : selectedFactSection;
-      const factLabels = /\b(?:Has Truckwell or Dock|Truck Wells|Clear Height|Office SF|Rail Served|Heavy Power|Has Rail|Rail Line|Rail Spots|Building Size|Floor Contig|Bldg Contig|Lease Status|Time on Market|Space Features|Rent\s*\/\s*(?:Month|Mo|Year|Yr)|Service Type|Year Built|Drive Ins|Cross Docks|Sprinklers|Construction|Build-Out|Condition|Occupancy|Tenancy|Loading|Docks|Power|Office|Available|Suite(?: Number)?|Floor|Rent|Type|Term|Services|Stories|Columns|Elevators|Levelers|Cranes|Class|RBA)\b/gi;
+      const buildingFacts = txt.match(/(?:^|\n)Building(?: Details)?[ \t]*(?:\n|\t)([\s\S]*?)(?=\n(?:Amenities|Transportation|Availabilities|Transaction History|Space Details|Documents)\b|\nLocation[ \t]*\n(?=\s*(?:Submarket|Market|County)\b)|$)/i)?.[1] || '';
+      const factLabels = /\b(?:Has Truckwell or Dock|Truck Wells|Clear Height|Office SF|Rail Served|Heavy Power|Has Rail|Rail Line|Rail Spots|Building Size|Typical Floor|Owner Occupier|CoStar Estimate|Opportunity Zone|Land Acres|Parking Ratio|Parking Spaces|Property Mix|Floor Contig|Bldg Contig|Lease Status|Time on Market|Space Features|Rent\s*\/\s*(?:Month|Mo|Year|Yr)|Service Type|Year Built|Drive Ins|Cross Docks|Sprinklers|Construction|Build-Out|Condition|Occupancy|Tenancy|Loading|Docks|Power|Office|Available|Suite(?: Number)?|Floor|Rent|Type|Term|Services|Stories|Columns|Elevators|Levelers|Cranes|Class|RBA)\b/gi;
+      // Max's source rule: exclude Property Mix completely. Its Office allocation
+      // is neither an office measurement nor conflicting evidence to present.
+      const mixStops = factLabels.source.replace('Office SF|','').replace('Office|','').replace('Property Mix|','');
+      const factSection = (selectedFactSection === null ? buildingFacts : selectedFactSection).replace(new RegExp('\\bProperty Mix\\b[\\s\\S]*?(?='+mixStops+'|$)','gi'),'');
       const factMatches = [...factSection.matchAll(factLabels)], facts = new Map();
       for (let i=0;i<factMatches.length;i++) {
         const key=factMatches[i][0].toLowerCase().replace(/\s+/g,' ');
@@ -326,6 +330,18 @@ async function readCoStar(options = {}) {
         heavyPower:facts.get('heavy power')||'',hasRail:facts.get('has rail')||facts.get('rail served')||'',
         hasTruckwellOrDock:facts.get('has truckwell or dock')||'',
         classA:/^A$/i.test(facts.get('class')||'')?'Yes':/^[BC]$/i.test(facts.get('class')||'')?'No':''};
+
+      if (selectedFactSection === null) {
+        const officeAmounts = [...saleHighlights.matchAll(/(?:±\s*)?((?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?)\s*(?:SF|sq\.?\s*ft\.?|square feet)\s+(?:of\s+)?office\b/gi)]
+          .filter(match=>!/(?:[\d,.\-–—]|\bto|\bthrough|\bbetween)\s*$/i.test(saleHighlights.slice(0,match.index)))
+          .map(match=>Number(match[1].replaceAll(',','')));
+        const uniqueOffice = [...new Set(officeAmounts)];
+        if (uniqueOffice.length === 1 && !propertyFacts.officeSf) {
+          propertyFacts.officeSf = String(uniqueOffice[0]); propertyFacts.officeSource = 'Sale highlights';
+        } else if (uniqueOffice.length > 1 && !propertyFacts.officeSf) {
+          propertyFacts.officeReview = 'Sale highlights list multiple office sizes; confirm the offered office area.';
+        }
+      }
 
       // Diagnostic: sample of the text actually seen, so we can tell whether the
       // scraper hit the right frame/tab when a scrape comes back empty.
@@ -609,7 +625,7 @@ const COMP_COLS =
   "rent_psf,lease_format,cap_rate,building_sf,land_area,yard_included,sub_market,submarket_cluster," +
   "listing_brokerage,listing_agent,listing_agent_phone,listing_agent_email," +
   "last_verified_at,list_date,notes,flyer_url,property_id,suite,partial_site_override,multi_tenant," +
-  "clear_height,clear_height_ft,office_sf,lease_area,year_built,loading,class_a,heavy_power,has_rail,has_truckwell_or_dock";
+  "clear_height,clear_height_ft,office_sf,lease_area,year_built,loading,power,class_a,heavy_power,has_rail,has_truckwell_or_dock";
 
 // Find existing comps that likely match the CoStar listing, so the panel can offer
 // "update" instead of a duplicate insert. PostgREST ilike wildcard is a literal `*`

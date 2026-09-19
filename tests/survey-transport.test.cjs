@@ -532,3 +532,57 @@ test('Selected suite fact capture never borrows building office or loading total
  const d=await salesListingFixture('2405 W Geneva Dr\nTempe, AZ 85282\nBuilding\nClear Height\n30 ft\nOffice SF\n6,600 SF\nDocks\n10 ext\nSpace Details\nAvailable\n1,200 SF Industrial\nSuite\n7\nFloor\nPartial 1st\nDocks\nNone\nDrive Ins\n1 tot.\nSpace Notes\nOffice 400 SF historical');
  assert.equal(d.propertyFacts.scope,'selected-space');assert.equal(d.propertyFacts.officeSf,'');assert.equal(d.propertyFacts.clearHeight,'');assert.equal(d.propertyFacts.docks,'None');assert.doesNotMatch(d.propertyFacts.loading,/10 ext/);
 });
+
+const universityFacts = `1840 E University Dr
+Tempe, AZ 85281
+Tempe Southwest Submarket
+Building
+Type	3 Star Industrial Warehouse
+Location	Urban
+RBA	31,426 SF
+Stories	1
+Typical Floor	31,426 SF
+Class	B
+Year Built	1985
+Tenancy	Single
+Owner Occupier	Yes
+Docks	None
+Drive Ins	6 tot.
+Elevators	None
+Clear Height	17'
+Truck Wells	None
+Elevators	None
+Sprinklers	Wet
+Rail Spots	None
+CoStar Estimate	$1.14 - 1.39/IG (Industrial)
+Property Mix	Industrial ･ 25,141 SF ･ 80.0%Office ･ 6,285 SF ･ 20.0%
+Power	600a/277 - 480v 3p
+Opportunity Zone	Yes
+Availabilities
+For Sale
+Price	Individual Property ･ $8,000,000 ($254.57/SF)
+Sale Type	Investment
+Status	Active
+Sale Highlights
+• ±31,426 SF total: ±21,426 SF warehouse and ±10,000 SF office space.
+• 600AMP 277/480V 3-Phase power, 6 drive-ins, sprinklers, up to 17' clear height.
+External Links
+Offering Memorandum
+Transaction History
+Sold Price	$5,000,000`;
+for(const tabular of [false,true])test(`Sales Property ${tabular?'tabular':'lines'} ignores Property Mix and captures advertised office/height/power`,async()=>{
+ const data=await salesListingFixture(tabular?universityFacts:universityFacts.replaceAll('\t','\n'),'property');
+ assert.equal(data.propertyFacts.officeSf,'10000');assert.equal(data.propertyFacts.officeSource,'Sale highlights');
+ assert.equal(data.propertyFacts.clearHeight,"17'");assert.equal(data.propertyFacts.power,'600a/277 - 480v 3p');
+ assert.equal(data.propertyFacts.loading,'Docks: None; Truck wells: None; Drive-ins: 6 tot.');
+ assert.equal(data.propertyFacts.heavyPower,'');assert.equal(data.propertyFacts.officeReview,undefined);
+});
+test('Property Mix alone never fills office; fields following the excluded section still capture',async()=>{
+ const d=await salesListingFixture(universityFacts.replace('±10,000 SF office space.','renovated offices.'),'property');
+ assert.equal(d.propertyFacts.officeSf,'');assert.equal(d.propertyFacts.power,'600a/277 - 480v 3p');
+});
+test('Selected suite cannot borrow advertised whole-building office or power',async()=>{
+ const d=await salesListingFixture(universityFacts+'\n2 of 2 Spaces\nSpace Details\nAvailable\n1,200 SF Industrial\nSuite\n7\nFloor\nPartial 1st\nFloor Contig\n1,200 SF\nRent\nWithheld\nDocuments','property');
+ assert.equal(d.propertyFacts.officeSf,'');assert.equal(d.propertyFacts.power,'');assert.equal(d.propertyFacts.clearHeight,'');
+});
+for(const office of ['5,000-10,000 SF office space.','5,000 to 10,000 SF office space.','-10,000 SF office space.','4,50 SF office space.'])test(`Ambiguous/invalid advertised office ${office} stays blank`,async()=>{const d=await salesListingFixture(universityFacts.replace('±10,000 SF office space.',office),'property');assert.equal(d.propertyFacts.officeSf,'');});
