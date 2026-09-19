@@ -409,6 +409,15 @@ test('selected offering identity retains suite/floor/size while quote changes do
   assert.equal(a.selectedSpace.suite, 'A'); assert.equal(a.selectedSpace.identity, b.selectedSpace.identity);
 });
 
+test('Curry Road Yard 3 and Suite 7 screenshots parse as separate offerings at one property', async () => {
+  const yard = await selectedSpaceFixture('Space Details\nAvailable\n1,310 SF Flex\nSuite\nYard 3\nFloor\nPartial 1st\nFloor Contig\n1,310 SF\nBldg Contig\n1,310 SF\nRent\n$2.79\nRent/Mo\n$3,652\nServices\nModified Gross\nSpace Notes\nThis is yard space consisting of a chain link fence and one gate for access. It is 1,310SF and renting for $470 monthly.');
+  const suite = await selectedSpaceFixture('Space Details\nAvailable\n1,200 SF Industrial\nSuite\n7\nFloor\nPartial 1st\nOffice\n100 SF\nFloor Contig\n1,200 SF\nBldg Contig\n1,200 SF\nRent\n$1.40\nRent/Mo\n$1,680\nServices\nModified Gross\nSpace Notes\nUnit has a new BREEZ evaporative cooler for the warehouse.');
+  assert.equal(yard.selectedSpace.suite,'Yard 3');assert.equal(yard.selectedSpace.availableSf,'1310');
+  assert.equal(suite.selectedSpace.suite,'7');assert.equal(suite.selectedSpace.availableSf,'1200');assert.equal(suite.selectedSpace.officeSf,'100');
+  assert.equal(suite.selectedSpace.monthlyRent,'1680');assert.equal(suite.selectedSpace.canPrefill,true);
+  assert.notEqual(suite.selectedSpace.identity,yard.selectedSpace.identity);
+});
+
 for (const monthly of ['26000', '0']) {
   test(`actual selected-space scrape -> panel draft -> writable Survey row keeps correct area and monthly total (${monthly})`, async () => {
     const body = monthly === '0' ? spaceDetailsFixture.replace('$26,000', '$0').replace('$0.65', '$0') : spaceDetailsFixture;

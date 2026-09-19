@@ -50,6 +50,32 @@ async (page) => {
   };
   try{
     await p.goto('http://127.0.0.1:8898/panel.html');await p.waitForFunction(()=>state.survey?.id);
+    // SF formatting is presentation only; opening and leaving a field cannot change a quote.
+    await fresh({tenancy:'MT',suite_number:'Yard 3',suite_size:'1310',building_sf:31600,office_sf:1000},false);
+    const areaBefore=await p.evaluate(()=>JSON.stringify(activeSurveyDraft().model));
+    for (const [id,expected] of [['fSuiteSize','1,310'],['fBuildingSf','31,600'],['fOfficeSf','1,000']]) {
+      assert.equal(await value(id),expected);await p.locator('#'+id).focus();await p.keyboard.press('Tab');
+    }
+    assert.equal(await p.evaluate(()=>JSON.stringify(activeSurveyDraft().model)),areaBefore);
+    await p.locator('[data-sec="size"]').scrollIntoViewIfNeeded();await p.screenshot({path:'output/review/comma-sf-390.png'});
+    await fill('fNotes','Only a note');
+    assert.equal(JSON.stringify(await p.evaluate(()=>SurveyFields.serializeDraft(activeSurveyDraft().model).patch)),JSON.stringify({notes:'Only a note'}));
+    await fresh({tenancy:'MT',suite_size:'1310',building_sf:31600});
+    await fill('fSuiteSize','21600');await p.keyboard.press('Tab');assert.equal(await value('fSuiteSize'),'21,600');
+    await fill('fBuildingSf','64800');await p.keyboard.press('Tab');assert.equal(await value('fBuildingSf'),'64,800');
+    await fill('fOfficeSf','1200');await p.keyboard.press('Tab');assert.equal(await value('fOfficeSf'),'1,200');
+    await fill('fLeaseRate','1.5');assert.equal(await value('fMonthlyBase'),'32400.00');
+    const formattedWrite=await p.evaluate(()=>SurveyFields.serializeDraft(activeSurveyDraft().model));
+    assert.ok(formattedWrite.valid);assert.equal(formattedWrite.values.building_sf,64800);assert.equal(formattedWrite.values.office_sf,1200);assert.equal(formattedWrite.values.suite_size,'21600');
+    await p.evaluate(()=>mountSurveyDraft());assert.equal(await value('fSuiteSize'),'21,600');assert.equal(await value('fOfficeSf'),'1,200');
+    await fill('fOfficeSf','1,20');await p.keyboard.press('Tab');assert.equal(await value('fOfficeSf'),'1,20');
+    assert.equal(await p.evaluate(()=>SurveyFields.serializeDraft(activeSurveyDraft().model).valid),false);
+    await fresh({tenancy:'ST',building_sf:31600.123456789,office_sf:1000.123456789},false);
+    assert.equal(await value('fBuildingSf'),'31,600.123456789');assert.equal(await value('fOfficeSf'),'1,000.123456789');
+    await p.locator('#fOfficeSf').focus();await p.keyboard.press('Tab');await fill('fNotes','Legacy precision');
+    assert.equal(JSON.stringify(await p.evaluate(()=>SurveyFields.serializeDraft(activeSurveyDraft().model).patch)),JSON.stringify({notes:'Legacy precision'}));
+    results.push('SF commas on capture, blur and remount preserve raw values, monthly math, invalid-input rejection, legacy precision and notes-only patches');
+
     // Selected-space monthly quote: header/body rent must never supply the offer.
     await p.evaluate(()=>{
       surveyEditor.bundle=null;surveyEditor.archives={};
@@ -58,8 +84,8 @@ async (page) => {
         selectedSpace:{scope:'space-details',identity:'partial-1st|40000|sublet',canPrefill:true,monthlyRent:'26000',availableSf:'40000',officeSf:'3200',rentPsf:'0.65',floor:'Partial 1st',suite:null,serviceType:'Triple Net'}};
       state.scraped=structuredClone(fixture.scrape);matchAndShowForm();
     });
-    assert.equal(await value('fMonthlyBase'),'26000');assert.equal(await value('fSuiteSize'),'40000');assert.equal(await value('fOfficeSf'),'3200');
-    assert.equal(await value('fBuildingSf'),'380569');assert.equal(await p.evaluate(()=>activeSurveyDraft().model.values.tenancy),null);
+    assert.equal(await value('fMonthlyBase'),'26000');assert.equal(await value('fSuiteSize'),'40,000');assert.equal(await value('fOfficeSf'),'3,200');
+    assert.equal(await value('fBuildingSf'),'380,569');assert.equal(await p.evaluate(()=>activeSurveyDraft().model.values.tenancy),null);
     assert.equal(await value('fTotalLeaseRate'),'');assert.equal(await p.locator('#fMonthlyConfirmed').count(),0);
     assert.equal(await p.locator('#fExpenseTreatment input:checked').inputValue(),'additional');
     assert.ok(await p.locator('#expenseAmounts').isVisible());assert.equal(await value('fOpexTotal'),'');assert.equal(await value('fOpexPsf'),'');
@@ -73,7 +99,7 @@ async (page) => {
     results.push('Open space prefills monthly total, suite/office size; building stays separate, removed source/area/confirmation UI stays absent, edited quote survives source changes');
 
     await p.evaluate(()=>{fixture.scrape.selectedSpace.identity='suite-2|10000|direct';fixture.scrape.selectedSpace.suite='2';fixture.scrape.selectedSpace.availableSf='10000';fixture.scrape.selectedSpace.monthlyRent='10000';fixture.scrape.leaseQuote.rawText='Space Details Rent/Mo $10,000';});
-    await p.locator('#btnRefresh').click();assert.equal(await value('fMonthlyBase'),'10000');assert.equal(await value('fSuiteSize'),'10000');assert.equal(await value('fNotes'),'');
+    await p.locator('#btnRefresh').click();assert.equal(await value('fMonthlyBase'),'10000');assert.equal(await value('fSuiteSize'),'10,000');assert.equal(await value('fNotes'),'');
     await p.evaluate(()=>{fixture.scrape.selectedSpace.identity='partial-1st|40000|sublet';fixture.scrape.selectedSpace.monthlyRent='28000';fixture.scrape.selectedSpace.availableSf='40000';});
     await p.locator('#btnRefresh').click();assert.equal(await value('fMonthlyBase'),'27000');assert.equal(await value('fNotes'),'Keep this review');
     await fill('fMonthlyBase','');await p.locator('#btnRefresh').click();assert.equal(await value('fMonthlyBase'),'','Intentional clear must not be refilled');
@@ -182,7 +208,7 @@ async (page) => {
     results.push('Failed property lookup cannot become an empty-survey new-insert decision');
 
     await fresh({tenancy:'MT',building_sf:40000,suite_number:'A',suite_size:'1000'});await fill('fMonthlyBase','1500');await p.locator('#btnCombinedSpace').click();
-    assert.equal(await value('fSuiteNumber'),'A');assert.equal(await value('fSuiteSize'),'1000');assert.equal(await value('fMonthlyBase'),'1500');
+    assert.equal(await value('fSuiteNumber'),'A');assert.equal(await value('fSuiteSize'),'1,000');assert.equal(await value('fMonthlyBase'),'1500');
     assert.ok((await p.evaluate(()=>fixture.openedTab)).endsWith('/surveys/10000000-0000-4000-8000-000000000001'));
     assert.equal(await p.evaluate(()=>surveyEditor.bundle.drafts.length),1);
     results.push('Combined action opens Master App for explicit member confirmation and preserves this draft without creating an unlinked option');
@@ -194,12 +220,12 @@ async (page) => {
     await fill('fMonthlyBase','80000');assert.equal(await p.evaluate(()=>activeSurveyDraft().model.values.space_option.quoteArea),'100000');
     await fill('fSpaceProposed','110000');assert.equal(await value('fMonthlyBase'),'');assert.equal(await value('fLeaseRate'),'');
     await fill('fMonthlyBase','82500');await p.locator('#btnSave').click();await p.waitForFunction(()=>!surveyEditor.pending&&!surveyEditor.saving);
-    assert.equal(await value('fSuiteSize'),'62,784–174,769 SF');assert.equal(await value('fSpaceProposed'),'110000');assert.equal(await value('fMonthlyBase'),'82500');
+    assert.equal(await value('fSuiteSize'),'62,784–174,769 SF');assert.equal(await value('fSpaceProposed'),'110,000');assert.equal(await value('fMonthlyBase'),'82500');
     assert.equal(await p.evaluate(()=>activeSurveyDraft().model.isNew),false);
     await fill('fNotes','Range note only');await p.locator('#btnSave').click();await p.waitForFunction(()=>!surveyEditor.pending&&!surveyEditor.saving);
     const rangePatch=await p.evaluate(()=>fixture.requests.filter(r=>r.type==='SAVE_SURVEY_UPDATE').at(-1).request.patch);
     assert.equal(JSON.stringify(rangePatch),JSON.stringify({notes:'Range note only'}));
-    await p.reload();await p.waitForFunction(()=>state.survey?.id);assert.equal(await value('fSpaceProposed'),'110000');assert.equal(await value('fSuiteSize'),'62,784–174,769 SF');
+    await p.reload();await p.waitForFunction(()=>state.survey?.id);assert.equal(await value('fSpaceProposed'),'110,000');assert.equal(await value('fSuiteSize'),'62,784–174,769 SF');
     results.push('Divisible range stores advertised bounds and scenario separately; rate calculates scenario, changing scenario clears total quote; insert, notes-only update, and reload preserve exact metadata');
 
     await fresh({tenancy:'ST',building_sf:200000,suite_number:'1',suite_size:'62,784–174,769 SF',space_option:{kind:'range',min:'62784',max:'174769',proposed:'',members:[],review:false,quoteArea:''}});
@@ -225,6 +251,64 @@ async (page) => {
     const oldAccountKey=await p.evaluate(()=>surveyDraftKey());await p.evaluate(async()=>{await persistSurveyDraft();fixture.accountId='20000000-0000-4000-8000-000000000002';await onAuthed();});
     assert.equal(await p.evaluate(()=>surveyEditor.bundle),null);assert.equal(await p.evaluate(()=>fixture.storage[surveyDraftKey()]?.bundles && Object.keys(fixture.storage[surveyDraftKey()].bundles).length || 0),0);assert.ok(await p.evaluate(key=>Boolean(fixture.storage[key]),oldAccountKey));
     results.push('Session expiry then different account never copies or restores the prior account draft');
+
+    // Reproduce saving Yard 3, then reading Suite 7 at the same CoStar property.
+    await p.evaluate(()=>{
+      surveyEditor.pending=null;surveyEditor.bundle=null;surveyEditor.archives={};fixture.rows=[];state.props=[];
+      fixture.scenario='ok';fixture.scrape={costarId:'231512',street:'1139 E Curry Rd',city:'Tempe',state:'AZ',zip:'85281',rba:'31600',acLot:'1.7',
+        selectedSpace:{scope:'space-details',identity:'yard-3',suite:'Yard 3',availableSf:'1310',officeSf:null,canPrefill:true,monthlyRent:'470',serviceType:'Modified Gross'}};
+      state.scraped=structuredClone(fixture.scrape);matchAndShowForm();
+    });
+    await choose('fTenancy','MT');await fill('fNotes','First space only');await p.locator('#btnSave').click();await p.waitForFunction(()=>!surveyEditor.saving&&!surveyEditor.pending);
+    assert.equal(await p.evaluate(()=>fixture.rows.length),1);
+    const firstSpace=await p.evaluate(()=>JSON.stringify(fixture.rows[0]));
+    await p.evaluate(()=>{fixture.scrape.selectedSpace={scope:'space-details',identity:'suite-7',suite:'7',availableSf:'1200',officeSf:'100',canPrefill:true,monthlyRent:'1680',serviceType:'Modified Gross'};});
+    await p.locator('#btnRefresh').click();assert.equal(await value('fSuiteSize'),'1,200');
+    await fill('fNotes','Second space reviewed');
+    assert.equal(await p.locator('#spaceCandidates [data-add="0"]').innerText(),'Add current CoStar space');
+    await p.locator('#spaceCandidates [data-add="0"]').click();
+    assert.equal(await value('fSuiteNumber'),'7');assert.equal(await value('fSuiteSize'),'1,200');assert.equal(await value('fOfficeSf'),'100');assert.equal(await value('fBuildingSf'),'31,600');
+    assert.equal(await value('fMonthlyBase'),'1680');assert.equal(await value('fLeaseRate'),'1.4');assert.equal(await value('fNotes'),'Second space reviewed');
+    assert.equal(await p.evaluate(()=>surveyEditor.bundle.drafts.length),1);assert.equal(await p.evaluate(()=>fixture.rows.length),1,'Selecting Add does not save');
+    await p.locator('#btnRefresh').click();assert.equal(await p.locator('#dupChooser').isVisible(),false);assert.equal(await value('fSuiteSize'),'1,200');
+    await fill('fOfficeSf','');await fill('fMonthlyBase','');await p.locator('#btnRefresh').click();assert.equal(await value('fOfficeSf'),'');assert.equal(await value('fMonthlyBase'),'');
+    await p.reload();await p.waitForFunction(()=>state.survey?.id);assert.equal(await value('fSuiteNumber'),'7');assert.equal(await value('fOfficeSf'),'');assert.equal(await value('fNotes'),'Second space reviewed');
+    await fill('fOfficeSf','100');await fill('fMonthlyBase','1680');await p.locator('#btnSave').click();await p.waitForFunction(()=>!surveyEditor.saving&&!surveyEditor.pending);
+    assert.equal(await p.evaluate(()=>fixture.rows.length),2);assert.equal(await p.evaluate(()=>JSON.stringify(fixture.rows[0])),firstSpace);
+    assert.equal(await p.evaluate(()=>fixture.rows[1].suite_number),'7');assert.equal(await p.evaluate(()=>fixture.rows[1].suite_size),'1200');assert.equal(await p.evaluate(()=>fixture.rows[1].office_sf),100);assert.equal(await p.evaluate(()=>fixture.rows[1].monthly_base_rent),1680);
+    await p.locator('#btnRefresh').click();assert.equal(await p.evaluate(()=>activeSurveyDraft().model.isNew),false);await p.locator('#btnSave').click();await p.waitForFunction(()=>!surveyEditor.saving&&!surveyEditor.pending);assert.equal(await p.evaluate(()=>fixture.rows.length),2);
+    await p.evaluate(()=>{fixture.scrape.selectedSpace={scope:'space-details',identity:'yard-3',suite:'Yard 3',availableSf:'1310',canPrefill:true,monthlyRent:'470'};});
+    await p.locator('#btnRefresh').click();assert.equal(await value('fSuiteNumber'),'Yard 3');assert.equal(await value('fNotes'),'First space only');
+    results.push('Save first space then refresh next at same building: Add current CoStar space retains suite/office/monthly rent and reviewed edits; refresh/reload preserve clears, save inserts once, first space unchanged');
+
+    // Old versions retained a source alias but discarded its capture into a blank sibling.
+    for (const edited of [false,true,'size']) {
+      await p.evaluate(async edited=>{
+        surveyEditor.bundle=null;surveyEditor.archives={};state.scraped=structuredClone(fixture.scrape);
+        state.scraped.selectedSpace={scope:'space-details',identity:'legacy-blank-'+edited,suite:'7',availableSf:'1200',officeSf:'100',canPrefill:true,monthlyRent:'1680',serviceType:'Modified Gross'};
+        fixture.scrape=structuredClone(state.scraped);
+        setupForm('insert',null);const original=surveyEditor.bundle;original.decision='add';await persistSurveyDraft();
+        const seed=SurveySpaces.availableSpaceSeed(fixture.rows[0]),draft=makeSurveyDraft(seed,true);
+        if(edited){draft.model.values.office_sf='';draft.model.values.notes='My retained note';draft.model.rentDraft=SurveyRent.editRent(draft.model.rentDraft,'total','');}
+        if(edited==='size'){draft.model.values.suite_number='7 reviewed';draft.model.values.suite_size='1250';}
+        const destination={key:'spaces:old-'+edited,active:0,drafts:[draft]};surveyEditor.archives[destination.key]=destination;
+        surveyEditor.archives[original.key].destinationKey=destination.key;surveyEditor.bundle=destination;mountSurveyDraft();await persistSurveyDraft();
+      },edited);
+      assert.equal(await value('fSuiteSize'),edited==='size'?'1,250':'');await p.locator('#btnRefresh').click();
+      assert.equal(await value('fSuiteNumber'),edited==='size'?'7 reviewed':'7');assert.equal(await value('fSuiteSize'),edited==='size'?'1,250':'1,200');assert.equal(await value('fOfficeSf'),edited?'':'100');assert.equal(await value('fMonthlyBase'),edited?'':'1680');
+      if(edited)assert.equal(await value('fNotes'),'My retained note');
+      await fill('fSuiteSize','');await p.locator('#btnRefresh').click();assert.equal(await value('fSuiteSize'),'','Recovered capture must not refill later intentional clears');
+    }
+    results.push('Refresh repairs legacy blank Add-space drafts from their exact captured source; entered notes/cleared office and rent remain unchanged, repair runs once');
+
+    await p.evaluate(()=>{
+      surveyEditor.bundle=null;surveyEditor.archives={};fixture.scrape.selectedSpace={scope:'space-details',identity:'range-add',suite:'Range',availableRange:{min:'1000',max:'2000'},canPrefill:false};
+      state.scraped=structuredClone(fixture.scrape);matchAndShowForm();
+    });
+    await p.locator('#spaceCandidates [data-add="0"]').click();assert.equal(await value('fSuiteSize'),'1,000–2,000 SF');assert.equal(await value('fSpaceMin'),'1,000');assert.equal(await value('fSpaceMax'),'2,000');assert.equal(await value('fSpaceProposed'),'');assert.equal(await value('fMonthlyBase'),'');
+    await p.locator('#btnAddSpace').click();assert.equal(await value('fSuiteNumber'),'');assert.equal(await value('fSuiteSize'),'');assert.equal(await value('fMonthlyBase'),'');assert.equal(await value('fBuildingSf'),'31,600');
+    assert.equal(await p.evaluate(()=>surveyEditor.bundle.drafts.length),2);await p.locator('#spaceDrafts [data-draft="0"]').click();assert.equal(await value('fSuiteSize'),'1,000–2,000 SF');
+    results.push('Add captured divisible space preserves its range without inventing proposed area or rent; separate Blank space remains manual and preserves the captured sibling');
 
     for(const [width,height] of [[320,740],[390,844],[560,900]]){
       await p.setViewportSize({width,height});await fresh({tenancy:'ST',building_sf:10000});await p.evaluate(()=>window.scrollTo(0,0));

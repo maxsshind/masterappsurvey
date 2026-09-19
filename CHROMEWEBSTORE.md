@@ -2,6 +2,20 @@
 
 Last updated: 2026-09-18
 
+## 1.4.2 candidate — captured-suite retention and SF commas
+
+**Local tested package only; not uploaded/submitted/installed by this effort.**
+Includes the 1.4.1 space-range changes below. Choosing **Add current CoStar space**
+keeps the selected suite's captured details and reviewed edits. Refresh recovers
+omitted details from legacy blank drafts without replacing entered/cleared values.
+Manual entry is labeled **+ Blank space**. SF fields use thousands separators on
+load and blur, preserving numeric precision and existing validation.
+
+No new permissions, hosts or data categories. PROJECT.md records the exact ZIP,
+delivery folder and verification. Preserve the existing extension ID/storage when
+updating an unpacked installation; do not replace/reload Max's open draft as part
+of packaging. Verify current Store/public versions before any separate submission.
+
 ## 1.4.1 candidate — divisible survey spaces
 
 **Prepared locally, not uploaded/submitted/installed.** Verify the currently public

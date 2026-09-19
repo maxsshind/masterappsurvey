@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.4.2 candidate — 2026-09-18 — Keep captured suites and format SF
+
+Prepared and tested locally; not uploaded, submitted, or installed by this effort.
+
+- After saving one space and reading the next at the same CoStar property, the
+  duplicate-choice **Add current CoStar space** retains the captured suite number,
+  size, office SF, pricing, range metadata and reviewed edits. Previously it
+  discarded those into a blank building-only draft; refresh restored that blank.
+- Refresh recovers omitted capture fields from the exact source of legacy blank
+  drafts. Explicitly entered/cleared fields and edited quotes remain untouched.
+  The separate manual action is now labeled **+ Blank space**.
+- Suite, total building, office, minimum, maximum and proposed SF display thousands
+  commas on load and blur. Presentation does not rewrite stored values, round
+  precision, accept malformed numbers or interpret free-text ranges.
+- No Comp, permissions, hosts, production records or installed-profile changes.
+
 ## 1.4.1 candidate — 2026-09-18 — Divisible survey spaces
 
 Prepared locally; not uploaded, submitted, installed, or publicly verified.

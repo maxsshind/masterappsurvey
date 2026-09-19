@@ -377,3 +377,16 @@ test('worker write validation accepts exact numeric historical precision but rej
   assert.equal(Fields.validateSurveyWrite({ address: 'Test', yard_area: 'unknown' }).valid, false);
   assert.equal(Fields.validateSurveyWrite({ address: 'Test', rent_calculation: { version: 99 } }).valid, false);
 });
+
+
+test('SF display groups digits without rounding or interpreting other size descriptions', () => {
+  for (const [raw, expected] of [[null, ''], ['', ''], [0, '0'], [1310, '1,310'], ['31600', '31,600'], ['21,600', '21,600'], ['1000.1234567890123456789', '1,000.1234567890123456789'], ['1000.', '1,000.'], ['-1000', '-1,000'], ['1,20', '1,20'], ['5K SF', '5K SF'], ['62784–174769 SF', '62784–174769 SF'], ['about 1000', 'about 1000'], ['10000000000000001', '10,000,000,000,000,001']]) {
+    assert.equal(Fields.formatAreaInput(raw), expected);
+    assert.equal(Fields.formatAreaInput(expected), expected);
+  }
+});
+test('display commas cannot hide invalid SF or lost numeric precision', () => {
+  for (const raw of ['1,20', '-1000', '1000.5', '10000000000000001', '1000.00000000000000001']) {
+    assert.equal(Fields.parseNumericInput(Fields.formatAreaInput(raw), Fields.SURVEY_NUMERIC_OPTIONS.building_sf).valid, false);
+  }
+});

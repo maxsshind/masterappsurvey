@@ -942,12 +942,18 @@ function surveyDetailsIndicators() {
   });
   for (const id of ['fNotes','fNotes2','fInternalNotes']) { const el = $(id); el.style.height = 'auto'; el.style.height = Math.max(44,el.scrollHeight) + 'px'; }
 }
+const SURVEY_AREA_INPUTS = new Set(['fSuiteSize', 'fBuildingSf', 'fOfficeSf', 'fSpaceMin', 'fSpaceMax', 'fSpaceProposed']);
+// Formatting never dispatches an input event or changes the saved/draft model.
+// Keep the caret and partial input untouched while the user is typing.
+for (const id of SURVEY_AREA_INPUTS) $(id).addEventListener('blur', () => {
+  $(id).value = SurveyFields.formatAreaInput($(id).value);
+});
 function fillForm(row) {
   for (const [col,[id,type]] of Object.entries(FIELDS)) {
     const node = $(id), value = row[col];
     if (SURVEY_CHOICE_OPTIONS[id]) surveyChoice(id,value);
     else if (type === 'bool') { node.checked = value === true; node.indeterminate = value == null; }
-    else node.value = value == null ? '' : String(value);
+    else node.value = SURVEY_AREA_INPUTS.has(id) ? SurveyFields.formatAreaInput(value) : value == null ? '' : String(value);
   }
   const fsl = row.for_sale_or_lease || [];
   $('fForSale').checked = fsl.includes('sale'); $('fForLease').checked = fsl.includes('lease');
@@ -980,7 +986,7 @@ function renderSpaceOption() {
   $('combinedSpaceNotice').classList.toggle('hidden', !controlled);
   $('combinedSpaceLink').href = CONFIG.APP_URL + '/surveys/' + state.survey.id;
   for (const [id,key] of [['fSpaceMin','min'],['fSpaceMax','max'],['fSpaceProposed','proposed']])
-    if (document.activeElement !== $(id)) $(id).value = range ? option[key] : '';
+    if (document.activeElement !== $(id)) $(id).value = range ? SurveyFields.formatAreaInput(option[key]) : '';
   $('fSuiteSize').readOnly = Boolean(range || controlled);
   if (range) $('fSuiteSize').value = d.model.values.suite_size || '';
 }
@@ -1060,13 +1066,23 @@ function candidateLabel(p) { return [p.address, [p.city,p.state].filter(Boolean)
 function showSurveyCandidates(candidates) {
   const bundle = surveyEditor.bundle;
   if (!candidates.length) { bundle.decision = 'new'; state.pendingDup = null; $('dupChooser').classList.add('hidden'); syncSurveyLock(); return; }
-  $('spaceCandidates').innerHTML = candidates.map((p,i) => `<div class="space-candidate"><p>${esc(candidateLabel(p))}</p><button type="button" data-update="${i}" class="btn btn-primary btn-sm">Update this space</button>${p.tenancy === 'MT' ? `<button type="button" data-add="${i}" class="btn btn-ghost btn-sm">Add available space</button>` : ''}</div>`).join('');
+  const addLabel = activeSurveyDraft()?.source?.selectedSpace ? 'Add current CoStar space' : 'Add available space';
+  $('spaceCandidates').innerHTML = candidates.map((p,i) => `<div class="space-candidate"><p>${esc(candidateLabel(p))}</p><button type="button" data-update="${i}" class="btn btn-primary btn-sm">Update this space</button>${p.tenancy === 'MT' ? `<button type="button" data-add="${i}" class="btn btn-ghost btn-sm">${addLabel}</button>` : ''}</div>`).join('');
   $('spaceCandidates').querySelectorAll('[data-update]').forEach(button => button.addEventListener('click', () => {
     const row = candidates[Number(button.dataset.update)]; bundle.targetId = row.id; bundle.decision = 'update'; queueSurveyDraft(); setupForm('update',row);
   }));
   $('spaceCandidates').querySelectorAll('[data-add]').forEach(button => button.addEventListener('click', () => {
-    bundle.decision = 'add'; const sourceKey = bundle.key; addSurveySpace(false,candidates[Number(button.dataset.add)]);
-    surveyEditor.archives[sourceKey].destinationKey = surveyEditor.bundle.key; queueSurveyDraft();
+    if (surveyEditor.pending || surveyEditor.saving) return;
+    const draft = activeSurveyDraft(); if (!draft?.model.isNew) return;
+    const building = candidates[Number(button.dataset.add)];
+    // This choice confirms the captured offering belongs under this building.
+    // Keep its source, reviewed fields and pricing; it is not a blank sibling.
+    for (const [field,value] of Object.entries(SurveySpaces.availableSpaceSeed(building))) {
+      const current = draft.model.values[field];
+      if (current == null && sameVal(current, draft.model.baseline[field])) draft.model.values[field] = structuredClone(value);
+    }
+    draft.model.values.tenancy = 'MT'; bundle.decision = 'add';
+    state.pendingDup = null; $('dupChooser').classList.add('hidden'); mountSurveyDraft(); queueSurveyDraft();
   }));
   $('dupChooser').classList.remove('hidden'); state.pendingDup = true;
   $('btnSave').disabled = $('btnSaveBottom').disabled = true;
@@ -1078,11 +1094,35 @@ function matchAndShowForm() {
     const target = state.props.find(p => p.id === archived.targetId);
     if (target) { setupForm('update',target); const draft = activeSurveyDraft(); draft.source = surveyReviewSource(d); renderSurveyRent(); queueSurveyDraft(); return; }
   }
-  if (archived?.destinationKey && surveyEditor.archives[archived.destinationKey]) { surveyEditor.bundle = surveyEditor.archives[archived.destinationKey]; mountSurveyDraft(); return; }
+  if (archived?.destinationKey && surveyEditor.archives[archived.destinationKey]) {
+    surveyEditor.bundle = surveyEditor.archives[archived.destinationKey];
+    restoreDiscardedSpaceCapture(archived);
+    mountSurveyDraft(); queueSurveyDraft(); return;
+  }
   setupForm('insert',null);
   const draft = activeSurveyDraft(); draft.source = surveyReviewSource(d); renderSurveyRent();
-  if (surveyEditor.bundle.decision !== 'new') { surveyEditor.bundle.decision = 'unresolved'; showSurveyCandidates(findMatch(d)); }
+  if (!['new','add'].includes(surveyEditor.bundle.decision)) { surveyEditor.bundle.decision = 'unresolved'; showSurveyCandidates(findMatch(d)); }
   queueSurveyDraft();
+}
+function restoreDiscardedSpaceCapture(sourceBundle) {
+  const draft = activeSurveyDraft(), captured = sourceBundle.drafts?.[sourceBundle.active];
+  // Version 1.4.1 sent the captured source to a separate blank draft. Recover
+  // only omitted fields in that exact local alias, never an existing row or
+  // anything explicitly entered/cleared. Keep all sibling drafts independent.
+  if (surveyEditor.bundle.drafts.length !== 1 || !draft?.model.isNew || draft.source || !captured?.source?.selectedSpace) return;
+  const untouchedArea = ['suite_number','suite_size','space_option'].every(field => !Object.hasOwn(draft.model.values, field));
+  for (const field of SurveyFields.EDITABLE_FIELDS) {
+    if (!untouchedArea && captured.model.values.space_option && ['suite_size','space_option'].includes(field)) continue;
+    if (!Object.hasOwn(draft.model.values,field) && Object.hasOwn(captured.model.values,field))
+      draft.model.values[field] = structuredClone(captured.model.values[field]);
+  }
+  // Input edits (including a cleared quote) carry preservePrecision:false and
+  // differ from this exact fresh default. Never replace those pricing drafts.
+  if (untouchedArea && !draft.expenseTreatmentEdited && SurveyFields.structuralEqual(draft.model.rentDraft, SurveyRent.createSurveyRentDraft(null,true))) {
+    draft.model.rentDraft = structuredClone(captured.model.rentDraft);
+    if (captured.prefilledMonthlyRent) draft.prefilledMonthlyRent = captured.prefilledMonthlyRent;
+  }
+  draft.source = structuredClone(captured.source);
 }
 $('btnDupNew').addEventListener('click', () => { state.pendingDup = null; surveyEditor.bundle.decision = 'new'; $('dupChooser').classList.add('hidden'); syncSurveyLock(); queueSurveyDraft(); });
 function addSurveySpace(combined = false, building = null) {

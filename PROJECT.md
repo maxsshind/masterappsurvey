@@ -1,3 +1,59 @@
+# Captured-suite follow-up — 2026-09-18 19:50:48 MST (America/Phoenix)
+
+Current task: Max reported missing next-suite details after refresh and requested
+comma-separated SF. Both are fixed in local candidate **1.4.2**. This supersedes
+1.4.1 as the current review package; the prior checkpoints below remain historical.
+
+- Codex local worktree: `/Users/maxschumacher/.codex/worktrees/survey-extension-space-options-20260918`, branch `codex/survey-space-options-20260918`.
+- Canonical project: `/Users/maxschumacher/Developer/chrome extensions/Master App Survey`.
+  Older Developer/masterappsurvey paths were retired by the folder migration;
+  do not recreate them. Canonical runtime files and installed extension untouched.
+- Root cause verified: duplicate-choice Add available space called the manual
+  blank-sibling constructor and aliased refresh to that empty draft. The new
+  **Add current CoStar space** retains the reviewed capture and its source key.
+  Refresh repairs omitted legacy fields from their exact archived capture while
+  preserving explicit edits/clears and separately edited pricing. Manual creation
+  is clearly labeled **+ Blank space**.
+- Suite/building/office and min/max/proposed SF now display commas on load/blur;
+  no formatting events rewrite drafts or round quantities. Existing range text,
+  strict validation, draft isolation, retries and Comp behavior remain intact.
+- Exact Curry Road fixture: save Yard 3; refresh Suite 7; add retains 1,200 SF,
+  office 100 SF and $1,680/month; save creates one new row with the first unchanged.
+  Reread/reload retain deliberate clears and never turn the saved source into a
+  duplicate insertion. Screenshot text parsing distinguishes both suite identities.
+
+Verification of the final extracted ZIP: **184 unit/transport tests**, **50 browser
+scenarios** (31 Survey, 6 Yard, 13 Comp), and actual **MV3 worker/panel smoke** pass.
+Synthetic fixtures only, zero external requests/production record writes. SF
+screenshot at 390px visually checked; existing suite scenarios cover 320/390/560
+and range scenarios cover 320/390/720px. Pop-out-specific tests were not rerun for
+this change; their previous results below are historical.
+Evidence: `output/review/suite-capture-{unit-package.txt,browser-package.json,extension-package.json,package.json,delivery.json}`.
+Screenshot: `output/review/comma-sf-390.png`.
+
+Delivered ZIP: `/Users/maxschumacher/Developer/chrome extensions/Master App Survey/masterappsurvey-v1.4.2.zip`.
+Extracted folder: `/Users/maxschumacher/Developer/chrome extensions/Master App Survey/output/review/space-extension-1.4.2`.
+All 14 runtime/icon files match source and archive. ZIP **97,860 bytes**, SHA-256
+`7c132d75aef9730e6e2465ba2740707de2fd0bd4f395291507a2fe9680e77927`.
+No upload, Store submission, installation/reload or main-app changes this follow-up.
+
+Using the fixed version: **Add to survey** and wait for the saved confirmation;
+move to the next CoStar space with its arrow; click extension **refresh**; if the
+building already has a saved space, choose **Add current CoStar space**; review and
+save. **+ Blank space** deliberately starts manual entry and does not save the
+current draft. The CoStar modal arrows alone do not refresh the extension.
+
+Local CHANGELOG.md and CHROMEWEBSTORE.md updated. Shared playbook Surveys
+reference, September ops archive, and existing Surveys wiki mirror checked;
+this remains a local candidate, so no new production ops event or shared live
+behavior claim is needed. Prior web release documentation remains in place.
+Next step: update the existing unpacked extension folder with the candidate files
+and reload that same extension after Max is ready; retain its ID/local storage.
+Do not load a second copy expecting the old drafts to transfer. Max's current
+open draft was deliberately left untouched. Store/public rollout remains separate.
+
+---
+
 # Divisible space extension candidate — 2026-09-18 19:10:20 MST (America/Phoenix)
 
 Current scope: support the approved Master App suite-range model and keep combined

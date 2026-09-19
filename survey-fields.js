@@ -44,6 +44,15 @@
   const clone = value => value === undefined ? undefined : JSON.parse(JSON.stringify(value));
   const rentApi = () => root.SurveyRent || (typeof require === 'function' ? require('./survey-rent.js') : null);
 
+  /** Presentation only: preserve decimal precision and leave ranges/prose/errors intact. */
+  function formatAreaInput(value) {
+    if (value == null) return '';
+    const text = String(value);
+    if (!/^-?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d*)?$/.test(text)) return text;
+    const [whole, decimal] = text.replaceAll(',', '').split('.');
+    return whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (decimal === undefined ? '' : '.' + decimal);
+  }
+
   function decimalIdentity(text) {
     const negative = text.startsWith('-');
     const [mantissa, exponent] = text.replace(/^-/, '').toLowerCase().split('e');
@@ -263,7 +272,7 @@
     SURVEY_NUMERIC_OPTIONS, SURVEY_RENT_FIELDS, RENT_AREA_FIELDS, EDITABLE_FIELDS,
     SURVEY_AVAILABILITY_OPTIONS, SURVEY_TENANCY_OPTIONS, SURVEY_LEASE_TYPES,
     SURVEY_INTERNAL_STATUS_OPTIONS, EXPENSE_TREATMENTS,
-    parseNumericInput, numericInputError, numericDraft, surveyNumericOptions,
+    parseNumericInput, numericInputError, numericDraft, surveyNumericOptions, formatAreaInput,
     parseSurveyNumericFields, normalizeSurveyNumericWrite, structuralEqual, clone,
     hydrateDraft, serializeDraft, validateSurveyWrite,
   };
