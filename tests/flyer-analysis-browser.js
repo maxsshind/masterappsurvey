@@ -114,6 +114,14 @@ async (page) => {
     assert.equal(await p.locator('.flyer-suggestion input:checked').count(),0);assert.ok((await p.locator('.flyer-values').innerText()).includes('approx 500'));
     await p.locator('#compCloseFlyer').click();assert.equal(await p.locator('#comp_office_sf').inputValue(),'approx 500');
     results.push('Unparsed nonblank manual text remains visible and is never preselected for replacement');
+    await fresh();await setup();await p.evaluate(()=>fixture.suggestions=[{field:'power',value:'3,400 amps, 277/480V, 3-phase',evidence:'3,400 amps, 277/480V, 3-phase'}]);await analyze();await p.locator('#compApplyFlyer').click();
+    assert.equal(await p.locator('#comp_power').inputValue(),'3,400 amps, 277/480V, 3-phase');assert.equal(await p.locator('#comp_heavy_power_answer').innerText(),'Unknown');
+    results.push('Explicit power specifications fill Power without inferring Heavy power');
+    await fresh();await setup();await p.locator('#comp_status').selectOption('FOR LEASE');
+    await p.evaluate(()=>fixture.suggestions=[{field:'lease_area',value:6000,evidence:'Available suite: 6,000 SF'}]);await analyze();await p.locator('.flyer-suggestion input').check();await p.locator('#compApplyFlyer').click();
+    assert.equal(await p.evaluate(()=>comp.leaseAreaOrigin),'source');assert.equal(await p.locator('#compLeaseDefaultHint').isVisible(),false);
+    await p.locator('#comp_building_sf').fill('7500');assert.equal(await p.locator('#comp_lease_area').inputValue(),'6,000');
+    results.push('Flyer-confirmed lease area replaces a selected building default and stays independent of later building changes');
     for(const width of [320,390]){await p.setViewportSize({width,height:720});await fresh();await setup();await analyze();assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));const b=await p.locator('#compApplyFlyer').boundingBox();assert.ok(b.x>=0&&b.x+b.width<=width);await p.screenshot({path:`output/review/flyer-review-${width}.png`});await p.locator('#compCloseFlyer').click();}
     results.push('320px and 390px review controls fit without horizontal scrolling');
     assert.equal(errors.length,0,errors.join(' | '));assert.equal(blocked.length,0,'No external fixture requests');return {results,errors,blocked};

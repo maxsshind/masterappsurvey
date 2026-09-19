@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.4.8 local candidate — 2026-09-18 — Analyze flyer
+
+- Comp footer adds **Analyze flyer** beside Flyer. Attach a PDF, analyze, review
+  supported property details with source excerpts, then update selected form fields.
+  Blank fields start selected; existing values need explicit selection to replace.
+  Save comp remains the only record-save action. No facts are silently saved.
+- Supports text/range clear height, loading, power, office SF, lease area, year built,
+  Class A, heavy power, rail and truckwell/dock. Power specifications do not imply
+  Heavy power. Accepted lease area has its own source and stops following defaults.
+- Changed form/identity/flyer/account discards stale results. Invalid nonblank manual
+  entries remain visible and unchecked for replacement. Source excerpts render as
+  plain text. Errors preserve drafts and can be retried without automatic AI retries.
+- Reuses the Master App authenticated flyer-review engine and its identity, scope,
+  conflict and unknown-value guards. Adds host access to https://www.sshteam.app/*.
+  On-demand analysis sends the stored flyer to Anthropic through Master App; the
+  extension contains no AI-provider key. PRIVACY_POLICY.md discloses this processor.
+- Includes the complete tested1.4.7 base: Power, grouped Yard/features, text heights,
+  protected lease-area defaults, advertised office capture ignoring Property Mix,
+  previous Sales/suite/shared-flyer behavior. No installed update or Store submission.
+
 ## 1.4.7 local candidate — 2026-09-18 — Property controls and source capture
 
 - Yard is a native Yes/No/Unknown checkbox with the other four feature controls.
