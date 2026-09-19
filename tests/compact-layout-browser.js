@@ -87,9 +87,18 @@ async (page) => {
       await p.waitForFunction(() => $('compMsg').textContent.includes('Comp saved') || $('compMsg').textContent.includes('Comp updated'));
       return (await lastSave()).p_comp;
     };
-    for (const width of [320, 390, 585, 720]) {
+    for (const width of [320, 390, 585, 680, 720, 840, 960]) {
       await p.setViewportSize({width, height:900});
       await p.evaluate(() => Layout.apply('comp'));
+      if (width >= 680) {
+        const geometry = await p.evaluate(() => {
+          const rect = key => { const r = document.querySelector('#screen-comp [data-sec="'+key+'"]').getBoundingClientRect(); return {top:r.top,left:r.left,right:r.right}; };
+          return {property:rect('property'),sizing:rect('sizing'),deal:rect('deal'),notes:rect('notes')};
+        });
+        assert.ok(Math.abs(geometry.property.top-geometry.sizing.top)<2,'Property and pricing share a row');
+        assert.ok(geometry.sizing.left>=geometry.property.right,'Pricing beside property');
+        assert.ok(Math.abs(geometry.deal.top-geometry.notes.top)<2,'Deal and notes share a row');
+      }
       await p.screenshot({path:'output/review/compact-'+width+'.png',fullPage:true});
       assert.equal(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth),false,width+'px overflow '+JSON.stringify(await p.evaluate(()=>[...document.querySelectorAll('body *')].filter(n=>{const r=n.getBoundingClientRect();return r.width&&r.right>innerWidth+1}).map(n=>({id:n.id,cls:n.className,right:n.getBoundingClientRect().right})).slice(0,15))));
       assert.equal(await p.locator('#compPropertyHelp').evaluate(n=>n.open),false,'Property detail is initially collapsed');
@@ -111,6 +120,15 @@ async (page) => {
         assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'Jump introduces no overflow');
       }
       await p.evaluate(()=>window.scrollTo(0,0));
+      if (width >= 680) {
+        const geometry = await p.evaluate(() => {
+          const rect = key => { const r = document.querySelector('#screen-comp [data-sec="'+key+'"]').getBoundingClientRect(); return {top:r.top,left:r.left,right:r.right}; };
+          return {property:rect('property'),sizing:rect('sizing'),deal:rect('deal'),notes:rect('notes')};
+        });
+        assert.ok(Math.abs(geometry.property.top-geometry.sizing.top)<2,'Property and pricing share a row');
+        assert.ok(geometry.sizing.left>=geometry.property.right,'Pricing beside property');
+        assert.ok(Math.abs(geometry.deal.top-geometry.notes.top)<2,'Deal and notes share a row');
+      }
       await p.screenshot({path:'output/review/compact-'+width+'.png',fullPage:true});
     }
     results.push('320/390/585/720px: no horizontal overflow, readable fields, compact description retained near top, visible skip, sticky navigation expands each collapsed section');

@@ -1,3 +1,13 @@
+# Wide panel field placement — 2026-09-18T22:28:24.408442-07:00
+
+User requested using extra panel width to bring fields up, based on widened-panel screenshot. Local candidate1.4.13 pairs Property with Size/pricing, property-link and optional description at top, property types with feature checkboxes, Deal details with Notes. Short property specs share a row; Loading/Power share a row. Breakpoint680px; narrower layout unchanged. Only adjacent visible sections pair; custom section order/hiding respected and layout editor remains full width.
+
+Same Codex worktree/branch as below. Verified301 units, mounted compact4 groups across320/390/585/680/720/840/960px (pairing geometry, no horizontal overflow, navigation, checkbox payloads, retained text), property-field12 and yard8 regression groups, final package MV3 smoke. Visually inspected680px and840px. Fixture900px high at840px width has document height1356px. No production record writes, installed replacement or Store submission.
+
+Delivered `/Users/maxschumacher/Developer/chrome extensions/Master App Survey/masterappsurvey-v1.4.13.zip`, extracted sibling `output/review/space-extension-1.4.13`. 117445 bytes; SHA256 45adf45d58cfa049b3b10d57bf6e48d8ba44532fb2fc45e55df2116e05946fbe;18 files match source/archive/extracted. Evidence output/review/wide-* and compact-840.png. Next: finish open draft and update same installed extension, preserving ID/storage, when installation is authorized. Local docs updated. Shared playbook/ops/wiki release updates unnecessary for this local presentation correction; live wiki unchecked. No shared writes.
+
+---
+
 # Feature checkbox correction — 2026-09-18T22:26:02.973085-07:00
 
 User explicitly requested feature checkboxes restored. Local candidate1.4.12 supersedes1.4.11: Yard included, Class A, Heavy power, Has rail and Has truckwell or dock use original checkboxes with Yes/No/Unknown and Clear. Compact layout, top description, section/review navigation and explicit ISF/IOS yard default retained. No installed replacement or Store submission.

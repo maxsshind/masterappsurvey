@@ -671,3 +671,34 @@ body:has(#screen-comp:not(.hidden)) { max-width: 840px; }
 @media (max-width: 359px) {
   .comp-section-nav { margin-inline: -10px; padding-inline: 10px; }
 }
+
+/* Wide Comp panel: use spare width to lift later sections into view. Pair only
+   adjacent sections so saved custom section order and visibility still win. */
+@media (min-width: 680px) {
+  #screen-comp:not(.hidden) { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); column-gap: 12px; align-items: start; }
+  #screen-comp:not(.hidden):has(> [data-sec="ptype"]:not(.u-hidden) + [data-sec="yard"]:not(.u-hidden)) { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  #screen-comp > * { grid-column: 1 / -1; min-width: 0; }
+  #screen-comp > #compPropertyLink:has(+ #compContentImport:not(.hidden)),
+  #screen-comp > [data-sec="property"]:not(.u-hidden):has(+ [data-sec="sizing"]:not(.u-hidden)),
+  #screen-comp > [data-sec="ptype"]:not(.u-hidden):has(+ [data-sec="yard"]:not(.u-hidden)),
+  #screen-comp > [data-sec="deal"]:not(.u-hidden):has(+ [data-sec="notes"]:not(.u-hidden)) { grid-column: 1; }
+  #screen-comp > #compPropertyLink + #compContentImport:not(.hidden),
+  #screen-comp > [data-sec="property"]:not(.u-hidden) + [data-sec="sizing"]:not(.u-hidden),
+  #screen-comp > [data-sec="ptype"]:not(.u-hidden) + [data-sec="yard"]:not(.u-hidden),
+  #screen-comp > [data-sec="deal"]:not(.u-hidden) + [data-sec="notes"]:not(.u-hidden) { grid-column: 2; }
+  #compContentImport { margin-top: 8px; }
+  #screen-comp .fld > span { flex-wrap: wrap; gap: 3px; }
+  #screen-comp [data-sec="property"] .fieldset { grid-template-columns: minmax(0,2fr) minmax(0,1fr) minmax(0,1.2fr); }
+  #screen-comp [data-sec="space-specs"] > .fieldset { grid-template-columns: repeat(12,minmax(0,1fr)); }
+  #screen-comp [data-sec="space-specs"] .fld:has(#comp_clear_height),
+  #screen-comp [data-sec="space-specs"] .fld:has(#comp_office_sf),
+  #screen-comp [data-sec="space-specs"] .fld:has(#comp_year_built),
+  #screen-comp [data-sec="space-specs"] .fld:has(#comp_lease_area) { grid-column: span 3; order: 0; }
+  #screen-comp [data-sec="space-specs"] .fld:has(#comp_loading),
+  #screen-comp [data-sec="space-specs"] .fld:has(#comp_power) { grid-column: span 6; }
+  #screen-comp [data-sec="ptype"] .chip-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
+}
+/* Layout editing retains a predictable full-width canvas for moving sections. */
+@media (min-width: 680px) {
+  body.layout-editing #screen-comp:not(.hidden) { display: block; }
+}

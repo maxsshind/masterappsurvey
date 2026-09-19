@@ -1,3 +1,7 @@
+## 1.4.13 — Wide panel layout (local candidate)
+
+At680px+, related sections and fields sit beside one another to reduce scrolling. Top description and feature checkboxes retained; narrow view stays stacked. ZIP masterappsurvey-v1.4.13.zip is delivered locally; no installation or Store submission. See PROJECT.md for verification.
+
 ## 1.4.12 — Restore feature checkboxes
 
 Restored all five feature checkboxes and Clear-to-Unknown while retaining compact layout and ISF/IOS yard default. Local candidate only; no installed or Store update.

@@ -1,3 +1,7 @@
+## 1.4.13 — Wide panel layout (local candidate)
+
+At680px+, related sections and fields sit beside one another to reduce scrolling. Top description and feature checkboxes retained; narrow view stays stacked. ZIP masterappsurvey-v1.4.13.zip is delivered locally; no installation or Store submission. See PROJECT.md for verification.
+
 ## Local correction1.4.12
 
 Supersedes local1.4.11: feature checkboxes restored at user request. Latest ZIP is masterappsurvey-v1.4.12.zip in canonical Master App Survey folder. No installed update or Store action. Preserve existing extension ID/storage during any separately authorized update.
