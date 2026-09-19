@@ -1,6 +1,6 @@
 # September 18 Survey extension alignment
 
-## Current checkpoint — 2026-09-18 17:34:04 MST (America/Phoenix)
+## Current checkpoint — 2026-09-18 17:45:34 MST (America/Phoenix)
 
 **Local implementation and review package complete. Distribution and live authenticated verification remain outside this task.**
 
@@ -10,7 +10,31 @@ Authorized: implement and test Survey alignment; prepare a review ZIP. **No Stor
 
 Verified starting HEAD and fetched `origin/main`: `ecf1b6776fc5a0bf2f11bd5aaa5db1e72ee4e70f`. Manifest stays **1.3.3**, solely as the review baseline; this is not a newly numbered release. Current Store draft, public version and installed runtime were not rechecked.
 
-## Follow-up: pop-out mode — current build
+## Follow-up: NNN expense default — current build
+
+Max clarified that an NNN offering has separate expenses. New/imported NNN drafts
+now default to **Separate charge**, with both expense inputs visible. Choosing NNN
+also applies that treatment while retaining entered expense amounts. Unknown amounts
+remain blank and the all-in total stays blank until expenses are known. Restoring an
+older new draft applies the default; explicit expense overrides survive remount.
+Reset restores the NNN default for a new draft. Existing saved calculation metadata
+and unlinked historical amounts are preserved on open and notes-only edits; displaying
+the known NNN treatment does not adopt or recompute an unlinked quote. Other lease
+types retain their existing expense behavior. The pop-out and previous fixes remain.
+
+- [Current ZIP](/Users/maxschumacher/Developer/masterappsurvey/masterappsurvey-v1.3.3-nnn-expenses-review-2026-09-18.zip) — 93,565 bytes; SHA-256 `5a0c629d56780ef025d2381d335127a23602101b7c2b27756cafc9933684633e`.
+- [Ready-to-load folder](/Users/maxschumacher/Developer/masterappsurvey/local-extension/survey-review-nnn-expenses-2026-09-18); [390px preview](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/nnn-expenses-390.png).
+- Source and extracted ZIP each pass **167 unit tests, 43 browser scenarios and 6 pop-out scenarios**. New checks cover scraped/manual NNN defaults, blank expenses, all-in math, retained expense quotes, deliberate overrides/reset and notes-only preservation of historical NNN precision. Actual packaged MV3 worker/panel smoke also passes. Fixtures only; zero remote requests.
+- Evidence: [source units](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/nnn-unit-source.txt), [ZIP units](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/nnn-unit-package.txt), [source browser](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/nnn-browser-source.json), [ZIP browser](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/nnn-browser-package.json), [source pop-out](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/nnn-popout-source.json), [ZIP pop-out](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/nnn-popout-package.json), [MV3](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/nnn-extension-package.json), [archive](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/nnn-package.json).
+
+Local changelog/release guide updated. Shared playbook/ops/wiki release updates are
+not needed for this local revision; the three-destination check below still applies.
+The Surveys guide's rules preserving unlinked amounts and unknown totals informed
+the implementation. No production data, main-app, installed-extension or Store
+change. Next step: review this latest folder; earlier authenticated-release limits
+remain. Previous review folders are preserved.
+
+## Follow-up: pop-out mode — earlier review build
 
 Max requested a pop-out mode. Replaced the obscure icon with a labeled **Pop out**
 button. Opens a resizable window at up to 720×900, bounded by the available screen;

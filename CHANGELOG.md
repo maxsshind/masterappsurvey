@@ -2,6 +2,10 @@
 
 ## Unreleased — September 18 Survey alignment review
 
+- NNN defaults to Separate charge and shows expense inputs, including imported
+  NNN offerings. No expense amount is assumed. Entered expenses calculate the
+  all-in monthly rent; existing saved/unlinked quotes retain their numbers.
+
 - Added a labeled Pop out button for a wider, resizable window. Survey drafts and
   unsaved Comp edits transfer before the original panel closes; opening failures
   retain the original form. Repeated clicks focus the existing pop-out.

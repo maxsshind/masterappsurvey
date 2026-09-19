@@ -4,6 +4,10 @@ Last updated: 2026-09-18
 
 ## September 18 Survey review build — not released
 
+NNN now defaults to **Separate charge**, with expense inputs visible. Amounts
+stay blank until entered; the all-in monthly total remains unknown until expenses
+are known. Existing saved quotes and deliberate expense overrides are preserved.
+
 Latest local build adds a labeled **Pop out** button and a wider, resizable window.
 Survey drafts and unsaved Comp edits transfer before the original panel closes;
 failed opening leaves the original form available. Existing pop-outs are reused.

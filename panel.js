@@ -862,7 +862,14 @@ function makeSurveyDraft(row, isNew, source = null) {
       draft.prefilledMonthlyRent = String(parsed.value);
     }
   }
+  applyNnnExpenseDefault(draft);
   return draft;
+}
+function applyNnnExpenseDefault(draft) {
+  const m = draft.model;
+  if (m.isNew && m.rentSupported && m.values.lease_type === 'NNN' && !m.baseline.rent_calculation && !draft.expenseTreatmentEdited && m.rentDraft?.expenses?.treatment === 'unknown') {
+    m.rentDraft = SurveyRent.changeExpenseTreatment(m.rentDraft, 'additional');
+  }
 }
 function surveySpaceLeaseType(raw) {
   if (/triple net|^nnn$/i.test(raw || '')) return 'NNN';
@@ -950,6 +957,7 @@ function fillForm(row) {
 function readForm() { return SurveyFields.serializeDraft(activeSurveyDraft().model).values; }
 function mountSurveyDraft() {
   const draft = activeSurveyDraft(); if (!draft) return;
+  if (!surveyEditor.pending) applyNnnExpenseDefault(draft);
   state.pendingDup = surveyEditor.bundle.decision === 'unresolved';
   state.mode = draft.model.isNew ? 'insert' : 'update'; state.editingId = draft.model.isNew ? null : draft.model.baseline.id; state.baseline = draft.model.baseline;
   fillForm(draft.model.values); renderSurveyRent(); renderSurveyDraftTabs();
@@ -1205,7 +1213,9 @@ function renderSurveyRent() {
   }
   if (document.activeElement !== $('fOfferedAcres')) $('fOfferedAcres').value = rd?.offered_acres ?? '';
   $('fOfferedAcres').disabled = !m.rentSupported || Boolean(surveyEditor.pending || surveyEditor.saving);
-  const treatment = rd?.expenses?.treatment || '';
+  // Unlinked saved amounts stay unlinked; NNN can still show its known expense
+  // treatment without adopting or recalculating historical numbers on open.
+  const treatment = rd?.expenses?.treatment || (m.values.lease_type === 'NNN' ? 'additional' : '');
   surveyChoice('fExpenseTreatment',treatment);
   $('expenseAmounts').classList.toggle('hidden',Boolean(treatment) && treatment !== 'additional');
   $('fTotalLeaseRate').value = SurveyRent.displayed(values.total_lease_rate,'total',!rd);
@@ -1218,6 +1228,10 @@ function recordSurveyInput(col,id,type) {
   if (type === 'bool') node.indeterminate = false;
   if (sameVal(value,d.model.values[col] ?? '')) return;
   d.model.values[col] = value;
+  if (col === 'lease_type' && value === 'NNN' && d.model.rentSupported && d.model.rentDraft?.expenses) {
+    d.model.rentDraft = SurveyRent.changeExpenseTreatment(d.model.rentDraft, 'additional');
+    delete d.expenseTreatmentEdited;
+  }
   if (d.model.isNew && ['address','city','state','zip','building_sf','land_area_ac','zoning','photo_url'].includes(col)) {
     for (const sibling of surveyEditor.bundle.drafts) if (sibling !== d) sibling.model.values[col] = value;
   }
@@ -1255,12 +1269,14 @@ $('fOfferedAcres').addEventListener('input',() => {
 $('fExpenseTreatment').addEventListener('change',e => {
   if (e.target !== $('fExpenseTreatment')) return;
   const d = activeSurveyDraft(); if (!d || !d.model.rentSupported || surveyEditor.pending) return;
+  d.expenseTreatmentEdited = true;
   d.model.rentDraft = SurveyRent.changeExpenseTreatment(d.model.rentDraft,$('fExpenseTreatment').value);
   renderSurveyRent(); queueSurveyDraft();
 });
 $('btnResetRent').addEventListener('click',() => {
   const d = activeSurveyDraft(); if (!d || !d.model.rentSupported || surveyEditor.pending) return;
-  d.model.rentDraft = SurveyRent.createSurveyRentDraft(d.model.baseline.rent_calculation,d.model.isNew); renderSurveyRent(); queueSurveyDraft();
+  d.model.rentDraft = SurveyRent.createSurveyRentDraft(d.model.baseline.rent_calculation,d.model.isNew);
+  delete d.expenseTreatmentEdited; applyNnnExpenseDefault(d); renderSurveyRent(); queueSurveyDraft();
 });
 $('screen-form').querySelectorAll('[data-adopt-rent],[data-adopt-expenses]').forEach(button => button.addEventListener('click',() => {
   const d = activeSurveyDraft(); if (!d || surveyEditor.pending) return;

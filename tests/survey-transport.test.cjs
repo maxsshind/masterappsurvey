@@ -416,7 +416,7 @@ for (const monthly of ['26000', '0']) {
     const h = harness();
     h.c.state = { survey: { id: surveyId, survey_type: 'lease' } };
     const panel = fs.readFileSync(path.join(root, 'panel.js'), 'utf8');
-    for (const name of ['surveyReviewSource', 'surveySpaceLeaseType', 'scrapeInternalNotes', 'recordFromScrape', 'makeSurveyDraft']) {
+    for (const name of ['surveyReviewSource', 'surveySpaceLeaseType', 'scrapeInternalNotes', 'recordFromScrape', 'applyNnnExpenseDefault', 'makeSurveyDraft']) {
       const fn = panel.match(new RegExp(`^function ${name}\\([^]*?^}`, 'm'));
       assert.ok(fn, `actual packaged panel function ${name} exists`);
       vm.runInContext(fn[0], h.c, { filename: `panel.js:${name}` });
@@ -437,6 +437,7 @@ for (const monthly of ['26000', '0']) {
     assert.equal(result.values.lease_rate_psf, monthly === '0' ? 0 : 0.65);
     assert.equal(result.values.total_monthly_opex, null);
     assert.equal(result.values.monthly_opex_psf, null);
+    assert.equal(result.values.rent_calculation.expenses.treatment, 'additional');
     assert.equal(result.values.total_lease_rate, null);
     assert.ok(scraped.selectedSpace.rawText.length <= 500);
   });

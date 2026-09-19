@@ -61,6 +61,8 @@ async (page) => {
     assert.equal(await value('fMonthlyBase'),'26000');assert.equal(await value('fSuiteSize'),'40000');assert.equal(await value('fOfficeSf'),'3200');
     assert.equal(await value('fBuildingSf'),'380569');assert.equal(await p.evaluate(()=>activeSurveyDraft().model.values.tenancy),null);
     assert.equal(await value('fTotalLeaseRate'),'');assert.equal(await p.locator('#fMonthlyConfirmed').count(),0);
+    assert.equal(await p.locator('#fExpenseTreatment input:checked').inputValue(),'additional');
+    assert.ok(await p.locator('#expenseAmounts').isVisible());assert.equal(await value('fOpexTotal'),'');assert.equal(await value('fOpexPsf'),'');
     assert.ok((await p.locator('#labelMonthlyBase').innerText()).includes('CoStar'));
     await choose('fTenancy','MT');await fill('fSuiteNumber','Sublease');assert.equal(await value('fLeaseRate'),'0.65');
     await p.locator('#surveyPricing').scrollIntoViewIfNeeded();await p.screenshot({path:'output/review/rent-fix-selected-space-390.png'});
@@ -87,6 +89,22 @@ async (page) => {
     results.push('Ambiguous selected quotes stay unadopted; opening saved rows never replaces their existing rent');
     // Restore the unrelated existing regression fixture.
     await p.evaluate(()=>{fixture.scrape={costarId:'123456',street:'100 Fixture Way',city:'Phoenix',state:'AZ',rba:'40000',acLot:'10',leaseRate:'18',leaseQuote:{rawText:'$18/SF/YR',amountText:'18',basis:'sf',period:'annual'}};});
+    await fresh({tenancy:'ST',building_sf:10000});await fill('fMonthlyBase','10000');await choose('fLeaseType','NNN');
+    assert.equal(await p.locator('#fExpenseTreatment input:checked').inputValue(),'additional');assert.ok(await p.locator('#expenseAmounts').isVisible());
+    assert.equal(await value('fOpexTotal'),'');assert.equal(await value('fTotalLeaseRate'),'');
+    await fill('fOpexPsf','0.25');assert.equal(await value('fOpexTotal'),'2500.00');assert.equal(await value('fTotalLeaseRate'),'12500.00');
+    await choose('fLeaseType','Modified Gross');await choose('fExpenseTreatment','included');await choose('fLeaseType','NNN');
+    assert.equal(await value('fOpexPsf'),'0.25');assert.equal(await value('fTotalLeaseRate'),'12500.00');
+    await choose('fExpenseTreatment','unknown');await p.evaluate(()=>mountSurveyDraft());assert.equal(await p.locator('#fExpenseTreatment input:checked').inputValue(),'unknown');
+    await p.locator('#btnResetRent').click();assert.equal(await p.locator('#fExpenseTreatment input:checked').inputValue(),'additional');assert.equal(await value('fOpexPsf'),'');
+    results.push('NNN selection opens separate expenses without inventing an amount; expense entry calculates total, reselection retains quote, explicit override survives remount and reset restores NNN default');
+
+    await fresh({lease_type:'NNN',monthly_base_rent:10000,monthly_opex_psf:0.27555,total_monthly_opex:2755.5,total_lease_rate:12755.5,rent_calculation:null},false);
+    assert.equal(await p.locator('#fExpenseTreatment input:checked').inputValue(),'additional');assert.equal(await value('fOpexPsf'),'0.27555');
+    await fill('fNotes','NNN note only');assert.equal(JSON.stringify(await p.evaluate(()=>SurveyFields.serializeDraft(activeSurveyDraft().model).patch)),JSON.stringify({notes:'NNN note only'}));
+    await fresh({lease_type:'Full Service Gross'});assert.equal(await p.locator('#fExpenseTreatment input:checked').inputValue(),'unknown');
+    results.push('Existing unlinked NNN amounts and precision survive notes-only edits; other lease types keep their expense choice');
+
     await fresh({tenancy:'ST',building_sf:10000});await fill('fLeaseRate','1.25');await fill('fOfferedAcres','2');
     assert.equal(await value('fMonthlyBase'),'12500.00');assert.equal(await value('fRentAcre'),'6250');
     await choose('fExpenseTreatment','included');assert.equal(await value('fTotalLeaseRate'),'12500.00');
