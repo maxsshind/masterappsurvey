@@ -107,7 +107,7 @@ async (page) => {
     await p.locator('#comp_building_sf').fill('30000');assert.equal(await p.locator('#comp_lease_area').inputValue(),'');
     assert.equal(await p.locator('#comp_power').inputValue(),'Saved 600A');
     results.push('Captured suite size survives missing source refresh; existing saved blank is never defaulted; Power hydrates');
-    await fresh('commitThenLose');await p.locator('#comp_power').fill('3,400 amps, 277/480V, 3-phase');await p.locator('#comp_yard_included').check();
+    await fresh('commitThenLose');await p.locator('#comp_power').fill('3,400 amps, 277/480V, 3-phase');await p.locator('#comp_yard_included_choice').focus(); await p.locator('#comp_yard_included_choice').selectOption('true');
     await p.locator('#compSave').click();await p.waitForFunction(()=>$('compMsg').textContent.includes('Retry pending save'));
     const pending=await lastSave();await p.reload();await p.waitForFunction(()=>$('compSave').textContent==='Retry pending save');
     assert.equal(await p.locator('#comp_power').inputValue(),'3,400 amps, 277/480V, 3-phase');assert.equal(await p.locator('#comp_yard_included').isChecked(),true);

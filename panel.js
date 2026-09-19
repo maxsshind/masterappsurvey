@@ -1710,6 +1710,8 @@ function compClearChecks(containerId) {
 function syncCompFeatureChecks() {
   for (const field of [...CompPropertyFields.flags, 'yard_included']) {
     const node = $('comp_' + field); node.checked = node.value === 'true'; node.indeterminate = !node.value;
+    const choice = $('comp_' + field + '_choice');
+    if (choice) { choice.value = node.value; choice.disabled = !!(comp.pendingSave || comp.saving); }
     $('comp_' + field + '_answer').textContent = !node.value ? 'Unknown' : node.checked ? 'Yes' : 'No';
   }
 }
@@ -2178,6 +2180,7 @@ function syncCompModeUI() {
 }
 
 function syncCompReviewState() {
+  requestAnimationFrame(resizeCompTextareas);
   syncCompPowerFallback();
   syncCompFeatureChecks();
   syncCompLeaseDefault();
@@ -2192,6 +2195,7 @@ function syncCompReviewState() {
     summary.textContent = missing.length === 0
       ? "Ready to save"
       : `${missing.length} field${missing.length === 1 ? "" : "s"} to review`;
+    summary.disabled = missing.length === 0;
     summary.title = missing.length ? `Missing ${missing.map((item) => item.label).join(", ")}` : "";
   }
   const save = $("compSave");
@@ -2749,7 +2753,48 @@ async function saveComp() {
 
 // ─── Comp-mode wiring (guarded — panel.html owns these elements) ──────────────────
 
+function resizeCompTextareas() {
+  for (const id of ['comp_loading', 'comp_power']) {
+    const node = $(id);
+    if (!node || !node.getClientRects().length) continue;
+    node.style.height = 'auto';
+    node.style.height = Math.min(160, Math.max(44, node.scrollHeight + 2)) + 'px';
+  }
+}
+function revealCompTarget(node) {
+  if (!node) return;
+  const section = node.closest('[data-sec]');
+  if (section) {
+    section.classList.remove('u-hidden', 'sec-collapsed');
+    if (section.tagName === 'DETAILS') section.open = true;
+  }
+  node.closest('.fld')?.classList.remove('u-hidden');
+  node.scrollIntoView({block: 'start', behavior: 'instant'});
+  node.focus({preventScroll: true});
+}
 function initCompMode() {
+  document.querySelectorAll('[data-comp-jump]').forEach(button => button.addEventListener('click', () => {
+    const section = document.querySelector(`#screen-comp [data-sec="${button.dataset.compJump}"]`);
+    if (section) { section.tabIndex = -1; revealCompTarget(section); }
+  }));
+  let lastReviewId = null;
+  $('compCompleteness').addEventListener('click', () => {
+    const missing = compMissingFields();
+    const index = missing.findIndex(item => item.id === lastReviewId);
+    const next = missing[(index + 1) % missing.length];
+    if (next) { lastReviewId = next.id; revealCompTarget($(next.id)); }
+  });
+  document.querySelectorAll('[data-comp-feature-select]').forEach(select => select.addEventListener('change', () => {
+    if (comp.saving || comp.pendingSave) { syncCompFeatureChecks(); return; }
+    const field = select.dataset.compFeatureSelect;
+    if (field === 'yard_included') comp.yardEdited = true;
+    else comp.propertyFieldsEdited[field] = true;
+    setCompPropertyValue(field, select.value === '' ? null : select.value === 'true', 'Edited');
+    syncCompReviewState();
+  }));
+  for (const id of ['comp_loading', 'comp_power']) $(id).addEventListener('input', resizeCompTextareas);
+  window.addEventListener('resize', resizeCompTextareas);
+
   $('compUsePropertyPower').addEventListener('click', () => {
     if (comp.pendingSave || comp.saving || $('compPowerFallback').classList.contains('hidden')) return;
     const value = CompPropertyFields.fromScrape(comp.scrape || {}).powerFallback;

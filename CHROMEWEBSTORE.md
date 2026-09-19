@@ -1,3 +1,7 @@
+## Local layout candidate 1.4.11
+
+Review ZIP: `masterappsurvey-v1.4.11.zip`; delivered under canonical Master App Survey. Preserve installed extension ID/storage and finish active drafts before any separately authorized replacement. Chrome owns docked side-panel width: drag its edge wider (target roughly50% more); form adapts through840px. Source301 units, browser regression/compact checks,8 pop-outs and packaged MV3 smoke passed. No Store upload/publication or installed-copy replacement. See PROJECT.md for evidence and exact source.
+
 # Chrome Web Store — CoStar → Survey Pusher
 
 ## 1.4.10 local candidate — 2026-09-18 — Reviewed Power sources and clean Loading

@@ -1,3 +1,7 @@
+## 1.4.11 — local compact Comp review candidate
+
+Description remains near top in a smaller card. Compact help, responsive location/spec rows, growing Loading/Power fields, explicit Yes/No/Unknown controls, sticky section shortcuts and missing-field navigation. Docked width is user-controlled; drag the edge wider. Local package only; no Store or installed update.
+
 # Changelog
 
 ## 1.4.10 local candidate — 2026-09-18 — Reviewed Power sources and clean Loading

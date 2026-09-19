@@ -1,3 +1,19 @@
+# Compact Comp layout — 2026-09-18 22:11:12 MST
+
+Owner: Codex local isolated worktree `/Users/maxschumacher/.codex/worktrees/compact-comp-layout-20260918`, branch `codex/compact-comp-layout-20260918`; baseline cd40a4a (local candidate 1.4.10).
+
+User approved video-review layout changes, except CoStar description must stay near top. Implemented compact top description and property linking/help, responsive city/state/ZIP and specification rows, growing Loading/Power fields, explicit Yes/No/Unknown selectors, sticky section navigation and clickable missing-field navigation. Existing field identities, layout preferences, source/edited flags, save semantics and flyer flows preserved. Comp content can use up to 840px; Chrome owns native side-panel width. Its published sidePanel API provides no width setter: drag the docked edge to about 1.5x current width. Existing pop-out stays available. No browser preferences hack or forced body minimum width.
+
+Delivered LOCAL candidate 1.4.11: `/Users/maxschumacher/Developer/chrome extensions/Master App Survey/masterappsurvey-v1.4.11.zip`; extracted at sibling `output/review/space-extension-1.4.11`. 117187 bytes; SHA256 7e0feaab722508f8f02e8f4fac107737b90880594ad77afce51273e5af9b6184; all18 runtime/icon files match source/archive/extracted. Installed extension and Store untouched; no production records written.
+
+Verified301 units on source and extracted package; mounted compact4 groups (320/390/585/720px, no overflow, section/review navigation, feature true/false/null saves, edited text preservation); existing property-linking, yard, property-fields, features/default, power-source, flyer-analysis and Survey browser suites;8 actual pop-out groups; actual packaged MV3 worker/panel smoke. Parent reran independent compact test and inspected320/585 screenshots. Tests use disposable fixtures and block remote requests. Existing test UI gestures adapted from checkbox/Clear to select; select.focus mimics user blur for number formatting. Smoke manifest assertion updated to1.4.11. Live authenticated behavior unverified.
+
+Evidence in `output/review/compact-*`; screenshot `compact-585.png`. Shared documentation completion: Surveys/Comps playbook, ops index, and existing Surveys wiki mirror read. No production ops entry or shared guide update appropriate for this uninstalled local layout candidate; live wiki not authenticated/unchecked. Local PROJECT, CHANGELOG and CHROMEWEBSTORE updated. No shared documentation writes.
+
+Next: save or intentionally cancel any active draft before updating the SAME installed extension in place; verify current ID/path first, preserve storage. User can review extracted candidate/screenshots now. No Store submission or installed-copy replacement performed. Current canonical source stays at its unrelated main checkout; this branch contains the candidate.
+
+---
+
 # Power source and clean Loading — 2026-09-18 22:01 MST (America/Phoenix)
 
 Owner root/task01a0b71e-3d1a-7b80-bbc2-bfad6a26985a, Codex isolated worktree

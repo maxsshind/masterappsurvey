@@ -279,6 +279,12 @@
       <button id="compRescan" type="button" class="btn btn-ghost btn-sm comp-rescan" title="Re-read the active CoStar property">↻ Re-read</button>
     </div>
 
+    <nav class="comp-section-nav" aria-label="Comp sections">
+      <button type="button" data-comp-jump="property">Property</button>
+      <button type="button" data-comp-jump="sizing">Pricing</button>
+      <button type="button" data-comp-jump="space-specs">Details</button>
+      <button type="button" data-comp-jump="notes">Notes</button>
+    </nav>
     <div id="compMatch" class="banner match hidden"></div>
     <div id="compModeNote" class="comp-mode-note hidden"></div>
 
@@ -289,7 +295,7 @@
         <a id="compOpenProperty" class="hidden" target="_blank" rel="noopener">Open Property →</a>
       </div>
       <p id="compPropertyStatus" aria-live="polite">Unlinked — will link automatically when saved.</p>
-      <p id="compPropertyHint" class="field-hint">Use the existing building/site, or create one on save if none matches. New suites and later deals stay separate.</p>
+      <details id="compPropertyHelp" class="comp-help"><summary>How linking works</summary><p id="compPropertyHint" class="field-hint">Use the existing building/site, or create one on save if none matches. New suites and later deals stay separate.</p></details>
       <label class="comp-property-skip"><input type="checkbox" id="compSkipProperty" /> Skip property link for now</label>
       <div class="comp-property-actions">
         <button type="button" id="compChangeProperty" class="btn btn-ghost btn-sm hidden">Change property</button>
@@ -311,26 +317,27 @@
     <section id="compContentImport" class="comp-import-card hidden" aria-labelledby="compImportTitle">
       <div class="comp-import-head">
         <div>
-          <span class="eyebrow">Optional</span>
           <h3 id="compImportTitle">Add CoStar description?</h3>
         </div>
         <span id="compImportCount" class="count-badge"></span>
       </div>
-      <p>Check to drop it into the Notes field below, then edit before saving.</p>
+      <p>Optional · Adds selected text to Notes for editing.</p>
+      <div class="comp-import-options">
       <label id="compHighlightsOption" class="comp-import-option hidden">
         <input id="compIncludeHighlights" type="checkbox" />
         <span>
-          <strong>Include Sale Highlights</strong>
+          <strong>Sale Highlights</strong>
           <small id="compHighlightsPreview"></small>
         </span>
       </label>
       <label id="compNotesOption" class="comp-import-option hidden">
         <input id="compIncludeSaleNotes" type="checkbox" />
         <span>
-          <strong>Include Sale Notes</strong>
+          <strong>Sale Notes</strong>
           <small id="compSaleNotesPreview"></small>
         </span>
       </label>
+      </div>
     </section>
 
     <div class="sec" data-sec="property">
@@ -370,7 +377,7 @@
       <div class="fld"><span><label for="comp_suite">Suite / unit</label></span><input id="comp_suite" placeholder="If this deal covers a suite" /></div>
       <div class="fld two"><span><label for="comp_partial_site_override">Portion of site</label></span><select id="comp_partial_site_override"><option value="">Unknown</option><option value="true">Yes</option><option value="false">No — whole site</option></select></div>
       <div class="fld two"><span><label for="comp_multi_tenant">Multi-tenant building</label></span><select id="comp_multi_tenant"><option value="">Unknown</option><option value="true">Yes</option><option value="false">No</option></select></div>
-      <small class="field-hint comp-size-hint">Sizes above describe this deal. Suite/portion sizes stay separate from whole-site totals. Choose No for portion and multi-tenant only when confirmed.</small>
+      <details class="comp-help"><summary>Area guidance</summary><small class="field-hint comp-size-hint">Sizes above describe this deal. Suite/portion sizes stay separate from whole-site totals. Choose No for portion and multi-tenant only when confirmed.</small></details>
       <div class="fld two"><span>Asking Price ($)</span><input id="comp_sale_price" inputmode="decimal" /></div>
       <div class="fld two"><span>Asking Rent ($/SF/mo)</span><input id="comp_rent_psf" inputmode="decimal" /></div>
     </div>
@@ -378,7 +385,7 @@
 
     <div class="sec" data-sec="space-specs">
       <div class="section-label mt-section">Property details</div><div class="fieldset">
-        <div class="fld two" data-layout-key="comp_clear_height_ft"><span><label for="comp_clear_height">Clear height</label></span><input id="comp_clear_height" maxlength="200" /><small class="field-hint">Ranges and descriptions are kept as entered.</small></div>
+        <div class="fld two" data-layout-key="comp_clear_height_ft"><span><label for="comp_clear_height">Clear height</label></span><input id="comp_clear_height" maxlength="200" /></div>
         <div class="fld two"><span><label for="comp_office_sf">Office SF</label></span><input id="comp_office_sf" inputmode="decimal" /></div>
         <div class="fld two"><span><label for="comp_lease_area">Available lease SF</label></span><input id="comp_lease_area" inputmode="decimal" aria-describedby="compLeaseDefaultHint" /><small id="compLeaseDefaultHint" class="field-hint hidden">Defaults to Building SF. Review the offered area.</small></div>
         <div class="fld two"><span><label for="comp_year_built">Year built</label></span><input id="comp_year_built" inputmode="numeric" /></div>
@@ -415,13 +422,13 @@
     <div class="sec" data-sec="yard">
       <div class="section-label mt-section">Features</div>
       <div class="fieldset">
-        <div class="fld comp-feature" data-layout-key="comp_yard_included"><label for="comp_yard_included"><input type="checkbox" id="comp_yard_included" aria-label="Yard included" value="" aria-describedby="compYardHint" /><span>Yard included</span></label><span id="comp_yard_included_answer" class="field-hint">Unknown</span><button type="button" class="btn btn-ghost btn-sm" data-clear-comp-feature="yard_included" aria-label="Set yard included to unknown">Clear</button></div>
-        <div class="fld comp-feature" data-layout-key="comp_class_a"><label for="comp_class_a"><input type="checkbox" id="comp_class_a" aria-label="Class A" value="" /><span>Class A</span></label><span id="comp_class_a_answer" class="field-hint">Unknown</span><button type="button" class="btn btn-ghost btn-sm" data-clear-comp-feature="class_a" aria-label="Set class a to unknown">Clear</button></div>
-        <div class="fld comp-feature" data-layout-key="comp_heavy_power"><label for="comp_heavy_power"><input type="checkbox" id="comp_heavy_power" aria-label="Heavy power" value="" /><span>Heavy power</span></label><span id="comp_heavy_power_answer" class="field-hint">Unknown</span><button type="button" class="btn btn-ghost btn-sm" data-clear-comp-feature="heavy_power" aria-label="Set heavy power to unknown">Clear</button></div>
-        <div class="fld comp-feature" data-layout-key="comp_has_rail"><label for="comp_has_rail"><input type="checkbox" id="comp_has_rail" aria-label="Has rail" value="" /><span>Has rail</span></label><span id="comp_has_rail_answer" class="field-hint">Unknown</span><button type="button" class="btn btn-ghost btn-sm" data-clear-comp-feature="has_rail" aria-label="Set has rail to unknown">Clear</button></div>
-        <div class="fld comp-feature" data-layout-key="comp_has_truckwell_or_dock"><label for="comp_has_truckwell_or_dock"><input type="checkbox" id="comp_has_truckwell_or_dock" aria-label="Has truckwell or dock" value="" /><span>Has truckwell or dock</span></label><span id="comp_has_truckwell_or_dock_answer" class="field-hint">Unknown</span><button type="button" class="btn btn-ghost btn-sm" data-clear-comp-feature="has_truckwell_or_dock" aria-label="Set has truckwell or dock to unknown">Clear</button></div>
-        <small class="field-hint">Facts apply to this offered space. Clear a checkbox answer to return it to Unknown.</small>
-        <small id="compYardHint" class="field-hint">Yard applies to this offered space or site. Put yard size, access and permitted use in Notes.</small>
+        <div class="fld comp-feature" data-layout-key="comp_yard_included"><label for="comp_yard_included_choice"><input type="checkbox" id="comp_yard_included" aria-hidden="true" tabindex="-1" value="" aria-describedby="compYardHint" /><span>Yard included</span></label><select id="comp_yard_included_choice" data-comp-feature-select="yard_included" aria-label="Yard included"><option value="">Unknown</option><option value="true">Yes</option><option value="false">No</option></select><span id="comp_yard_included_answer" class="field-hint">Unknown</span><button type="button" class="btn btn-ghost btn-sm" data-clear-comp-feature="yard_included" aria-label="Set yard included to unknown">Clear</button></div>
+        <div class="fld comp-feature" data-layout-key="comp_class_a"><label for="comp_class_a_choice"><input type="checkbox" id="comp_class_a" aria-hidden="true" tabindex="-1" value="" /><span>Class A</span></label><select id="comp_class_a_choice" data-comp-feature-select="class_a" aria-label="Class A"><option value="">Unknown</option><option value="true">Yes</option><option value="false">No</option></select><span id="comp_class_a_answer" class="field-hint">Unknown</span><button type="button" class="btn btn-ghost btn-sm" data-clear-comp-feature="class_a" aria-label="Set class a to unknown">Clear</button></div>
+        <div class="fld comp-feature" data-layout-key="comp_heavy_power"><label for="comp_heavy_power_choice"><input type="checkbox" id="comp_heavy_power" aria-hidden="true" tabindex="-1" value="" /><span>Heavy power</span></label><select id="comp_heavy_power_choice" data-comp-feature-select="heavy_power" aria-label="Heavy power"><option value="">Unknown</option><option value="true">Yes</option><option value="false">No</option></select><span id="comp_heavy_power_answer" class="field-hint">Unknown</span><button type="button" class="btn btn-ghost btn-sm" data-clear-comp-feature="heavy_power" aria-label="Set heavy power to unknown">Clear</button></div>
+        <div class="fld comp-feature" data-layout-key="comp_has_rail"><label for="comp_has_rail_choice"><input type="checkbox" id="comp_has_rail" aria-hidden="true" tabindex="-1" value="" /><span>Has rail</span></label><select id="comp_has_rail_choice" data-comp-feature-select="has_rail" aria-label="Has rail"><option value="">Unknown</option><option value="true">Yes</option><option value="false">No</option></select><span id="comp_has_rail_answer" class="field-hint">Unknown</span><button type="button" class="btn btn-ghost btn-sm" data-clear-comp-feature="has_rail" aria-label="Set has rail to unknown">Clear</button></div>
+        <div class="fld comp-feature" data-layout-key="comp_has_truckwell_or_dock"><label for="comp_has_truckwell_or_dock_choice"><input type="checkbox" id="comp_has_truckwell_or_dock" aria-hidden="true" tabindex="-1" value="" /><span>Has truckwell or dock</span></label><select id="comp_has_truckwell_or_dock_choice" data-comp-feature-select="has_truckwell_or_dock" aria-label="Has truckwell or dock"><option value="">Unknown</option><option value="true">Yes</option><option value="false">No</option></select><span id="comp_has_truckwell_or_dock_answer" class="field-hint">Unknown</span><button type="button" class="btn btn-ghost btn-sm" data-clear-comp-feature="has_truckwell_or_dock" aria-label="Set has truckwell or dock to unknown">Clear</button></div>
+        <small class="field-hint">Facts apply to this offered space; Unknown means not confirmed.</small>
+        <details class="comp-help"><summary>Yard guidance</summary><small id="compYardHint" class="field-hint">Yard applies to this offered space or site. Put yard size, access and permitted use in Notes.</small></details>
       </div>
     </div>
 
@@ -476,7 +483,7 @@
 
     <div class="comp-sticky-footer">
       <div class="comp-footer-meta">
-        <span id="compCompleteness">Reviewing fields…</span>
+        <button type="button" id="compCompleteness">Reviewing fields…</button>
         <span id="compFlyerState">No flyer attached</span>
       </div>
       <div class="comp-footer-actions">

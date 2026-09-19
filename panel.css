@@ -629,3 +629,48 @@ body:has(#screen-form:not(.hidden)) #toast { bottom: 64px; }
 .power-fallback p { margin:0 0 6px; }
 .power-fallback-value { white-space:pre-wrap; overflow-wrap:anywhere; font-weight:600; margin-bottom:6px; }
 .power-fallback-actions { display:flex; flex-wrap:wrap; gap:6px; }
+
+/* Compact Comp review: the browser owns docked panel width; adapt to its viewport. */
+body:has(#screen-comp:not(.hidden)) { max-width: 840px; }
+.comp-toolbar { margin-bottom: 0; padding-block: 7px; min-height: 54px; }
+.comp-section-nav { position: sticky; top: 54px; z-index: 10; display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 4px; margin: 0 -12px 8px; padding: 5px 12px; background: #f8f9fc; border-bottom: 1px solid var(--comp-border); }
+.comp-section-nav button { font: inherit; font-size: 12px; color: #77112f; border: 1px solid #e2d5da; border-radius: 5px; background: white; min-height: 30px; cursor: pointer; }
+.comp-section-nav button:hover, .comp-section-nav button:focus-visible { background: #f7e8ed; }
+#screen-comp [data-sec], #screen-comp .fld { scroll-margin-top: 104px; }
+.comp-property-link { padding: 8px 10px; margin: 8px 0; }
+.comp-property-link p { margin: 4px 0; }
+.comp-property-skip { min-height: 28px; font-size: 12px; }
+.comp-property-actions:not(:has(button:not(.hidden))) { display: none; }
+.comp-help { grid-column: 1 / -1; font-size: 11px; color: #606573; }
+.comp-help summary { cursor: pointer; padding-block: 3px; }
+.comp-help .field-hint { display: block; margin-top: 4px; }
+.comp-import-card { padding: 8px 10px; margin-bottom: 8px; }
+.comp-import-card > p { margin: 3px 0 6px; }
+.comp-import-options { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 6px; }
+.comp-import-option { padding: 6px; gap: 5px; }
+.comp-import-option + .comp-import-option { margin-top: 0; }
+.comp-import-option small { -webkit-line-clamp: 1; }
+.comp-screen .fieldset { gap: 7px; padding: 8px; }
+.comp-screen textarea#comp_loading, .comp-screen textarea#comp_power { min-height: 44px; max-height: 160px; resize: vertical; }
+.comp-feature > label input, .comp-feature > .field-hint, .comp-feature > button { display: none; }
+.comp-feature > select { flex: 0 0 100px; width: 100px; }
+#compCompleteness { border: 0; background: transparent; padding: 2px 0; text-align: left; font: inherit; font-weight: 700; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+#compCompleteness:disabled { cursor: default; text-decoration: none; }
+#compFlyerState { min-width: 0; overflow-wrap: anywhere; text-align: right; }
+@media (min-width: 480px) {
+  #screen-comp [data-sec="property"] > .fieldset { grid-template-columns: minmax(0,2fr) minmax(0,1fr) minmax(0,1fr); }
+  #screen-comp [data-sec="property"] .fld:has(#comp_city), #screen-comp [data-sec="property"] .fld:has(#comp_state), #screen-comp [data-sec="property"] .fld:has(#comp_zip) { grid-column: span 1; }
+  #screen-comp [data-sec="space-specs"] > .fieldset { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  #screen-comp [data-sec="space-specs"] .fld:has(#comp_clear_height), #screen-comp [data-sec="space-specs"] .fld:has(#comp_office_sf), #screen-comp [data-sec="space-specs"] .fld:has(#comp_year_built) { grid-column: span 1; }
+  #screen-comp [data-sec="space-specs"] .fld:has(#comp_lease_area) { grid-column: 1 / -1; order: 1; }
+  #screen-comp [data-sec="space-specs"] .fld:has(textarea), #compPropertySource { order: 2; }
+}
+/* Features need more room than type chips; avoid squeezing their labels. */
+@media (min-width: 540px) {
+  #screen-comp:not(.hidden):has(> [data-sec="ptype"]:not(.u-hidden) + [data-sec="yard"]:not(.u-hidden)) { grid-template-columns: minmax(0,2fr) minmax(0,3fr); }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+@media (max-width: 359px) {
+  .comp-section-nav { margin-inline: -10px; padding-inline: 10px; }
+}
+.comp-screen .fld.comp-feature > .field-hint { display: none; }
