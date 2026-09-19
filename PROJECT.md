@@ -23,8 +23,7 @@ survey in Master App; saved linked options allow notes-only changes here and
 member-dependent edits there. Legacy free-text combinations remain readable;
 new unlinked Combined drafts are blocked. Comp capture/save remains unchanged.
 
-**Deployment dependency:** `survey_properties.space_option` and the web app's
-range/combination validation and projection must be live first. Contract:
+**Deployment dependency satisfied — 2026-09-18 19:23 MST:** parent verified the production column, triggers and actual web flows through main-app commit `c007f7a`. Candidate remains local; no Store submission or installation by this effort. Next distribution step: verify current Store draft/public status, preserve any pending review, then coordinate the separate extension rollout. Contract:
 `{kind,min,max,proposed,members,review,quoteArea}`, with optional `featuresArea`
 preserved but never filled from capture. Ranges use canonical whole-SF strings,
 empty proposed/quoteArea initially and advertised `suite_size` text. No backfill
