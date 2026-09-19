@@ -1,6 +1,6 @@
 # Privacy Policy — CoStar → Survey Pusher
 
-**Last updated:** September 18, 2026 — local review draft; this change is not published
+**Last updated:** September 18, 2026
 
 ## Overview
 The CoStar → Survey Pusher Chrome extension ("the Extension") is an internal

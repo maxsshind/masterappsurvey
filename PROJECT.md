@@ -1,6 +1,25 @@
 # September 18 Survey extension alignment
 
-## Current checkpoint — 2026-09-18 17:48:25 MST (America/Phoenix)
+## Current release checkpoint — 2026-09-18 18:06:22 MST (America/Phoenix)
+
+Max explicitly authorized GitHub and Chrome Web Store release of the completed changes.
+This supersedes historical no-publication restrictions below. Release **1.4.0** is
+prepared; submission is pending. Worktree and branch remain as recorded below.
+Public Store and authenticated draft both verified **1.3.3** before release; GitHub
+main remains the verified starting commit with no divergent changes. The original
+Store screenshot and description are retained; the attempted listing refresh was reverted.
+No installed-extension replacement or production business-record test is authorized or performed.
+
+Final ZIP: `output/masterappsurvey-v1.4.0.zip`, 93,577 bytes, SHA-256
+`bfeb47afa010231954f793fcc6c8e2db8261a145774fea1eb4294fcfb3ca24da`.
+Extracted ZIP passes **167 unit tests, 43 browser scenarios, 6 real Chrome pop-out
+scenarios and the MV3 runtime smoke** with synthetic data and blocked remote requests.
+Evidence: `output/review/release-1.4.0-{unit.txt,browser.json,popout.json,extension.json,package.json}`.
+Earlier database checks below are historical, not rerun for this version bump.
+Next: push release code/privacy policy, upload this exact ZIP, verify draft version,
+submit once and record actual review/public states. Shared documentation remains unsaved.
+
+## Historical local-review checkpoint — 2026-09-18 17:48:25 MST (America/Phoenix)
 
 **Local implementation and review package complete. Distribution and live authenticated verification remain outside this task.**
 

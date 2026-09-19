@@ -2,7 +2,15 @@
 
 Last updated: 2026-09-18
 
-## September 18 Survey review build — not released
+## 1.4.0 release — September 18
+
+Authorized by Max; upload/submission pending. Existing public/draft version verified
+1.3.3. Final package and release verification are in PROJECT.md. Original Store
+screenshot and description retained. No permission or host changes; hosted privacy
+policy covers local drafts, retry recovery and the session-memory pop-out handoff.
+`publish.sh` remains package-only; release uses separately checked API steps.
+
+## Historical September 18 local review build
 
 **Attach open CoStar flyer (PDF)** now stays in the fixed bottom bar, directly
 above **Add to survey**. Manual flyer/photo URLs remain in their details section.

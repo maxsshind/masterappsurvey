@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased — September 18 Survey alignment review
+## 1.4.0 — 2026-09-18 — Survey workflow and pop-out
 
 - Moved Attach open CoStar flyer (PDF) into the fixed bottom action bar, directly
   above Add to survey. It stays visible while scrolling and in pop-out mode.
@@ -17,7 +17,7 @@
 
 - Requested layout revision: Area → Monthly pricing → Availability/client Notes/Date. Saved layouts migrate to v3 with a separate prior-preferences backup; Comp layout and draft values remain intact.
 
-- Follow-up rent fix: prefer the open CoStar Space Details over the property summary; prefill exact monthly rent and offered size for review, preserve existing/edited quotes, and retain separate drafts per selected space. Source/extracted checks: 167 unit tests and 41 browser scenarios. No installed or Store update.
+- Follow-up rent fix: prefer the open CoStar Space Details over the property summary; prefill exact monthly rent and offered size for review, preserve existing/edited quotes, and retain separate drafts per selected space. Source/extracted checks: 167 unit tests and 41 browser scenarios. Included in the 1.4.0 release.
 
 - Linked editable monthly total, per-SF and per-acre rent; explicitly offered acreage;
   separate/included/unknown expenses; version-1 source metadata and exact decimal math.
@@ -32,9 +32,10 @@
   such column. Comp's separate property name remains supported.
 - Packaging separated from publication. Draft storage and retention disclosed locally.
 
-This is a local implementation/review package; manifest remains the 1.3.3 baseline.
-No Store, installation, production data, main-app schema or behavior changes.
-See PROJECT.md for exact checks, artifacts and known boundaries.
+Release authorized; Store submission pending. Final extracted 1.4.0 package passes
+167 unit tests, 43 browser scenarios, 6 pop-out scenarios and MV3 smoke.
+No installed-extension replacement, production business-data test or main-app changes.
+See PROJECT.md for current release status, artifacts and verification limits.
 
 # CoStar → Survey Pusher changelog
 
