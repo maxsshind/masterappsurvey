@@ -586,3 +586,5 @@ body:has(#screen-form:not(.hidden)) #toast { bottom: 64px; }
 #rangeFields.hidden { display:none; }
 #rangeFields > div:nth-child(3), #rangeFields > p { grid-column:1 / -1; }
 #rangeFields > div { min-width:0; display:flex; flex-direction:column; gap:3px; }
+
+#surveySource { padding:6px 0; overflow-wrap:anywhere; }

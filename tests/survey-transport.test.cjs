@@ -483,3 +483,22 @@ test('each discrete suite keeps exact size without inferred member links from co
     const data=await selectedSpaceFixture(text);assert.equal(data.selectedSpace.availableSf,'21600');assert.equal(data.selectedSpace.availableRange,null);assert.equal(data.selectedSpace.suite,suite);
   }
 });
+
+for (const kind of ['active','pinned','ambiguous','closed']) {
+  test(`Survey source tab selection is explicit and safe: ${kind}`,async()=>{
+    const h=harness(); let selected;
+    const a={id:10,url:'https://product.costar.com/detail/all-properties/231512/summary'};
+    const b={id:11,url:'https://product.costar.com/detail/all-properties/333333/summary'};
+    h.c.chrome.tabs={query:async q=>q.url?[a,b]:kind==='active'?[b]:[{id:12,url:'chrome-extension://fixture/panel.html'}],get:async id=>{if(kind==='closed')throw new Error('Closed');return a;}};
+    h.c.chrome.scripting={executeScript:async options=>{selected=options.target.tabId;return[{result:{street:'Fixture'}}];}};
+    if(kind==='ambiguous')await assert.rejects(h.c.readCoStar({survey:true}),/More than one CoStar tab/);
+    else if(kind==='closed')await assert.rejects(h.c.readCoStar({survey:true,tabId:10}),/source CoStar tab is closed/);
+    else {const data=await h.c.readCoStar({survey:true,tabId:10});assert.equal(selected,kind==='active'?11:10);assert.equal(data.sourceTabId,selected);}
+  });
+}
+test('Comp intake retains legacy most-recent-tab fallback independently of Survey source rules',async()=>{
+  const h=harness();let selected;
+  h.c.chrome.tabs={query:async q=>q.url?[{id:10,url:'https://product.costar.com/detail/all-properties/11111/summary',lastAccessed:1},{id:11,url:'https://product.costar.com/detail/all-properties/22222/summary',lastAccessed:2}]:[]};
+  h.c.chrome.scripting={executeScript:async options=>{selected=options.target.tabId;return[{result:{}}];}};
+  await h.c.readCoStar();assert.equal(selected,11);
+});

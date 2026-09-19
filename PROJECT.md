@@ -1,3 +1,68 @@
+# Suite-switch/save-target fix — 2026-09-18 20:17:57 MST (America/Phoenix)
+
+Current scoped task: fix automatic same-URL CoStar space switching and prevent
+wrong-row saves. Parent task `01a0b71e-3d1a-7b80-bbc2-bfad6a26985a` explicitly
+retained flyer ownership and combined packaging. This task commits suite changes
+only; no flyer implementation, version bump, Store upload, installation/reload,
+production record write, or main-app change.
+
+- Codex local task `01a0b799-7d27-7ef1-a174-885198f89df1`, saved Developer project;
+  actual extension commands ran in `/Users/maxschumacher/.codex/worktrees/survey-extension-space-options-20260918`,
+  branch `codex/survey-space-options-20260918`, base `d3656ed`.
+- Canonical source: `/Users/maxschumacher/Developer/chrome extensions/Master App Survey`.
+  Parent flyer checkout: `/Users/maxschumacher/.codex/worktrees/survey-shared-flyers-20260918`.
+- Live Chrome AX inspection reproduced Suite 7 (1,200 SF/100 office SF/$1,680/mo)
+  opposite the Yard 3 update editor. One explicit Refresh correctly captured Suite 7
+  but offered Update Yard 3 and no Add-current choice because saved tenancy was not
+  MT. No Save was clicked. Drafts were persisted by the existing refresh handler.
+- Verified installed extension ID `ecogfeklnlgikamdkdomndedgfegbpha`, version 1.4.2,
+  path `/Users/maxschumacher/Library/Application Support/Google/Chrome/Default/UnpackedExtensions/masterappsurvey-v1.4.2_u70oHn`.
+  Installed path/manifest read only; native Chrome used because extension side panel
+  requires the existing Chrome session. DevTools connection was unavailable.
+- Root causes: URL-only navigation detection ignores space arrows; saved result
+  discarded source; duplicate update choice did not compare suite labels; Add-current
+  depended on an existing MT row. Async read completion lacked view/scope/identity
+  guards and batch alias mapping assumed database return order.
+- Fix: visible DOM stability reads, same-URL polling, ordinal-before-body delay guard,
+  pinned pop-out source and explicit ambiguity/closed-tab errors, save preflight,
+  matching suite/building targets, source retention, ID-based readback mapping,
+  independent manual siblings, edited legacy aliases and labels, stale account/survey/
+  view response rejection. Sticky title names the edited suite; source line identifies
+  the captured suite. Comp retains its previous tab fallback behavior.
+
+Verified against final source:
+- **189 unit/transport tests**; **50 mounted scenarios** (31 Survey, 6 Yard, 13 Comp).
+- **6 real Chrome pop-out scenarios**, including storage/account/handoff protections.
+- **12 end-to-end suite-switch groups** in a disposable actual MV3 extension profile:
+  real worker DOM scraper, panel and save/recovery pipeline; only Supabase transport
+  replaced with in-memory fixtures. Covers Yard 3 to Suite 7 insert, null-tenancy
+  Add-current, delayed/back/forward arrows, 3.5-second mid-render Save rejection,
+  repeated refresh/clears, restart, multi-tab/popup, wrong legacy alias, manual sibling,
+  reversed database readback, deliberately edited saved label, and delayed responses
+  after account/survey/Settings/Browse/Comp changes. Zero browser errors or external
+  requests. Baseline 1.4.2 reproduced the original same-URL stuck-target bug.
+- Layout tested at 320/390/720px; 390px screenshot visually inspected. Actual live
+  CoStar fixed-runtime verification remains unperformed because installed extension
+  and user's open work were deliberately not replaced. No production rows were used.
+
+Evidence under this worktree's `output/review/`:
+`suite-switch-unit.txt`, `suite-switch-browser.json`, `suite-switch-popout.json`,
+`suite-switch-runtime.json`, `suite-switch-baseline.json`, `suite-switch-390.png`
+(and 320/720 variants). Runtime test source: `tests/suite-switch-runtime.cjs`.
+Independent reviewer findings were verified and fixed, then exercised by regressions.
+
+Next step: parent cherry-picks this suite commit into its flyer checkout, resolves
+panel overlap while retaining source/ID/save guards, reruns combined tests, and owns
+release version/docs/package. Parent has been told to update privacy wording for
+rendered-space polling while Survey Push is open. Shared playbook and existing wiki
+were read for independent-space constraints; production ops log requires no local-only
+release entry. Parent owns combined documentation completion under existing approval.
+No Store/public status is newly asserted. Current manifest intentionally stays 1.4.2
+until parent chooses the combined candidate number. Do not replace Max's installed
+folder or clear his local extension storage during integration.
+
+---
+
 # Captured-suite follow-up — 2026-09-18 19:50:48 MST (America/Phoenix)
 
 Current task: Max reported missing next-suite details after refresh and requested

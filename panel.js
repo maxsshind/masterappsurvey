@@ -187,7 +187,7 @@ async function onAuthed() {
   const auth = await bg("AUTH_STATUS");
   if (auth.ok && auth.connected) {
     if (state.accountId && state.accountId !== auth.accountId) {
-      surveyEditor.bundle = null; surveyEditor.archives = {}; surveyEditor.buildingFlyers = {}; surveyEditor.pending = null;
+      surveyEditor.bundle = null; surveyEditor.archives = {}; surveyEditor.buildingFlyers = {}; observedSurveySource = null; surveyEditor.pending = null;
       state.survey = null; state.props = []; state.mode = null; state.scraped = null;
     }
     state.accountId = auth.accountId; state.email = auth.email;
@@ -437,7 +437,7 @@ $("btnDisconnect").addEventListener("click", async () => {
   if (surveyEditor.saving) return;
   try { await persistSurveyDraft(); } catch { return; }
   await bg("AUTH_SIGN_OUT");
-  surveyEditor.bundle = null; surveyEditor.archives = {}; surveyEditor.buildingFlyers = {}; surveyEditor.pending = null;
+  surveyEditor.bundle = null; surveyEditor.archives = {}; surveyEditor.buildingFlyers = {}; observedSurveySource = null; surveyEditor.pending = null;
   state.accountId = null;
   state.authed = false;
   state.survey = null;
@@ -524,11 +524,11 @@ $("btnCreateSurvey").addEventListener("click", async () => {
 });
 
 async function selectSurvey(survey, opts = {}) {
-  if (surveyEditor.saving) return;
+  if (surveyEditor.saving || surveyEditor.checkingSource) return;
   const generation = ++surveyEditor.selectionGeneration;
   try { await persistSurveyDraft(); } catch { return; }
   if (generation !== surveyEditor.selectionGeneration) return;
-  surveyEditor.bundle = null; surveyEditor.archives = {}; surveyEditor.buildingFlyers = {}; surveyEditor.pending = null;
+  surveyEditor.bundle = null; surveyEditor.archives = {}; surveyEditor.buildingFlyers = {}; observedSurveySource = null; surveyEditor.pending = null;
   state.survey = survey;
   state.props = []; state.propsLookupOk = false;
   state.mode = null;
@@ -563,41 +563,70 @@ async function reloadProps() {
 
 // ─── Read CoStar ───────────────────────────────────────────────────────────────
 
-async function doRead(opts = {}) {
-  if (surveyEditor.saving || surveyEditor.pending) return mountSurveyDraft();
-  if (!state.survey) return openPicker();
-  setTab("push");
-  hideError($("idleError"));
-  hideError($("formError"));
-
-  // When auto-reading after a record change, CoStar's URL updates BEFORE its content
-  // re-renders — so an immediate scrape can return the previous record. Retry until
-  // the scraped street is non-empty AND differs from what we had loaded.
-  const awaitChange = opts.awaitChangeFromStreet || null;
-  let d = null;
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const res = await bg("READ_COSTAR");
-    if (!res.ok) { showScreen("idle"); showError($("idleError"), res.error); return; }
-    d = res.data || {};
-    if (!awaitChange) break;
-    if (d.street && d.street !== awaitChange) break;
-    await sleep(600);
+let surveyReadGeneration = 0;
+let surveyReadsInFlight = 0;
+let observedSurveySource = null;
+function surveyObservation(d) {
+  return JSON.stringify([d?.sourceTabId, surveySourceKey(d), d?.selectedSpace?.rawText || '', d?.street]);
+}
+function sourceOrdinal(source) {
+  if (source?.selectedSpace?.ordinal) return source.selectedSpace.ordinal;
+  try { const parts = JSON.parse(source?.selectedSpace?.identity); return Array.isArray(parts) ? parts[0] : null; } catch { return null; }
+}
+function pendingSpaceTransition(data, previousSource) {
+  const before = previousSource?.selectedSpace, next = data?.selectedSpace;
+  if (!before || !next || data.costarId !== previousSource.costarId) return false;
+  const from = sourceOrdinal(previousSource), to = sourceOrdinal(data);
+  return from && to && from !== to && ['suite','floor','availableSf','availableRange'].every(k => sameVal(before[k],next[k]));
+}
+async function stableSurveyRead(tabId, previousSource = null) {
+  let previous = null;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const res = await bg('READ_COSTAR', {tabId, survey:true});
+    if (!res.ok) throw new Error(res.error || 'Could not read CoStar.');
+    const data = res.data || {}, key = surveyObservation(data);
+    if (data.selectedSpace && !data.selectedSpace.identity) throw new Error('Open one unambiguous CoStar Space Details view, then refresh.');
+    const changedPropertyWithOldBody = previousSource?.costarId && data.costarId !== previousSource.costarId && data.street === previousSource.street;
+    if (data.street && key === previous && !changedPropertyWithOldBody && !pendingSpaceTransition(data,previousSource)) return data;
+    previous = key;
+    await sleep(400);
   }
-
-  try { await persistSurveyDraft(); } catch { return; }
-  if (surveyEditor.saving || surveyEditor.pending) return;
-  state.scraped = d;
-  const loaded = await reloadProps(); // fresh duplicate check against current DB state
-  if (!loaded) return;
-  matchAndShowForm();
+  throw new Error('CoStar is still changing. Wait for the space details to finish loading, then refresh.');
+}
+async function doRead(opts = {}) {
+  if (surveyEditor.saving || surveyEditor.pending || surveyEditor.checkingSource) return mountSurveyDraft();
+  if (!state.survey) return openPicker();
+  const generation = ++surveyReadGeneration, scope = surveyDraftKey(), originalBundle = surveyEditor.bundle;
+  if (!opts.automatic) setTab('push');
+  const intendedView = [state.appMode,state.tab,state.screen].join(':');
+  const valid = () => generation === surveyReadGeneration && scope === surveyDraftKey() && surveyEditor.bundle === originalBundle && !surveyEditor.saving && !surveyEditor.pending && intendedView === [state.appMode,state.tab,state.screen].join(':');
+  surveyReadsInFlight++;
+  try {
+    const d = await stableSurveyRead(activeSurveyDraft()?.source?.sourceTabId ?? state.scraped?.sourceTabId, activeSurveyDraft()?.source ?? state.scraped);
+    if (!valid()) return;
+    const observation = surveyObservation(d);
+    if (opts.automatic && observation === observedSurveySource) return;
+    // Persist the latest keystrokes before changing the visible source. Old drafts
+    // remain accessible, including explicit clears and manually added siblings.
+    await persistSurveyDraft();
+    if (!valid()) return;
+    const loaded = await reloadProps();
+    if (!loaded || !valid()) return;
+    state.scraped = d;
+    observedSurveySource = observation;
+    hideError($('idleError')); hideError($('formError'));
+    matchAndShowForm();
+  } catch (error) {
+    if (valid() && !opts.automatic) showError($(activeSurveyDraft() ? 'formError' : 'idleError'), error.message);
+  } finally { surveyReadsInFlight--; }
 }
 
 $("btnRead").addEventListener("click", () => doRead());
 
-// ─── Detect navigation to a NEW CoStar record ──────────────────────────────────
+// ─── Detect changes to the visible CoStar property or space ──────────────────────────────────
 // The side panel stays open across navigation; CoStar is a SPA so tab events fire
-// unreliably. A slow shared poll of the active tab URL (registered at the bottom of
-// this file, alongside the comp-mode poller) is the reliable backstop.
+// unreliably and space arrows do not change the URL. The shared poll reads the
+// visible space while Survey Push is open, including a pinned pop-out source.
 
 function costarRecordKey(url) {
   try {
@@ -610,27 +639,22 @@ function costarRecordKey(url) {
   } catch { return null; }
 }
 
-let lastNavKey = null;
 let navBusy = false;
 async function maybeReReadOnNav() {
   if (poppingOut || document.body.inert) return;
   if (navBusy) return;
-  if (!state.authed || !state.survey) return;
+  if (!state.authed || !state.survey || state.appMode !== 'survey') return;
   // Don't yank the UI while Max is picking a survey, in settings, signing in,
   // or working the Survey tab.
   if (state.tab !== "push") return;
   if (!["form", "idle"].includes(state.screen)) return;
+  if (surveyEditor.saving || surveyEditor.pending || surveyEditor.checkingSource) return;
   let tab;
   try { tab = (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0]; }
   catch { return; }
-  const key = costarRecordKey(tab && tab.url);
-  if (!key) return;
-  if (state.scraped && key === costarRecordKey(state.scraped.sourceUrl)) return;
-  if (key === lastNavKey) return;
-  lastNavKey = key;
+  if (!costarRecordKey(tab?.url) && !(IS_POPOUT && activeSurveyDraft()?.source?.sourceTabId != null)) return;
   navBusy = true;
-  const fromStreet = (state.scraped && state.scraped.street) || null;
-  try { await doRead({ awaitChangeFromStreet: fromStreet }); } finally { navBusy = false; }
+  try { await doRead({automatic:true}); } finally { navBusy = false; }
 }
 if (IS_EXTENSION_CONTEXT) {
   chrome.tabs.onUpdated.addListener((_id, changeInfo) => { if (changeInfo.url) maybeReReadOnNav(); });
@@ -824,7 +848,7 @@ function renderSuggestions(row, d) {
 }
 
 // Survey drafts are account/survey scoped. A mounted editor belongs to exactly one draft.
-const surveyEditor = { selectionGeneration: 0, bundle: null, archives: {}, buildingFlyers: {}, flyerUploads: 0, pending: null, saving: false, persistenceError: null, storageTail: Promise.resolve() };
+const surveyEditor = { checkingSource: false, selectionGeneration: 0, bundle: null, archives: {}, buildingFlyers: {}, flyerUploads: 0, pending: null, saving: false, persistenceError: null, storageTail: Promise.resolve() };
 const SURVEY_CHOICE_OPTIONS = {
   fTenancy: [['ST', 'Single tenant'], ['MT', 'Multi-tenant']],
   fAvailability: AVAILABILITY_OPTIONS.map(x => [x, x]),
@@ -848,7 +872,7 @@ function surveyChoice(id, value, scope = activeSurveyDraft()?.id || 'initial') {
 }
 function surveyReviewSource(source) {
   if (!source) return null;
-  return Object.fromEntries(['costarId','street','city','state','zip','sourceUrl','rba','acLot','leaseQuote','leaseQuoteRaw','leaseRate','selectedSpace'].filter(k => source[k] !== undefined).map(k => [k,source[k]]));
+  return Object.fromEntries(['costarId','street','city','state','zip','sourceUrl','rba','acLot','leaseQuote','leaseQuoteRaw','leaseRate','selectedSpace','sourceTabId'].filter(k => source[k] !== undefined).map(k => [k,source[k]]));
 }
 function makeSurveyDraft(row, isNew, source = null) {
   source = surveyReviewSource(source);
@@ -901,11 +925,17 @@ async function persistSurveyDraft() {
 }
 function queueSurveyDraft() { void persistSurveyDraft().catch(() => {}); }
 async function restoreSurveyWorkspace() {
-  surveyEditor.bundle = null; surveyEditor.archives = {}; surveyEditor.buildingFlyers = {}; surveyEditor.pending = null;
+  surveyEditor.bundle = null; surveyEditor.archives = {}; surveyEditor.buildingFlyers = {}; observedSurveySource = null; surveyEditor.pending = null;
   const key = surveyDraftKey(), scope = state.accountId + ':' + state.survey.id;
   if (key) {
     try { const stored = (await chrome.storage.local.get(key))[key]; if (scope !== state.accountId + ':' + state.survey?.id) return; if (stored?.version === 1) { surveyEditor.archives = stored.bundles || {}; surveyEditor.buildingFlyers = stored.buildingFlyers || {}; surveyEditor.bundle = surveyEditor.archives[stored.activeKey] || null; } }
     catch (e) { surveyEditor.persistenceError = e.message; showError($('idleError'), 'Cannot restore saved drafts. ' + e.message); }
+  }
+  const restoredDraft = activeSurveyDraft();
+  if (restoredDraft && !restoredDraft.source && !restoredDraft.model.isNew) {
+    const aliases = Object.values(surveyEditor.archives).filter(b => b.targetId === restoredDraft.model.baseline.id);
+    const sources = aliases.flatMap(b => b.drafts || []).map(d => d.source).filter(source => source && sourceMatchesRow(source,restoredDraft.model.baseline));
+    if (sources.length && new Set(sources.map(surveySourceKey)).size === 1) restoredDraft.source = surveyReviewSource(sources[0]);
   }
   const pending = await bg('GET_SURVEY_PENDING', { surveyId: state.survey.id });
   if (scope !== state.accountId + ':' + state.survey?.id) return;
@@ -922,6 +952,8 @@ async function restoreSurveyWorkspace() {
 }
 function renderSurveyDraftTabs() {
   const bundle = surveyEditor.bundle; if (!bundle) return;
+  const draft = activeSurveyDraft(), suite = draft?.model.values.suite_number;
+  $('formTitle').textContent = `${draft?.model.isNew ? 'New offering' : 'Update space'}${suite ? ' · ' + suite : ''}`;
   const node = $('spaceDrafts');
   node.classList.toggle('hidden', bundle.drafts.length < 2);
   node.innerHTML = bundle.drafts.map((d,i) => `<button type="button" class="space-tab" data-draft="${i}" role="tab" aria-selected="${i === bundle.active}">${esc(d.model.values.suite_number || `Space ${i+1}`)}</button>${bundle.drafts.length > 1 ? `<button type="button" class="space-tab" data-remove="${i}" aria-label="Remove draft ${i+1}">×</button>` : ''}`).join('');
@@ -970,10 +1002,11 @@ function mountSurveyDraft() {
   state.mode = draft.model.isNew ? 'insert' : 'update'; state.editingId = draft.model.isNew ? null : draft.model.baseline.id; state.baseline = draft.model.baseline;
   if (!surveyEditor.pending && !surveyEditor.saving) SurveyFlyers.inherit(draft,surveyEditor.buildingFlyers);
   fillForm(draft.model.values); renderSpaceOption(); renderSurveyRent(); renderSurveyDraftTabs();
-  $('formTitle').textContent = draft.model.isNew ? 'New offering' : 'Update this space';
   const label = surveyEditor.bundle.drafts.length > 1 ? `Save ${surveyEditor.bundle.drafts.length} spaces` : draft.model.isNew ? 'Add to survey' : 'Save changes';
   $('btnSave').textContent = $('btnSaveBottom').textContent = label;
-  setBanner(state.mode,draft.model.values); syncSurveyLock(); renderSurveyFlyer();
+  setBanner(state.mode,draft.model.values);
+  $('surveySource').textContent = draft.source ? `CoStar capture: ${draft.source.street || ''} · ${draft.source.selectedSpace?.suite ? 'Suite ' + draft.source.selectedSpace.suite : 'Property summary'}` : 'Manual / saved space';
+  syncSurveyLock(); renderSurveyFlyer();
   setTab('push'); showScreen('form');
   if (surveyEditor.bundle.decision === 'unresolved') showSurveyCandidates(findMatch(draft.source));
 }
@@ -1027,7 +1060,7 @@ $('fSpaceKind').addEventListener('change', () => {
 for (const [id,key] of [['fSpaceMin','min'],['fSpaceMax','max'],['fSpaceProposed','proposed']])
   $(id).addEventListener('input', () => changeSpaceRange({[key]:$(id).value}));
 function syncSurveyLock() {
-  const locked = Boolean(surveyEditor.pending || surveyEditor.saving);
+  const locked = Boolean(surveyEditor.pending || surveyEditor.saving || surveyEditor.checkingSource);
   $('screen-form').querySelectorAll('input,textarea,select,button').forEach(el => { el.disabled = locked; });
   for (const id of ['btnChangeSurvey','btnDisconnect','btnRefresh','btnSavedDrafts']) $(id).disabled = surveyEditor.saving;
   $('btnRecoverSurvey').disabled = surveyEditor.saving; $('btnUnlockSurvey').disabled = surveyEditor.saving; $('btnReviewLatest').disabled = surveyEditor.saving;
@@ -1064,14 +1097,20 @@ function findMatch(scraped) {
     return target && (address === target || (number && address.match(/^\d+/)?.[0] === number && address.split(' ')[1] === target.split(' ')[1]));
   });
 }
+function sourceMatchesRow(source, row, acceptedSuite) {
+  const suite = SurveySpaces.normalizeSpaceLabel(source?.selectedSpace?.suite);
+  if (source?.street && normAddress(source.street) !== normAddress(row?.address)) return false;
+  for (const key of ['city','state']) if (source?.[key] && String(source[key]).trim().toLowerCase() !== String(row?.[key] || '').trim().toLowerCase()) return false;
+  return acceptedSuite !== undefined ? acceptedSuite === SurveySpaces.normalizeSpaceLabel(row?.suite_number) : !suite || suite === SurveySpaces.normalizeSpaceLabel(row?.suite_number);
+}
 function candidateLabel(p) { return [p.address, [p.city,p.state].filter(Boolean).join(', '), p.suite_number ? `Space ${p.suite_number}` : (p.tenancy === 'ST' ? 'Whole building' : 'Unlabeled space'), p.tenancy === 'ST' ? (p.building_sf == null ? 'Size unknown' : `${p.building_sf} SF`) : `${p.suite_size || 'Size unknown'}${p.suite_size ? ' SF' : ''}`, p.availability || 'Availability unknown'].join(' · '); }
 function showSurveyCandidates(candidates) {
   const bundle = surveyEditor.bundle;
   if (!candidates.length) { bundle.decision = 'new'; state.pendingDup = null; $('dupChooser').classList.add('hidden'); syncSurveyLock(); return; }
   const addLabel = activeSurveyDraft()?.source?.selectedSpace ? 'Add current CoStar space' : 'Add available space';
-  $('spaceCandidates').innerHTML = candidates.map((p,i) => `<div class="space-candidate"><p>${esc(candidateLabel(p))}</p><button type="button" data-update="${i}" class="btn btn-primary btn-sm">Update this space</button>${p.tenancy === 'MT' ? `<button type="button" data-add="${i}" class="btn btn-ghost btn-sm">${addLabel}</button>` : ''}</div>`).join('');
+  $('spaceCandidates').innerHTML = candidates.map((p,i) => `<div class="space-candidate"><p>${esc(candidateLabel(p))}</p><button type="button" data-update="${i}" class="btn btn-primary btn-sm" ${!sourceMatchesRow(activeSurveyDraft()?.source,p) ? 'disabled title="This is a different suite than the visible CoStar space"' : ''}>Update this space</button>${p.tenancy === 'MT' || activeSurveyDraft()?.source?.selectedSpace ? `<button type="button" data-add="${i}" class="btn btn-ghost btn-sm">${addLabel}</button>` : ''}</div>`).join('');
   $('spaceCandidates').querySelectorAll('[data-update]').forEach(button => button.addEventListener('click', () => {
-    const row = candidates[Number(button.dataset.update)]; bundle.targetId = row.id; bundle.decision = 'update'; queueSurveyDraft(); setupForm('update',row);
+    const row = candidates[Number(button.dataset.update)]; if (!sourceMatchesRow(activeSurveyDraft()?.source,row)) return; bundle.targetId = row.id; bundle.decision = 'update'; queueSurveyDraft(); setupForm('update',row);
   }));
   $('spaceCandidates').querySelectorAll('[data-add]').forEach(button => button.addEventListener('click', () => {
     if (surveyEditor.pending || surveyEditor.saving) return;
@@ -1094,17 +1133,26 @@ function matchAndShowForm() {
   const d = state.scraped, key = surveySourceKey(d), archived = surveyEditor.archives[key];
   if (archived?.targetId) {
     const target = state.props.find(p => p.id === archived.targetId);
-    if (target) { setupForm('update',target); const draft = activeSurveyDraft(); draft.source = surveyReviewSource(d); renderSurveyRent(); queueSurveyDraft(); return; }
+    if (target && sourceMatchesRow(d,target,archived.targetLabel)) { setupForm('update',target); const draft = activeSurveyDraft(); draft.source = surveyReviewSource(d); if (archived.targetLabel !== undefined) draft.sourceTargetLabel = archived.targetLabel; mountSurveyDraft(); queueSurveyDraft(); return; }
   }
-  if (archived?.destinationKey && surveyEditor.archives[archived.destinationKey]) {
+  if (archived?.destinationKey && surveyEditor.archives[archived.destinationKey] && (sourceMatchesRow(d,surveyEditor.archives[archived.destinationKey].drafts[0]?.model.values) || surveyEditor.archives[archived.destinationKey].drafts.some(draft => draft.model.isNew && draft.source && surveySourceKey(draft.source) === key) || legacyBlankSpaceDestination(surveyEditor.archives[archived.destinationKey],archived))) {
     surveyEditor.bundle = surveyEditor.archives[archived.destinationKey];
+    const capturedIndex = surveyEditor.bundle.drafts.findIndex(draft => draft.source && surveySourceKey(draft.source) === key);
+    if (capturedIndex >= 0) surveyEditor.bundle.active = capturedIndex;
     restoreDiscardedSpaceCapture(archived);
     mountSurveyDraft(); queueSurveyDraft(); return;
   }
+  if (archived?.targetId || archived?.destinationKey) { delete surveyEditor.archives[key]; if (surveyEditor.bundle?.key === key) surveyEditor.bundle = null; }
   setupForm('insert',null);
-  const draft = activeSurveyDraft(); draft.source = surveyReviewSource(d); renderSurveyRent();
+  const capturedIndex = surveyEditor.bundle.drafts.findIndex(draft => draft.source && surveySourceKey(draft.source) === key);
+  if (capturedIndex >= 0) surveyEditor.bundle.active = capturedIndex;
+  const draft = activeSurveyDraft(); draft.source = surveyReviewSource(d); mountSurveyDraft();
   if (!['new','add'].includes(surveyEditor.bundle.decision)) { surveyEditor.bundle.decision = 'unresolved'; showSurveyCandidates(findMatch(d)); }
   queueSurveyDraft();
+}
+function legacyBlankSpaceDestination(bundle, sourceBundle) {
+  const draft = bundle?.drafts?.[0], capture = sourceBundle?.drafts?.[sourceBundle.active];
+  return bundle?.drafts?.length === 1 && draft?.model.isNew && !draft.source && capture?.source?.selectedSpace;
 }
 function restoreDiscardedSpaceCapture(sourceBundle) {
   const draft = activeSurveyDraft(), captured = sourceBundle.drafts?.[sourceBundle.active];
@@ -1195,17 +1243,29 @@ function sameVal(a, b) {
   return a === b;
 }
 async function applySurveySaved(rows) {
+  const previous = surveyEditor.bundle;
+  const entries = (previous?.drafts || []).map(draft => ({draft,row:rows.find(row => row.id === (draft.model.isNew ? draft.id : draft.model.baseline.id))})).filter(entry => entry.row);
   for (const row of rows) { const i = state.props.findIndex(p => p.id === row.id); if (i < 0) state.props.push(row); else state.props[i] = row; }
-  if (surveyEditor.bundle) {
-    const oldKey = surveyEditor.bundle.key;
-    for (const archive of Object.values(surveyEditor.archives)) if (archive.destinationKey === oldKey) { archive.destinationKey = `row:${rows[0].id}`; archive.targetId = rows[0].id; archive.decision = 'update'; }
-    if (oldKey.startsWith('costar:') || oldKey.startsWith('address:')) {
-      const sourceArchive = structuredClone(surveyEditor.bundle); delete sourceArchive.reviewedRequest; sourceArchive.targetId = rows[0].id; sourceArchive.decision = 'update'; surveyEditor.archives[oldKey] = sourceArchive;
-    } else delete surveyEditor.archives[oldKey];
+  if (previous) {
+    // PostgREST readback order is not insertion order. Associate every source and
+    // legacy destination with its actual draft ID, never with rows[0].
+    for (const archive of Object.values(surveyEditor.archives)) if (archive.destinationKey === previous.key) {
+      const entry = entries.find(({draft}) => draft.source && surveySourceKey(draft.source) === archive.key);
+      if (entry) { archive.destinationKey = `row:${entry.row.id}`; archive.targetId = entry.row.id; archive.decision = 'update'; }
+    }
+    delete surveyEditor.archives[previous.key];
+    for (const {draft,row} of entries) {
+      if (draft.source) {
+        const key = surveySourceKey(draft.source);
+        surveyEditor.archives[key] = {key,active:0,drafts:[structuredClone(draft)],targetId:row.id,targetLabel:SurveySpaces.normalizeSpaceLabel(row.suite_number),decision:'update'};
+      }
+      surveyEditor.archives[`row:${row.id}`] = {key:`row:${row.id}`,active:0,drafts:[{...makeSurveyDraft(row,false,draft.source),sourceTargetLabel:SurveySpaces.normalizeSpaceLabel(row.suite_number)}]};
+    }
   }
   surveyEditor.pending = null; surveyEditor.saving = false;
-  const first = rows[0]; surveyEditor.bundle = { key: `row:${first.id}`, active: 0, drafts: [makeSurveyDraft(first,false)] };
-  state.scraped = null; state.pendingDup = null; updateContextBar(); mountSurveyDraft(); await persistSurveyDraft();
+  const first = entries[0]?.row || rows[0], source = entries[0]?.draft.source || null;
+  surveyEditor.bundle = surveyEditor.archives[`row:${first.id}`] || {key:`row:${first.id}`,active:0,drafts:[makeSurveyDraft(first,false,source)]};
+  state.scraped = source; state.pendingDup = null; updateContextBar(); mountSurveyDraft(); await persistSurveyDraft();
   toast(`${rows.length} ${rows.length === 1 ? 'space' : 'spaces'} saved · <a href="${esc(CONFIG.APP_URL + '/surveys/' + state.survey.id)}" target="_blank">Open survey</a>`);
 }
 async function handleSurveySaveResult(res) {
@@ -1230,9 +1290,23 @@ async function handleSurveySaveResult(res) {
   showError($('formError'),res.error || 'Save not yet verified. Check the result before continuing.');
 }
 async function save() {
-  if (surveyEditor.saving || surveyEditor.pending || !activeSurveyDraft() || state.pendingDup) return;
+  if (surveyEditor.saving || surveyEditor.pending || surveyEditor.checkingSource || !activeSurveyDraft() || state.pendingDup) return;
   if (surveyEditor.flyerUploads) return showError($('formError'),'Wait for the flyer upload to finish before saving.');
   if (!state.propsLookupOk) return showError($('formError'),'Survey lookup failed. Refresh the survey before saving.');
+  const originalBundle = surveyEditor.bundle, scope = surveyDraftKey(), sourceDraft = surveyEditor.bundle.drafts.find(d => d.source), source = sourceDraft?.source;
+  if (source) {
+    surveyEditor.checkingSource = true; surveyEditor.saving = true; ++surveyReadGeneration; syncSurveyLock();
+    try {
+      const live = await stableSurveyRead(source.sourceTabId,source);
+      if (scope !== surveyDraftKey() || surveyEditor.bundle !== originalBundle) return;
+      if (surveySourceKey(live) !== surveySourceKey(source) || (source.sourceTabId != null && live.sourceTabId !== source.sourceTabId))
+        return showError($('formError'),'CoStar now shows a different space. Nothing was saved. Refresh to review that space; these edits remain in Drafts.');
+      if (!sourceDraft.model.isNew && !sourceMatchesRow(live,sourceDraft.model.baseline,sourceDraft.sourceTargetLabel))
+        return showError($('formError'),'The visible CoStar suite does not match this saved row. Nothing was saved. Refresh and add the current space.');
+    } catch (error) { return showError($('formError'),'Nothing was saved. ' + error.message); }
+    finally { surveyEditor.checkingSource = false; surveyEditor.saving = false; syncSurveyLock(); }
+  }
+  if (scope !== surveyDraftKey() || surveyEditor.bundle !== originalBundle) return;
   const results = surveyEditor.bundle.drafts.map(d => {
     const result = SurveyFields.serializeDraft(d.model);
     if (!result.values.address?.trim()) result.issues.push({field:'address',message:'Address is required.'});

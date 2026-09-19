@@ -7,24 +7,30 @@
  *  2. Supabase PostgREST: surveys + survey_properties (same tables the master-app
  *     web UI writes to — zero server-side changes needed).
  *  3. CoStar read: ONE on-demand DOM read of the active CoStar tab, only when the
- *     user clicks / navigates. No automated navigation, no CoStar APIs, no crawling.
+ *     user clicks / navigates or reviews spaces in the open Survey panel.
+ *     No automated navigation, no CoStar APIs, no crawling.
  */
 
 importScripts("config.js", "supabase.js", "survey-fields.js", "survey-rent.js", "survey-spaces.js");
 
 // ─── CoStar read (on-demand, single DOM read of the active CoStar tab) ───────────
 
-async function readCoStar() {
+async function readCoStar(options = {}) {
   // Prefer the tab the user is actually looking at; fall back to the most-recent
   // CoStar tab only if the active tab isn't CoStar.
   const isCostar = (t) => t && /^https:\/\/[^/]*costar\.com\//.test(t.url || "");
   let tab = (await chrome.tabs.query({ active: true, lastFocusedWindow: true }))[0];
+  if (!isCostar(tab) && options.tabId != null) {
+    try { tab = await chrome.tabs.get(options.tabId); } catch { tab = null; }
+    if (!isCostar(tab)) throw new Error("The source CoStar tab is closed. Select the intended CoStar tab and refresh.");
+  }
   if (!isCostar(tab)) {
     const costarTabs = await chrome.tabs.query({ url: "https://*.costar.com/*" });
     if (!costarTabs || costarTabs.length === 0) {
       throw new Error("No CoStar tab found. Open the CoStar property's Summary page first.");
     }
-    tab = costarTabs.sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))[0];
+    if (options.survey && costarTabs.length !== 1) throw new Error("More than one CoStar tab is open. Select the intended tab and refresh.");
+    tab = costarTabs.sort((a,b) => (b.lastAccessed || 0) - (a.lastAccessed || 0))[0];
   }
 
   // CoStar property ID comes straight from the URL — no scraping needed.
@@ -215,6 +221,7 @@ async function readCoStar() {
             if (rate !== null && positiveArea) selectedSpace.rentPsf = rate;
           }
           const ordinal = [...txt.slice(0, start).matchAll(/\b\d+\s+of\s+\d+\s+Spaces\b/gi)].at(-1)?.[0] || "";
+          selectedSpace.ordinal = ordinal;
           selectedSpace.identity = JSON.stringify([ordinal, selectedSpace.suite, selectedSpace.floor, selectedSpace.availableSf, ...(selectedSpace.availableRange ? [selectedSpace.availableRange] : [])]);
         }
         // Even an unresolved selected space must not inherit the header's quote.
@@ -287,6 +294,7 @@ async function readCoStar() {
   data.costarId = costarId;
   data.sourceUrl = tab.url;
   data.scrapedTabUrl = tab.url;
+  data.sourceTabId = tab.id;
   if (data.leaseQuote) data.leaseQuote.sourceUrl = tab.url;
   return data;
 }
@@ -634,7 +642,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
       return true;
 
     case "READ_COSTAR":
-      reply(readCoStar().then((data) => ({ data })));
+      reply(readCoStar({tabId: msg.tabId, survey:msg.survey === true}).then((data) => ({ data })));
       return true;
 
     case "LIST_SURVEYS":
