@@ -56,6 +56,15 @@ to its building/site property record. It also updates survey-property statuses.
   tokens are copied into this handoff, and popping out does not save to the server.
 - No data is stored on any server operated by the developer.
 
+## Flyer analysis
+When you click **Analyze flyer** in Comp mode, the extension sends the attached
+flyer link and current listing identity/property fields to the signed-in Master App
+at https://www.sshteam.app. The app reads that stored attachment and sends it with
+those comparison fields to Anthropic for AI extraction. The extension never holds
+an AI-provider API key. Suggested changes and source excerpts are returned for
+review; applying them edits the current form only. Business records change only
+when you explicitly save the comp. Flyer analysis does not send client messages.
+
 ## Data the Extension sends
 - Reviewed property fields are written to **your own RGCRE master-app** using the
   sign-in session you authorized when you click Save / Add to survey. Flyer files are
@@ -72,12 +81,13 @@ Sign-in uses a one-time code emailed to you by the master-app's authentication s
 The Extension never sees or stores your password.
 
 ## Data sharing
-The Extension does not sell or transfer your data to third parties. It moves data only
-between the CoStar page you are viewing and your own RGCRE master-app, at your direction.
+The Extension does not sell your data. It moves data between the CoStar page you
+are viewing and your RGCRE Master App at your direction. On-demand flyer analysis
+also uses Anthropic as the Master App's AI processor, as described above.
 
 ## Permissions
 `storage`, `tabs`, `scripting`, and `sidePanel`, plus host access to `*.costar.com`,
-`*.csgpimgs.com`, and the master-app Supabase domain — each used solely for the functions
+`*.csgpimgs.com`, `www.sshteam.app`, and the master-app Supabase domain — each used solely for the functions
 described above.
 
 ## Contact

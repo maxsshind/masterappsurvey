@@ -11,7 +11,7 @@ async function analyzeCompFlyerDraft(draft) {
     });
     if (response.status === 401) { const error=new Error('Sign in to the extension again to analyze this flyer.');error.code='AUTH_REQUIRED';throw error; }
     const result=await response.json().catch(()=>null);
-    if (!response.ok) throw new Error(result?.error || `Flyer analysis is unavailable (${response.status}). Try again.`);
+    if (!response.ok || result?.error) throw new Error(result?.error || `Flyer analysis is unavailable (${response.status}). Try again.`);
     if(!result || !Array.isArray(result.suggestions)||!Array.isArray(result.warnings))throw new Error('Flyer analysis returned an incomplete response. Try again.');
     return result;
   } finally {compFlyerAnalysisRunning=false;}

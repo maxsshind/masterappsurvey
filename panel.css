@@ -599,9 +599,9 @@ body:has(#screen-form:not(.hidden)) #toast { bottom: 64px; }
 
 /* Review stays usable inside narrow side panels; actions never scroll away. */
 .comp-footer-actions .btn { min-width: 0; padding-inline: 8px; }
-.flyer-review { width: calc(100% - 20px); max-width: 520px; max-height: 85vh; padding: 0 12px 12px; border: 1px solid #d8d8e0; border-radius: 10px; color: #30303e; box-sizing: border-box; }
+.flyer-review { margin: auto; width: calc(100% - 20px); max-width: 520px; max-height: 85vh; padding: 0 12px 12px; border: 1px solid #d8d8e0; border-radius: 10px; color: #30303e; box-sizing: border-box; }
 .flyer-review::backdrop { background: rgb(0 0 0 / 35%); }
-.flyer-review-header { position: sticky; top: 0; background: white; padding: 12px 0 8px; z-index: 1; }
+.flyer-review-header { display: block; color: #30303e; position: sticky; top: 0; background: white; padding: 12px 0 8px; z-index: 1; }
 .flyer-review-header p { font-size: 12px; margin: 6px 0; color: #686879; }
 .flyer-review-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
 .flyer-review-actions .btn { width: auto; }
