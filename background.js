@@ -276,11 +276,22 @@ async function readCoStar(options = {}) {
       // ---- optional descriptive content: Sale Highlights / Sale Notes ----
       // These are returned separately and are NEVER saved automatically. The panel
       // asks the user which sections, if any, should be appended to comp notes.
-      const sectionLines = (heading, stopHeadings) => {
+      // Heading-only boundaries shared by both optional marketing sections.
+      // Never prefix-match: "Building 100% air-conditioned" is a valid highlight.
+      const marketingSectionStops = [
+        "Sale Highlights", "Sale Notes", "Documents", "Sale Contacts", "Building",
+        "Building Details", "For Lease", "Lease Highlights", "Lease Notes",
+        "External Links", "Transaction History", "Property Mix", "Location",
+        "Marketing Brochure", "Tenants", "Market Conditions", "Analytics",
+        "Demographics", "Loan & Financials", "Loan and Financials", "Area", "Traffic",
+        "Public Transportation", "Help with Features", "Request Training", "Share Feedback",
+        "Terms of Use",
+      ];
+      const sectionLines = (heading) => {
         const headingKey = (line) => line.replace(/\s*>{1,2}\s*$/, "").replace(/:$/, "").trim().toLowerCase();
         const start = lines.findIndex((line) => headingKey(line) === heading.toLowerCase());
         if (start < 0) return [];
-        const stops = new Set(stopHeadings.map((line) => line.toLowerCase()));
+        const stops = new Set(marketingSectionStops.map((line) => line.toLowerCase()));
         const out = [];
         for (let i = start + 1; i < lines.length; i++) {
           if (stops.has(headingKey(lines[i]))) break;
@@ -288,13 +299,8 @@ async function readCoStar(options = {}) {
         }
         return out;
       };
-      const saleHighlightLines = sectionLines("Sale Highlights", [
-        "Sale Notes", "Documents", "Sale Contacts", "Building", "Building Details", "For Lease",
-        "External Links", "Transaction History", "Property Mix", "Location", "Marketing Brochure",
-      ]);
-      const saleNoteLines = sectionLines("Sale Notes", [
-        "Documents", "Sale Contacts", "Building", "For Lease", "Lease Highlights", "Lease Notes",
-      ]);
+      const saleHighlightLines = sectionLines("Sale Highlights");
+      const saleNoteLines = sectionLines("Sale Notes");
       const saleHighlights = saleHighlightLines
         .map((line) => line.replace(/^[•·▪◦*-]\s*/, "").trim())
         .filter(Boolean)

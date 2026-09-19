@@ -586,3 +586,20 @@ test('Selected suite cannot borrow advertised whole-building office or power',as
  assert.equal(d.propertyFacts.officeSf,'');assert.equal(d.propertyFacts.power,'');assert.equal(d.propertyFacts.clearHeight,'');
 });
 for(const office of ['5,000-10,000 SF office space.','5,000 to 10,000 SF office space.','-10,000 SF office space.','4,50 SF office space.'])test(`Ambiguous/invalid advertised office ${office} stays blank`,async()=>{const d=await salesListingFixture(universityFacts.replace('±10,000 SF office space.',office),'property');assert.equal(d.propertyFacts.officeSf,'');});
+
+for (const section of ['Sale Highlights', 'Sale Notes']) {
+ for (const boundary of ['Transaction History', 'Tenants', 'Market Conditions', 'Demographics',
+   'Loan & Financials', 'Area', 'Traffic', 'Public Transportation', 'Help with Features',
+   'External Links', 'Property Mix', 'Sale Contacts', 'Documents', 'Building Details']) {
+  test(`${section} stops before ${boundary} without losing a Building highlight`, async () => {
+   const d = await salesListingFixture(salesHeader + `${section}\nBuilding 100% air-conditioned\n${boundary}\nSale\n3\nPrior Sales\nSold Price\n$1,825,000 ($104.08/SF)\nOffice 6,285 SF\nTerms of Use`);
+   assert.equal(d[section === 'Sale Highlights' ? 'saleHighlights' : 'saleNotes'],
+     `${section === 'Sale Highlights' ? '• ' : ''}Building 100% air-conditioned`);
+  });
+ }
+}
+test('marketing sections remain separate and recognize colon and chevron headings', async () => {
+ const d = await salesListingFixture(salesHeader + 'Sale Highlights:\nBuilding 100% air-conditioned\nSale Notes >\nRenovated offices with private entrances.\nTransaction History >>\nSale\n3\nPrior Sales');
+ assert.equal(d.saleHighlights, '• Building 100% air-conditioned');
+ assert.equal(d.saleNotes, 'Renovated offices with private entrances.');
+});
