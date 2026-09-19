@@ -41,7 +41,8 @@ const load = (c, source, name) => {
   });
   vm.runInContext(read('config.js').match(/^const SUBMARKET_TO_CLUSTER =[^]*?^};/m)[0], c);
   vm.runInContext(read('supabase.js'), c);
-  for (const name of ['parseNum', 'compChecked', 'compNotesValue', 'compStatusShows', 'compFormRecord', 'compUpdatePatch', 'buildCompSaveRequest']) load(c, read('panel.js'), name);
+  vm.runInContext(read('comp-property-fields.js'), c);
+  for (const name of ['parseNum', 'compChecked', 'compNotesValue', 'compStatusShows', 'compPropertyValues', 'compFormRecord', 'compUpdatePatch', 'buildCompSaveRequest']) load(c, read('panel.js'), name);
   load(c, read('background.js'), 'saveCompWithProperty');
   const form = (address, changes = {}) => {
     for (const key of Object.keys(nodes)) delete nodes[key];

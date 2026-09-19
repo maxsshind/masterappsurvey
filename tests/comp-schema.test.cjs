@@ -33,7 +33,8 @@ function form(status) {
     comp: { baseline: {}, flyerUrl: null },
   });
   vm.runInContext(read('config.js'), context);
-  for (const name of ['parseNum', 'compChecked', 'compNotesValue', 'compStatusShows', 'compFormRecord', 'compUpdatePatch']) {
+  vm.runInContext(read('comp-property-fields.js'), context);
+  for (const name of ['parseNum', 'compChecked', 'compNotesValue', 'compStatusShows', 'compPropertyValues', 'compFormRecord', 'compUpdatePatch']) {
     loadFunction(context, panel, name);
   }
   return context;

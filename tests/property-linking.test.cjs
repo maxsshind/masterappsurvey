@@ -16,6 +16,7 @@ function requestContext(overrides = {}) {
     comp: { mode: 'insert', propertyMode: 'auto', originalPropertyId: null, propertyId: null,
       baseline: null, requestId: null, costarId: '123456', siteFieldsEdited: {}, ...overrides },
   });
+  vm.runInContext(read('comp-property-fields.js'), context);
   load(context, read('panel.js'), 'compUpdatePatch');
   load(context, read('panel.js'), 'buildCompSaveRequest');
   return context;

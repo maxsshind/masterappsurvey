@@ -136,12 +136,19 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     await source.locator('#comp_notes').fill('Private unsaved comp edit');
     await source.locator('#comp_building_sf').fill('5,000 - 6,000');
     await source.locator('#comp_notes').focus(); // Existing blur formatting runs before a header click.
+    await source.locator('#comp_office_sf').fill('6,500');
+    await source.locator('#comp_heavy_power').check();
+    await source.locator('#comp_has_rail').check(); await source.locator('#comp_has_rail').uncheck();
     const compBefore = await source.evaluate(() => ({ model: comp, fields: compDraftSnapshot(), highlights: $('compIncludeHighlights').checked }));
     target = await pop(source);
     assert.equal(await target.evaluate(() => state.appMode), 'comp');
     assert.equal(await target.locator('#screen-comp').isVisible(), true);
     assert.deepEqual(await target.evaluate(() => ({ model: comp, fields: compDraftSnapshot(), highlights: $('compIncludeHighlights').checked })), compBefore);
     assert.equal(await target.locator('#compFlyerState').innerText(), 'Fixture flyer.pdf');
+    assert.equal(await target.locator('#comp_office_sf').inputValue(),'6,500');
+    assert.equal(await target.locator('#comp_heavy_power').isChecked(),true);
+    assert.equal(await target.locator('#comp_has_rail_answer').innerText(),'No');
+    assert.equal(await target.locator('#comp_class_a').evaluate(n=>n.indeterminate),true);
     results.push('Comp handoff preserves raw text, selected existing deal and original property link, skip choice, checkboxes, notes and flyer without rescraping');
     await target.close();
 

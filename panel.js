@@ -340,13 +340,16 @@ function restorePopoutComp() {
   // Durable pending-save recovery takes precedence over an ordinary form copy.
   if (comp.pendingSave) return;
   Object.assign(comp, popoutHandoff.comp);
+  comp.propertyFieldsEdited ||= {};
   for (const field of popoutHandoff.compControls) {
     const node = $(field.id); if (!node) continue;
     node.value = field.value; node.checked = field.checked;
   }
   for (const [container, values] of Object.entries(popoutHandoff.compChecks)) {
-    $(container).querySelectorAll("input").forEach(node => { node.checked = values.includes(node.value); });
+    const choices = container === 'comp_ptypes' ? CompPropertyFields.normalizePropertyTypes(values) : values;
+    $(container).querySelectorAll("input").forEach(node => { node.checked = choices.includes(node.value); });
   }
+  syncCompFeatureChecks();
   renderCompContentImport();
   syncCompFieldVisibility();
   syncNameToggle("toggleCompPropName", "fldCompPropertyName", "comp_property_name", "comp_address");
@@ -1620,6 +1623,8 @@ const comp = {
   baseline: null,     // DB row backing the form in update mode (dirty-diff base)
   yardEdited: false,  // distinguishes intentional Unknown from an omitted scrape value
   siteFieldsEdited: {},
+  propertyFieldsEdited: {},
+  propertyTypeEdited: false,
   propertyMode: "auto",
   propertyId: null,
   originalPropertyId: null,
@@ -1638,6 +1643,7 @@ const comp = {
 };
 
 const COMP_INPUT_IDS = [
+  ...CompPropertyFields.fields.map(field => "comp_" + field),
   "comp_status", "comp_address", "comp_property_name", "comp_city", "comp_state", "comp_zip",
   "comp_sub_market", "comp_building_sf", "comp_land_area", "comp_yard_included",
   "comp_suite", "comp_partial_site_override", "comp_multi_tenant",
@@ -1647,6 +1653,7 @@ const COMP_INPUT_IDS = [
 ];
 
 const COMP_FIELD_LABELS = {
+  ...CompPropertyFields.labels,
   status: "status",
   address: "address",
   property_name: "property name",
@@ -1697,6 +1704,33 @@ function compClearChecks(containerId) {
   if (box) box.querySelectorAll("input[type=checkbox]").forEach((c) => { c.checked = false; });
 }
 
+function syncCompFeatureChecks() {
+  for (const field of CompPropertyFields.flags) {
+    const node = $('comp_' + field); node.checked = node.value === 'true'; node.indeterminate = !node.value;
+    $('comp_' + field + '_answer').textContent = !node.value ? 'Unknown' : node.checked ? 'Yes' : 'No';
+  }
+}
+function setCompPropertyValue(field, value, source) {
+  const node = $('comp_' + field);
+  node.value = value == null ? '' : ['office_sf','lease_area'].includes(field) && typeof value === 'number' ? value.toLocaleString('en-US',{maximumFractionDigits:20}) : String(value);
+  setCompFieldSource(node.id, value == null ? null : source);
+}
+function resetCompPropertyFields() {
+  comp.propertyFieldsEdited = {};
+  for (const field of CompPropertyFields.fields) setCompPropertyValue(field,null,null);
+  syncCompFeatureChecks(); $('compPropertySource').classList.add('hidden');
+}
+function fillCompPropertyFields(d) {
+  const capture = CompPropertyFields.fromScrape(d);
+  if (comp.mode !== 'update') for (const field of CompPropertyFields.fields)
+    if (!comp.propertyFieldsEdited[field]) setCompPropertyValue(field,capture.values[field] ?? null,'CoStar');
+  const source = $('compPropertySource'); source.textContent = capture.unresolved.join(' · ');
+  source.classList.toggle('hidden', !source.textContent); syncCompFeatureChecks();
+}
+function compPropertyValues() {
+  return CompPropertyFields.serialize(Object.fromEntries(CompPropertyFields.fields.map(field=>[field,$('comp_'+field)?.value])));
+}
+
 // "73040" → "73,040" for display; parseNum() strips the commas back out on save.
 function fmtThousands(v) {
   const n = parseNum(v);
@@ -1727,7 +1761,7 @@ function officialCompSubmarket(value) {
 
 function setCompFieldSource(id, source) {
   const node = $(id);
-  const label = node && node.closest(".fld") && node.closest(".fld").querySelector(":scope > span");
+  const label = node && node.closest(".fld") && node.closest(".fld").querySelector(":scope > label > span, :scope > span");
   if (!label) return;
   let badge = label.querySelector(".field-source");
   if (!source) {
@@ -1933,11 +1967,13 @@ function setCompField(id, value, source = "CoStar") {
 function resetCompForm() {
   if (comp.pendingSave || comp.saving) return;
   comp.lastFilled = {};
+  resetCompPropertyFields();
   comp.mode = "insert";
   comp.updateId = null;
   comp.baseline = null;
   comp.yardEdited = false;
   comp.siteFieldsEdited = {};
+  comp.propertyTypeEdited = false;
   comp.propertyMode = "auto";
   comp.propertyId = null;
   comp.originalPropertyId = null;
@@ -1979,8 +2015,12 @@ async function fillCompForm(d) {
   if (comp.pendingSave || comp.saving) return;
   d = d || {};
   // Navigating to a genuinely different CoStar record → clear the form and update state.
-  const newKey = d.listingId || d.costarId || normalizeCompAddress(d.street || "");
-  const oldKey = comp.scrape?.listingId || comp.costarId || normalizeCompAddress((comp.scrape && comp.scrape.street) || "");
+  const sourceKey = source => {
+    const property = source?.listingId || source?.costarId || normalizeCompAddress(source?.street || "");
+    return property ? JSON.stringify([property, source?.selectedSpace?.identity || null]) : '';
+  };
+  const newKey = sourceKey(d);
+  const oldKey = sourceKey(comp.scrape);
   if (comp.scrape && newKey && newKey !== oldKey) resetCompForm();
 
   comp.scrape = d;
@@ -1997,6 +2037,8 @@ async function fillCompForm(d) {
   setCompSubmarket(d.submarket);
   setCompField("comp_building_sf", fmtThousands(d.rba));
   setCompField("comp_land_area", d.acLot);
+  if (d.selectedSpace?.suite) setCompField("comp_suite", d.selectedSpace.suite);
+  fillCompPropertyFields(d);
   // Yard describes this offered space/site. CoStar acreage, property class, and
   // the separate survey yard_area flag do not establish whether yard is included.
   // Leave the current answer alone on re-read; resetCompForm defaults new offers to Unknown.
@@ -2037,6 +2079,7 @@ function syncCompFieldVisibility() {
   toggle("comp_sale_price", showSale);
   toggle("comp_cap_rate", showSale);
   toggle("comp_rent_psf", showLease);
+  toggle("comp_lease_area", showLease);
   toggle("comp_lease_format", showLease);
   const saleTypes = $("comp_sale_types_wrap");
   if (saleTypes) saleTypes.classList.toggle("hidden", !showSale);
@@ -2130,6 +2173,11 @@ function markCompFieldEdited(id) {
   if (id === "comp_notes") {
     syncCompImportSelection();
     return;
+  }
+  if (CompPropertyFields.fields.includes(id.slice(5))) {
+    const field = id.slice(5); comp.propertyFieldsEdited[field] = true;
+    if (CompPropertyFields.flags.includes(field)) { node.value = String(node.checked); syncCompFeatureChecks(); }
+    if (!CompPropertyFields.parse(field,node.value).error) setCompNeedsReview(id,false);
   }
   if (id === "comp_yard_included") comp.yardEdited = true;
   if (["comp_suite", "comp_multi_tenant", "comp_partial_site_override"].includes(id)) comp.siteFieldsEdited[id.slice(5)] = true;
@@ -2270,6 +2318,7 @@ function showCompMatch(candidate, match = {}) {
       for (const field of ["suite", "partial_site_override", "multi_tenant"]) $("comp_" + field).value = "";
       comp.siteFieldsEdited = {};
     }
+    if (comp.mode === "update") resetCompPropertyFields();
     comp.mode = "insert";
     comp.updateId = null;
     comp.baseline = null;
@@ -2291,6 +2340,14 @@ function hideCompMatch() {
 function enterCompUpdate(candidate) {
   if (comp.pendingSave || comp.saving) return;
   const sameDeal = comp.mode === "update" && comp.updateId === candidate.id;
+  if (comp.updateId && !sameDeal) comp.propertyTypeEdited = false;
+  if (!comp.propertyTypeEdited) {
+    const types = CompPropertyFields.normalizePropertyTypes(candidate.property_type);
+    $('comp_ptypes').querySelectorAll('input').forEach(n=>{n.checked=types.includes(n.value);});
+  }
+  if (comp.updateId && !sameDeal) comp.propertyFieldsEdited = {};
+  for (const field of CompPropertyFields.fields) if (!comp.propertyFieldsEdited[field]) setCompPropertyValue(field,candidate[field],'Saved');
+  syncCompFeatureChecks();
   if (!sameDeal || comp.originalPropertyId === undefined || (Object.hasOwn(candidate, "property_id") && candidate.property_id !== comp.originalPropertyId)) {
     comp.requestId = null;
     comp.siteFieldsEdited = {};
@@ -2346,6 +2403,7 @@ function compFormRecord() {
   // Hidden economics never get pushed (e.g. a scraped rent on a FOR SALE save).
   const salePrice = showSale ? num("comp_sale_price") : null;
   const rec = {
+    ...compPropertyValues().values,
     address: ($("comp_address") && $("comp_address").value.trim()) || "",
     property_name: txt("comp_property_name"),
     city: txt("comp_city"),
@@ -2355,7 +2413,7 @@ function compFormRecord() {
     // Cluster is derived, never typed: recomputed from whatever submarket is on the form.
     submarket_cluster: (typeof SUBMARKET_TO_CLUSTER !== "undefined" &&
       SUBMARKET_TO_CLUSTER[(txt("comp_sub_market") || "")]) || null,
-    property_type: compChecked("comp_ptypes").join(", ") || null,
+    property_type: CompPropertyFields.normalizePropertyTypes(compChecked("comp_ptypes")).join(", ") || null,
     building_sf: buildingSf,
     land_area: num("comp_land_area"),
     suite: txt("comp_suite"),
@@ -2389,6 +2447,12 @@ function compUpdatePatch(rec) {
   const base = comp.baseline || {};
   const skip = new Set(["last_verified_at", "flyer_url", "internal_deal", "source", "yard_included", "property_id", "suite", "partial_site_override", "multi_tenant"]);
   const patch = {};
+  skip.add('property_type');
+  if (comp.propertyTypeEdited && Object.hasOwn(rec,'property_type') && (base.property_type ?? null) !== rec.property_type) patch.property_type = rec.property_type;
+  for (const field of CompPropertyFields.fields) {
+    skip.add(field);
+    if (comp.propertyFieldsEdited?.[field] && Object.hasOwn(rec,field) && (base[field] ?? null) !== rec[field]) patch[field] = rec[field];
+  }
   for (const field of ["suite", "partial_site_override", "multi_tenant"]) {
     if (comp.siteFieldsEdited?.[field] && (base[field] ?? null) !== rec[field]) patch[field] = rec[field];
   }
@@ -2508,7 +2572,8 @@ function compDraftSnapshot() {
     propertyTypes: compChecked("comp_ptypes"), saleTypes: compChecked("comp_sale_types"),
     baseline: comp.baseline, originalPropertyId: comp.originalPropertyId,
     propertyMode: comp.propertyMode, propertyId: comp.propertyId,
-    yardEdited: comp.yardEdited, siteFieldsEdited: comp.siteFieldsEdited,
+    yardEdited: comp.yardEdited, siteFieldsEdited: comp.siteFieldsEdited, propertyFieldsEdited: comp.propertyFieldsEdited,
+    propertyTypeEdited: comp.propertyTypeEdited,
     costarId: comp.costarId, sourceUrl: comp.sourceUrl, flyerUrl: comp.flyerUrl,
   };
 }
@@ -2530,11 +2595,14 @@ async function restorePendingCompSave() {
   const draft = pending.draft || {};
   for (const [id, value] of Object.entries(draft.fields || {})) if ($(id)) $(id).value = value;
   for (const [container, values] of [["comp_ptypes", draft.propertyTypes], ["comp_sale_types", draft.saleTypes]]) {
-    $(container).querySelectorAll("input").forEach((input) => { input.checked = (values || []).includes(input.value); });
+    const choices = container === 'comp_ptypes' ? CompPropertyFields.normalizePropertyTypes(values) : values || [];
+    $(container).querySelectorAll("input").forEach((input) => { input.checked = choices.includes(input.value); });
   }
-  for (const field of ["baseline", "originalPropertyId", "propertyMode", "propertyId", "yardEdited", "siteFieldsEdited", "costarId", "sourceUrl", "flyerUrl"]) {
+  comp.propertyTypeEdited = draft.propertyTypeEdited || false;
+  for (const field of ["baseline", "originalPropertyId", "propertyMode", "propertyId", "yardEdited", "siteFieldsEdited", "propertyFieldsEdited", "costarId", "sourceUrl", "flyerUrl"]) {
     if (Object.hasOwn(draft, field)) comp[field] = draft[field];
   }
+  syncCompFeatureChecks();
   setCompSaveLocked(true);
   setCompMsg("A previous save has no confirmed response. Retry pending save to recover it without creating a duplicate.", true);
 }
@@ -2559,6 +2627,8 @@ async function saveComp() {
   if (comp.saving) return;
   const rec = compFormRecord();
   if (!comp.pendingSave) {
+    const issue = compPropertyValues().issues[0];
+    if (issue) { setCompNeedsReview('comp_'+issue.field,true); $('comp_'+issue.field).focus(); return setCompMsg(issue.message,true); }
     if (!rec.address) return setCompMsg("Address is required.", true);
     if (!rec.sub_market || !SUBMARKET_TO_CLUSTER[rec.sub_market]) return setCompMsg("Choose an official submarket before saving.", true);
   }
@@ -2614,6 +2684,9 @@ async function saveComp() {
     const field = id.slice(5);
     if (Object.hasOwn(saved, field) && $(id)) $(id).value = saved[field] == null ? "" : String(saved[field]);
   }
+  for (const field of CompPropertyFields.fields) if (Object.hasOwn(saved,field)) setCompPropertyValue(field,saved[field],'Saved');
+  comp.propertyFieldsEdited = {}; syncCompFeatureChecks();
+  comp.propertyTypeEdited = false;
   closeCompPropertyChoice();
   syncCompReviewState();
   setCompMsg(wasUpdate ? "Comp updated ✓ (re-verified today)" : "Comp saved ✓");
@@ -2629,6 +2702,12 @@ async function saveComp() {
 
 function initCompMode() {
   populateCompSubmarkets();
+  syncCompFeatureChecks();
+  document.querySelectorAll('[data-clear-comp-feature]').forEach(button => button.addEventListener('click', () => {
+    if (comp.saving || comp.pendingSave) return;
+    const field=button.dataset.clearCompFeature; comp.propertyFieldsEdited[field]=true;
+    setCompPropertyValue(field,null,'Edited'); syncCompFeatureChecks(); syncCompReviewState();
+  }));
   $("compSkipProperty").addEventListener("change", () => {
     const skip = $("compSkipProperty").checked;
     cancelCompPropertyChoice();
@@ -2664,6 +2743,7 @@ function initCompMode() {
   });
   $("compNewDeal").addEventListener("click", () => {
     const propertyId = comp.originalPropertyId;
+    resetCompPropertyFields();
     comp.mode = "insert";
     comp.updateId = null;
     comp.baseline = null;
@@ -2702,7 +2782,7 @@ function initCompMode() {
   });
   ["comp_ptypes", "comp_sale_types"].forEach((containerId) => {
     const node = $(containerId);
-    if (node) node.addEventListener("change", syncCompReviewState);
+    if (node) node.addEventListener("change", () => { if (containerId === 'comp_ptypes') comp.propertyTypeEdited = true; syncCompReviewState(); });
   });
   const IMPORT_TOGGLES = { compIncludeHighlights: "highlights", compIncludeSaleNotes: "notes" };
   Object.entries(IMPORT_TOGGLES).forEach(([id, which]) => {
@@ -2713,6 +2793,10 @@ function initCompMode() {
   ["comp_building_sf", "comp_sale_price"].forEach((id) => {
     const n = $(id);
     if (n) n.addEventListener("blur", () => { if (n.value.trim()) n.value = fmtThousands(n.value); });
+  });
+  for (const field of ['office_sf','lease_area']) $('comp_'+field).addEventListener('blur', () => {
+    const parsed=CompPropertyFields.parse(field,$('comp_'+field).value);
+    if (!parsed.error && parsed.value !== null) setCompPropertyValue(field,parsed.value,comp.propertyFieldsEdited[field]?'Edited':'CoStar');
   });
   const flyer = $("compFlyer");
   if (flyer) flyer.addEventListener("click", async () => {
@@ -2812,7 +2896,7 @@ function initLocalPreview() {
   const propertyTypes = $("comp_ptypes");
   if (propertyTypes) {
     propertyTypes.querySelectorAll("input").forEach((input) => {
-      input.checked = input.value === "ISF" || input.value === "Class C";
+      input.checked = input.value === "ISF" || input.value === "Vintage";
     });
   }
   const ownerUser = $("comp_sale_types")?.querySelector('input[value="Owner User"]');

@@ -2,6 +2,55 @@
 
 Last updated: 2026-09-18
 
+## 1.4.5 local candidate — 2026-09-18 — Property fields
+
+- Comp adds clear height (decimal feet or feet/inches input), office SF, available
+  lease SF, year built, loading (up to 4,000 characters), Class A, heavy power,
+  rail access, and truckwell/dock access. Existing yard, suite, portion, multi-tenant,
+  building/land size, pricing and contact controls remain. Survey retains its
+  existing office, clear-height, loading and power fields.
+- Native feature checkboxes distinguish Unknown, Yes and No; Clear restores Unknown.
+  Saved values hydrate, unrelated edits preserve them, explicit clears send null,
+  and confirmed office zero remains zero. Office/lease SF display commas. Invalid
+  measurements, ambiguous ranges, invalid years and oversized loading block saving.
+- Visible Building/Space Details facts prefill only within their source scope.
+  Selected suites cannot borrow building office/loading totals. Divisible space
+  needs manual portion review; power amperage and a nearby railroad do not confirm
+  heavy power or rail access. Re-reading a different selected suite starts a clean
+  Comp draft. Manual edits survive a same-source re-read and pending-save recovery.
+- Property types match Master App: ISF, IOS, Class A, Class B, Vintage, Flex, Land,
+  Cold Storage. Legacy Class C displays as Vintage, without rewriting untouched rows.
+- Includes all 1.4.4 Sales capture and 1.4.3 suite/shared-flyer fixes. Permissions and
+  hosts unchanged. Uses existing app columns plus the app owner's now-live nullable
+  loading and has_truckwell_or_dock contract. No new extension-owned schema.
+
+Verified: 222 unit/transport tests, 65 mounted scenarios (9 new fields, 13 Comp,
+6 Yard, 37 Survey), 6 actual pop-outs, 12 MV3 suite/flyer groups, 5 Sales groups,
+and 4 property-capture groups. Disposable profiles/fixtures only; zero external
+requests or real record writes. 320px and 390px controls visually checked.
+Final package adds comp-property-fields.js (16 runtime/icon files).
+
+Installed Chrome was independently observed as 1.4.4, with an active unsaved flyer
+change for 2434 S 10th St. Do not reload until that edit is saved or intentionally
+canceled. This is a local tested package, not installed or submitted to the Store.
+
+### Updating the existing unpacked copy to 1.4.5
+
+1. Save or intentionally cancel the active Comp edit first. The last read-only
+   check showed an unsaved flyer for 2434 S 10th St; reloading now would lose it.
+2. Verify the current installation. The observed 1.4.4 ID was
+   `pnoophcbdjbdnpknbidojhiiecfmghhj`, at
+   `/Users/maxschumacher/Library/Application Support/Google/Chrome/Default/UnpackedExtensions/masterappsurvey-v1.4.4_W1NaYy`.
+   Back up that folder, then copy the verified 1.4.5 runtime files into this same
+   folder. Keep the directory/extension ID and Chrome storage. Do not remove it.
+3. In `chrome://extensions/`, Reload that existing extension card. Confirm version
+   1.4.5, reopen the panel, and check the Comp Property details fields. No test save
+   is needed. An open old panel must reload before the new controls appear.
+
+This procedure is prepared, not executed. Reload by itself does not install 1.4.5
+until its runtime files have replaced the existing folder's files. Do not load the
+new extracted folder as a second extension when preserving the current ID/drafts.
+
 ## 1.4.4 local candidate — 2026-09-18 — CoStar Sales view
 
 - Sales Summary captures Listing Details → Asking Price; Sales Property captures

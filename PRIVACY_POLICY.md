@@ -11,7 +11,9 @@ to its building/site property record. It also updates survey-property statuses.
 
 ## Data the Extension reads
 - **From CoStar (`*.costar.com`):** the property's address, building size, land area,
-  submarket, sale price, lease rate and type, cap rate, and the CoStar property ID
+  submarket, sale price, lease rate and type, cap rate, year built, clear height,
+  office/available SF, labeled loading details, property class, and explicit power,
+  rail and dock/truckwell facts, plus the CoStar property ID
   (from the page URL) shown on the CoStar tab you are viewing. The Extension reads
   the rendered page when opened or refreshed, while Survey Push is open to detect
   suite changes, and again before saving to verify the selected space. A popped-out

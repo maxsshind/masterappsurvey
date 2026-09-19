@@ -1,3 +1,57 @@
+# Property fields extension — 2026-09-18 21:05 MST
+
+Completed local **1.4.5** candidate in Codex worktree
+`/Users/maxschumacher/.codex/worktrees/survey-property-fields-20260918`, branch
+`codex/survey-property-fields-20260918`, base `f207c3e` (verified 1.4.4).
+Parent task `01a0b71e-3d1a-7b80-bbc2-bfad6a26985a` owns extension only; coordinated
+app/SF owner `01a0b7bd-bc4b-7041-8e52-e32965450063` independently reviewed the package.
+Max's direct property-fields request there was read and confirmed. Existing earlier
+user authorization "proceed with making the preview live and update playbook, ops
+log, and wikis" covers these extension-specific documentation updates.
+
+Comp adds clear height, office SF, available lease SF, year built, loading, Class A,
+heavy power, rail and truckwell/dock access. Native checkboxes preserve unknown,
+false and true; saved fields hydrate and intentional edits alone patch values,
+including null clears. Numeric units validated; SF formatted with commas. Selected
+suite facts cannot borrow building office/loading totals; divisible portions need
+review. Comp re-read of another suite resets the prior offering. Canonical property
+types match app; legacy Class C displays as Vintage without rewriting untouched rows.
+Existing Survey schema/controls, suite safeguards and building-flyer reuse retained.
+Backend new nullable loading (4000 chars)/dock columns independently read and verified.
+App owner owns app/SF code, releases and their broader documentation proposal.
+
+Verified source: **222 units, 65 mounted scenarios** (9 new fields, 13 Comp, 6 Yard,
+37 Survey), **6 real pop-outs, 12 MV3 suite/flyer, 5 Sales, 4 property-capture groups**.
+No external requests or production test records. 320px/390px controls visually
+checked; final layout compact and reachable. Extracted delivered 1.4.5 independently
+passes all222 units,4 property-capture groups and actual MV3 smoke. All16 runtime/icon
+files match source, ZIP and delivered folder. Evidence `output/review/property-fields-*`.
+
+Delivery: `/Users/maxschumacher/Developer/chrome extensions/Master App Survey/masterappsurvey-v1.4.5.zip`
+Extracted: `/Users/maxschumacher/Developer/chrome extensions/Master App Survey/output/review/space-extension-1.4.5`
+108,389 bytes; SHA256 `d22eb38fc67c8b7b7534f69e92e71373b0e4a4a3f47c1bd35dfe1e98b0847080`.
+Canonical runtime/unrelated source edits preserved; no Store upload or publication.
+
+Shared docs saved and verified: Surveys reference and Comps data reference in
+`/Users/maxschumacher/Library/CloudStorage/OneDrive-Rein&Grossoehme/max-playbook-and-knowledge/master-app/`;
+existing `https://www.sshteam.app/wiki/surveys` and mirror
+`/Users/maxschumacher/Library/CloudStorage/OneDrive-Rein&Grossoehme/wiki/surveys.md`.
+Live wiki and mirror MD5 `5c171af8cd0abfd4b182f2d8edb8a232` match. Ops index and September
+archive checked; local package is not a production event. App owner handles app/SF
+ops documentation separately. Sales monitor remains paused after completed review.
+
+**Outstanding installation:** Chrome read-only AX inspection showed active unsaved
+flyer change for **2434 S 10th St**. Existing installed runtime is **1.4.4**, ID
+`pnoophcbdjbdnpknbidojhiiecfmghhj`, path
+`/Users/maxschumacher/Library/Application Support/Google/Chrome/Default/UnpackedExtensions/masterappsurvey-v1.4.4_W1NaYy`.
+No reload or replacement attempted. Next: after Max saves or intentionally cancels
+that draft, verify current installed identity/path again, back up its runtime,
+replace only runtime files from the verified1.4.5 folder in place, then Reload the
+same extension card in chrome://extensions. Do not remove/reinstall or clear storage.
+Verify1.4.5 on the card and actual property controls without writing test records.
+
+---
+
 ## Independent parent review — 2026-09-18 20:39 MST
 
 Parent task `01a0b71e-3d1a-7b80-bbc2-bfad6a26985a` reviewed final runtime diff and

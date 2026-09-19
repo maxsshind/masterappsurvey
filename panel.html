@@ -393,6 +393,22 @@
     </div>
     </div>
 
+    <div class="sec" data-sec="space-specs">
+      <div class="section-label mt-section">Property details</div><div class="fieldset">
+        <div class="fld two"><span><label for="comp_clear_height_ft">Clear height (ft)</label></span><input id="comp_clear_height_ft" inputmode="decimal" /></div>
+        <div class="fld two"><span><label for="comp_office_sf">Office SF</label></span><input id="comp_office_sf" inputmode="decimal" /></div>
+        <div class="fld two"><span><label for="comp_lease_area">Available lease SF</label></span><input id="comp_lease_area" inputmode="decimal" /></div>
+        <div class="fld two"><span><label for="comp_year_built">Year built</label></span><input id="comp_year_built" inputmode="numeric" /></div>
+        <div class="fld"><span><label for="comp_loading">Loading</label></span><textarea id="comp_loading" rows="2" maxlength="4000"></textarea></div>
+        <div class="fld comp-feature" data-layout-key="comp_class_a"><label for="comp_class_a"><input type="checkbox" id="comp_class_a" value="" /><span>Class A</span></label><span id="comp_class_a_answer" class="field-hint">Unknown</span><button type="button" class="btn btn-ghost btn-sm" data-clear-comp-feature="class_a" aria-label="Set class a to unknown">Clear</button></div>
+        <div class="fld comp-feature" data-layout-key="comp_heavy_power"><label for="comp_heavy_power"><input type="checkbox" id="comp_heavy_power" value="" /><span>Heavy power</span></label><span id="comp_heavy_power_answer" class="field-hint">Unknown</span><button type="button" class="btn btn-ghost btn-sm" data-clear-comp-feature="heavy_power" aria-label="Set heavy power to unknown">Clear</button></div>
+        <div class="fld comp-feature" data-layout-key="comp_has_rail"><label for="comp_has_rail"><input type="checkbox" id="comp_has_rail" value="" /><span>Has rail</span></label><span id="comp_has_rail_answer" class="field-hint">Unknown</span><button type="button" class="btn btn-ghost btn-sm" data-clear-comp-feature="has_rail" aria-label="Set has rail to unknown">Clear</button></div>
+        <div class="fld comp-feature" data-layout-key="comp_has_truckwell_or_dock"><label for="comp_has_truckwell_or_dock"><input type="checkbox" id="comp_has_truckwell_or_dock" value="" /><span>Has truckwell or dock</span></label><span id="comp_has_truckwell_or_dock_answer" class="field-hint">Unknown</span><button type="button" class="btn btn-ghost btn-sm" data-clear-comp-feature="has_truckwell_or_dock" aria-label="Set has truckwell or dock to unknown">Clear</button></div>
+        <small class="field-hint">Facts apply to this offered space. Clear a checkbox answer to return it to Unknown.</small>
+        <small id="compPropertySource" class="field-hint hidden"></small>
+      </div>
+    </div>
+
     <div class="sec" data-sec="ptype">
     <div class="section-label mt-section">Property type</div>
     <div class="fieldset">
@@ -402,7 +418,6 @@
         <label title="IOS"><input type="checkbox" value="IOS" /> IOS</label>
         <label title="Class A"><input type="checkbox" value="Class A" /> A</label>
         <label title="Class B"><input type="checkbox" value="Class B" /> B</label>
-        <label title="Class C"><input type="checkbox" value="Class C" /> C</label>
         <label title="Flex"><input type="checkbox" value="Flex" /> Flex</label>
         <label title="Land"><input type="checkbox" value="Land" /> Land</label>
         <label title="Vintage"><input type="checkbox" value="Vintage" /> Vint</label>
@@ -494,6 +509,7 @@
   <script src="survey-rent.js"></script>
   <script src="survey-spaces.js"></script>
   <script src="survey-flyers.js"></script>
+  <script src="comp-property-fields.js"></script>
   <script src="layout.js"></script>
   <script src="panel.js"></script>
 </body>

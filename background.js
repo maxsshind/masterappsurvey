@@ -183,8 +183,9 @@ async function readCoStar(options = {}) {
       // Survey-only selected offering: the open Space Details wins over the
       // property's asking/estimated-rent header. Never change Comp's leaseRate.
       const spaceHeadings = [...txt.matchAll(/\bSpace Details\b/gi)];
-      let selectedSpace = null;
+      let selectedSpace = null, selectedFactSection = null;
       if (spaceHeadings.length) {
+        selectedFactSection = "";
         selectedSpace = { scope: "space-details", availableSf: null, availableRange: null, monthlyRent: null,
           rentPsf: null, officeSf: null, suite: null, floor: null, serviceType: null,
           identity: null, rawText: "", canPrefill: false, issue: null };
@@ -193,6 +194,7 @@ async function readCoStar(options = {}) {
         } else {
           const start = spaceHeadings[0].index + spaceHeadings[0][0].length;
           const section = txt.slice(start).split(/\b(?:Documents|Space Notes|Highlights|Leasing Contacts)\b/i)[0].trim();
+          selectedFactSection = section;
           selectedSpace.rawText = section.slice(0, 500);
           // Field labels can be separate lines or adjacent inline AX/DOM text.
           const labels = /\b(?:Floor Contig|Bldg Contig|Lease Status|Time on Market|Space Features|Rent\s*\/\s*(?:Month|Mo|Year|Yr)|Service Type|Services|Available(?=\s+(?:[\d$]|Withheld|Negotiable|Upon))|Office|Floor|Occupancy|Suite(?: Number)?|Rent|Type|Term|Docks|Drive Ins)\b/gi;
@@ -304,12 +306,33 @@ async function readCoStar(options = {}) {
         .trim()
         .slice(0, 6000);
 
+      // Optional facts are scoped to the selected space, or the Building table
+      // when no selected-space modal is open. Never borrow loading/office totals
+      // from an underlying building for a selected suite.
+      const buildingFacts = txt.match(/(?:^|\n)Building(?: Details)?[ \t]*\n([\s\S]*?)(?=\n(?:Amenities|Transportation|Location|Availabilities|Transaction History|Space Details|Documents)\b|$)/i)?.[1] || '';
+      const factSection = selectedFactSection === null ? buildingFacts : selectedFactSection;
+      const factLabels = /\b(?:Has Truckwell or Dock|Truck Wells|Clear Height|Office SF|Rail Served|Heavy Power|Has Rail|Rail Line|Rail Spots|Building Size|Floor Contig|Bldg Contig|Lease Status|Time on Market|Space Features|Rent\s*\/\s*(?:Month|Mo|Year|Yr)|Service Type|Year Built|Drive Ins|Cross Docks|Sprinklers|Construction|Build-Out|Condition|Occupancy|Tenancy|Loading|Docks|Power|Office|Available|Suite(?: Number)?|Floor|Rent|Type|Term|Services|Stories|Columns|Elevators|Levelers|Cranes|Class|RBA)\b/gi;
+      const factMatches = [...factSection.matchAll(factLabels)], facts = new Map();
+      for (let i=0;i<factMatches.length;i++) {
+        const key=factMatches[i][0].toLowerCase().replace(/\s+/g,' ');
+        const value=factSection.slice(factMatches[i].index+factMatches[i][0].length,factMatches[i+1]?.index??factSection.length).replace(/^\s*:\s*/,'').trim();
+        facts.set(key,facts.has(key)?null:value);
+      }
+      const loadingParts=[['Loading','loading'],['Docks','docks'],['Truck wells','truck wells'],['Drive-ins','drive ins']].filter(([,key])=>facts.get(key)).map(([label,key])=>`${label}: ${facts.get(key)}`);
+      const propertyFacts={scope:selectedFactSection===null?'building':'selected-space',
+        clearHeight:facts.get('clear height')||'',officeSf:facts.get('office sf')||facts.get('office')||'',
+        loading:loadingParts.join('; '),docks:facts.get('docks')||'',truckWells:facts.get('truck wells')||'',
+        power:facts.get('power')||'',railLine:facts.get('rail line')||'',
+        heavyPower:facts.get('heavy power')||'',hasRail:facts.get('has rail')||facts.get('rail served')||'',
+        hasTruckwellOrDock:facts.get('has truckwell or dock')||'',
+        classA:/^A$/i.test(facts.get('class')||'')?'Yes':/^[BC]$/i.test(facts.get('class')||'')?'No':''};
+
       // Diagnostic: sample of the text actually seen, so we can tell whether the
       // scraper hit the right frame/tab when a scrape comes back empty.
       const _debug = { textLen: txt.length, sample: txt.slice(0, 400) };
       return {
         street, city, state, zip, submarket, rba, acLot, salePrice, leaseRate,
-        leaseType, leaseQuote, selectedSpace, capRate, yearBuilt, saleHighlights, saleNotes, _debug,
+        leaseType, leaseQuote, selectedSpace, propertyFacts, capRate, yearBuilt, saleHighlights, saleNotes, _debug,
       };
     },
   });
@@ -585,7 +608,8 @@ const COMP_COLS =
   "id,address,property_name,city,state,zip,status,property_type,sale_type,sale_price,price_psf," +
   "rent_psf,lease_format,cap_rate,building_sf,land_area,yard_included,sub_market,submarket_cluster," +
   "listing_brokerage,listing_agent,listing_agent_phone,listing_agent_email," +
-  "last_verified_at,list_date,notes,flyer_url,property_id,suite,partial_site_override,multi_tenant";
+  "last_verified_at,list_date,notes,flyer_url,property_id,suite,partial_site_override,multi_tenant," +
+  "clear_height_ft,office_sf,lease_area,year_built,loading,class_a,heavy_power,has_rail,has_truckwell_or_dock";
 
 // Find existing comps that likely match the CoStar listing, so the panel can offer
 // "update" instead of a duplicate insert. PostgREST ilike wildcard is a literal `*`

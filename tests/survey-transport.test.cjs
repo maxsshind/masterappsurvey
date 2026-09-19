@@ -523,3 +523,12 @@ for(const raw of ['Upon Request','$4,309,000 - $5,000,000','$250/SF','$4,30,900'
 test('Sales Location-label submarket fallback ignores Submarket Cluster and old prices',async()=>{
  const data=await salesListingFixture('2405 W Geneva Dr\nTempe, AZ 85282\nLocation\nSubmarket\nTempe Southwest\nSubmarket Cluster\nSoutheast\nTransaction History\nSold Price\n$575,000','property');assert.equal(data.submarket,'Tempe Southwest');assert.equal(data.salePrice,'');
 });
+
+test('Building fact capture reads labeled measurements/loading without inferring power or rail',async()=>{
+ const d=await salesListingFixture('2405 W Geneva Dr\nTempe, AZ 85282\nBuilding\nClear Height\n24\'6"\nOffice SF\n6,600 SF\nClass\nA\nDocks\n10 ext\nTruck Wells\nNone\nDrive Ins\n2 tot.\nPower\n200 amps\nRail Line\nUnion Pacific\nLocation\nSubmarket\nTempe Southwest','property');
+ assert.equal(d.propertyFacts.clearHeight,'24\'6"');assert.equal(d.propertyFacts.officeSf,'6,600 SF');assert.equal(d.propertyFacts.classA,'Yes');assert.equal(d.propertyFacts.heavyPower,'');assert.equal(d.propertyFacts.hasRail,'');assert.match(d.propertyFacts.loading,/Docks: 10 ext/);
+});
+test('Selected suite fact capture never borrows building office or loading totals',async()=>{
+ const d=await salesListingFixture('2405 W Geneva Dr\nTempe, AZ 85282\nBuilding\nClear Height\n30 ft\nOffice SF\n6,600 SF\nDocks\n10 ext\nSpace Details\nAvailable\n1,200 SF Industrial\nSuite\n7\nFloor\nPartial 1st\nDocks\nNone\nDrive Ins\n1 tot.\nSpace Notes\nOffice 400 SF historical');
+ assert.equal(d.propertyFacts.scope,'selected-space');assert.equal(d.propertyFacts.officeSf,'');assert.equal(d.propertyFacts.clearHeight,'');assert.equal(d.propertyFacts.docks,'None');assert.doesNotMatch(d.propertyFacts.loading,/10 ext/);
+});
