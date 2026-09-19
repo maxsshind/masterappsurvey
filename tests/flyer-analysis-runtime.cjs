@@ -35,7 +35,7 @@ function modal(n,area,extra=''){return `<section id="space"><p>${n} of 3 Spaces<
    comp.flyerUrl='https://kavynghiailoduhulytq.supabase.co/storage/v1/object/public/survey-files/comps/flyers/fixture.pdf';
  });
  await panel.locator('#compAnalyzeFlyer').click();await panel.waitForFunction(()=>$('compFlyerReview').open);
- const calls=await worker.evaluate(()=>analysisCalls);assert.equal(calls.length,1);assert.equal(calls[0].method,'POST');assert.equal(calls[0].credentials,'omit');assert.equal(calls[0].authorization,'Bearer synthetic-fixture-token');assert.equal(calls[0].body.address,'100 Fixture Way');
+ const calls=await worker.evaluate(()=>analysisCalls);assert.equal(calls.length,1);assert.equal(calls[0].method,'POST');assert.equal(calls[0].credentials,'omit');assert.equal(calls[0].authorization,'Bearer synthetic-fixture-token');assert.equal(calls[0].body.address,'100 Fixture Way');assert.equal(calls[0].body.partial_site_override,null);assert.equal(calls[0].body.multi_tenant,null);
  assert.equal(await panel.evaluate(()=>fixtureSaves.length),0);
  await panel.locator('#compApplyFlyer').click();assert.equal(await panel.locator('#comp_clear_height').inputValue(),'16’');assert.equal(await panel.locator('#comp_loading').inputValue(),'Two 12’ x 14’ Grade Level Doors');assert.equal(await panel.evaluate(()=>fixtureSaves.length),0);
  results.push('Actual MV3 panel → message → worker authenticated request → whitespace-prefixed JSON response → reviewed form, with no implicit save');

@@ -2976,6 +2976,8 @@ installCompFlyerReview({
       flyer_url: comp.flyerUrl || comp.baseline?.flyer_url || null,
       address: $('comp_address').value, city: $('comp_city').value, state: $('comp_state').value,
       suite: $('comp_suite').value, status: $('comp_status').value,
+      partial_site_override: $('comp_partial_site_override').value==='true'?true:$('comp_partial_site_override').value==='false'?false:null,
+      multi_tenant: $('comp_multi_tenant').value==='true'?true:$('comp_multi_tenant').value==='false'?false:null,
       currentValues: compPropertyValues().values,
     },
     // Raw input also detects invalid/intermediate typing while the request runs.
