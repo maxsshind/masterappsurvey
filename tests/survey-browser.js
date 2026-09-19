@@ -171,7 +171,7 @@ async (page) => {
     await p.locator('#btnReviewLatest').click();assert.equal(await value('fNotes'),'Changed in web app');assert.ok(await p.evaluate(()=>Object.values(surveyEditor.archives).some(b=>b.key.startsWith('conflict:')&&b.drafts[0].model.values.notes==='Local proposed note')));
     results.push('Stale update locks and exposes current saved row for fresh review, retaining the old edited draft');
 
-    await fresh({tenancy:'MT',building_sf:40000,suite_number:'One',suite_size:'1000'});await p.locator('[data-sec="flyer"] summary').click();await p.locator('#btnAttachFlyer').click();await p.locator('#btnAddSpace').click();await p.waitForFunction(()=>surveyEditor.bundle.drafts[0].model.values.flyer_url);
+    await fresh({tenancy:'MT',building_sf:40000,suite_number:'One',suite_size:'1000'});await p.locator('#btnAttachFlyer').click();await p.locator('#btnAddSpace').click();await p.waitForFunction(()=>surveyEditor.bundle.drafts[0].model.values.flyer_url);
     assert.equal(await value('fFlyerUrl'),'');assert.equal(await p.evaluate(()=>surveyEditor.bundle.drafts[0].model.values.flyer_url),'https://fixture.invalid/one.pdf');
     results.push('Delayed flyer attaches to its original suite even after switching to a sibling');
 

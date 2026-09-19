@@ -516,7 +516,7 @@ body.layout-editing #compFlyer, body.layout-editing #compRescan, body.layout-edi
 .comp-size-hint { grid-column: 1 / -1; }
 
 /* Survey review: compact controls, individual drafts and persistent actions. */
-#screen-form { padding: 10px 12px 80px; }
+#screen-form { padding: 10px 12px 120px; }
 #screen-form .survey-review-head { margin: -10px -12px 8px; padding: 8px 12px; flex-wrap: wrap; }
 #screen-form .survey-review-head > div:first-child { min-width: 0; flex: 1; }
 #screen-form #formError { flex-basis: 100%; margin: 0; max-height: 110px; overflow: auto; }
@@ -549,7 +549,8 @@ body.layout-editing #compFlyer, body.layout-editing #compRescan, body.layout-edi
 .space-tab[aria-selected="true"] { color: #8B1538; border-color: #8B1538; background: #f9eaf0; }
 .space-actions { display: flex; gap: 4px; flex-wrap: wrap; width: 100%; }
 .space-actions .btn { width: auto; }
-.survey-footer { display: flex; gap: 8px; position: fixed; z-index: 10; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 560px; padding: 8px 12px; background: #f8f9fc; border-top: 1px solid #dde; }
+.survey-footer { display: flex; flex-direction: column; gap: 6px; position: fixed; z-index: 10; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 560px; padding: 8px 12px; background: #f8f9fc; border-top: 1px solid #dde; }
+.survey-footer-actions { display: flex; gap: 8px; }
 .survey-footer .btn-primary { flex: 1; }
 .survey-footer .btn { width: auto; }
 .has-details { font-size: 10px; color: #8B1538; }

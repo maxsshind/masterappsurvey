@@ -2,6 +2,9 @@
 
 ## Unreleased — September 18 Survey alignment review
 
+- Moved Attach open CoStar flyer (PDF) into the fixed bottom action bar, directly
+  above Add to survey. It stays visible while scrolling and in pop-out mode.
+
 - NNN defaults to Separate charge and shows expense inputs, including imported
   NNN offerings. No expense amount is assumed. Entered expenses calculate the
   all-in monthly rent; existing saved/unlinked quotes retain their numbers.

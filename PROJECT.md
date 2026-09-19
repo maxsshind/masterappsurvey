@@ -1,6 +1,6 @@
 # September 18 Survey extension alignment
 
-## Current checkpoint — 2026-09-18 17:45:34 MST (America/Phoenix)
+## Current checkpoint — 2026-09-18 17:48:25 MST (America/Phoenix)
 
 **Local implementation and review package complete. Distribution and live authenticated verification remain outside this task.**
 
@@ -10,7 +10,25 @@ Authorized: implement and test Survey alignment; prepare a review ZIP. **No Stor
 
 Verified starting HEAD and fetched `origin/main`: `ecf1b6776fc5a0bf2f11bd5aaa5db1e72ee4e70f`. Manifest stays **1.3.3**, solely as the review baseline; this is not a newly numbered release. Current Store draft, public version and installed runtime were not rechecked.
 
-## Follow-up: NNN expense default — current build
+## Follow-up: flyer attachment beside Save — current build
+
+Moved **Attach open CoStar flyer (PDF)** from the collapsed Flyer and photo section
+to the fixed bottom action bar, directly above **Add to survey**. Manual URLs stay
+in the details section. Added bottom content space so the taller bar does not cover
+the final fields. The existing attachment handler, suite targeting and save locks
+are unchanged. All earlier NNN, rent, layout and pop-out changes remain included.
+
+- [Current ZIP](/Users/maxschumacher/Developer/masterappsurvey/masterappsurvey-v1.3.3-flyer-footer-review-2026-09-18.zip) — 93,577 bytes; SHA-256 `0546afd41d3c4a2c74ade8c9b8ba1feb8bca6aac4761952785ea06f906ec11c0`.
+- [Ready-to-load folder](/Users/maxschumacher/Developer/masterappsurvey/local-extension/survey-review-flyer-footer-2026-09-18). Source, ZIP and delivered files match across all 14 runtime/icon files.
+- Current source verification: **11 layout tests, 43 browser scenarios, 6 actual Chrome pop-out scenarios** passed. The existing delayed-flyer scenario now clicks the fixed button without expanding details and verifies original-suite ownership. No remote requests or production uploads. [Layout evidence](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/flyer-footer-layout-source.txt), [browser evidence](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/flyer-footer-browser-source.json), [pop-out evidence](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/flyer-footer-popout-source.json).
+- Visually checked [320px panel](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/flyer-footer/survey-st-320.png) and [720px pop-out](/Users/maxschumacher/.codex/worktrees/9571/masterappsurvey/output/review/flyer-footer-popout/window-720.png); attach and Save both remain visible. Prior full numeric/database coverage below remains historical; those modules were not changed by this placement adjustment.
+
+Local changelog/release guide updated; this presentation-only review does not need
+shared playbook, production ops-log or wiki changes. Installed extension and Store
+remain unchanged. Next step: review this latest folder and use the flyer button in
+the bottom bar. Existing release restrictions remain.
+
+## Follow-up: NNN expense default — earlier review build
 
 Max clarified that an NNN offering has separate expenses. New/imported NNN drafts
 now default to **Separate charge**, with both expense inputs visible. Choosing NNN

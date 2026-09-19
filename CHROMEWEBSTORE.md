@@ -4,6 +4,9 @@ Last updated: 2026-09-18
 
 ## September 18 Survey review build — not released
 
+**Attach open CoStar flyer (PDF)** now stays in the fixed bottom bar, directly
+above **Add to survey**. Manual flyer/photo URLs remain in their details section.
+
 NNN now defaults to **Separate charge**, with expense inputs visible. Amounts
 stay blank until entered; the all-in monthly total remains unknown until expenses
 are known. Existing saved quotes and deliberate expense overrides are preserved.

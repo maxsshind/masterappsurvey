@@ -187,7 +187,6 @@
       <label class="chk"><input type="checkbox" id="fYardArea" /><span>Yard area</span></label>
     </div></details>
     <details class="more mt-section" data-sec="flyer"><summary>Flyer and photo <span class="has-details"></span></summary><div class="fieldset mt6">
-      <button id="btnAttachFlyer" class="btn btn-ghost btn-sm" type="button">Attach open CoStar flyer (PDF)</button>
       <div class="fld"><label for="fFlyerUrl">Flyer URL</label><input id="fFlyerUrl" /></div><div class="fld"><label for="fPhotoUrl">Photo URL</label><input id="fPhotoUrl" /></div>
     </div></details>
     <details id="notes2Details" class="more mt-section" data-sec="notes"><summary>Additional client note <span class="has-details"></span></summary><div class="fieldset mt6">
@@ -198,7 +197,10 @@
       <div class="fld"><label for="fInternalNotes">Internal notes (Private)</label><textarea id="fInternalNotes" rows="3"></textarea></div>
       <div class="fld two"><label for="fOffices">Private offices</label><input id="fOffices" inputmode="numeric" /></div>
     </div></details>
-    <div class="survey-footer"><button id="btnSaveBottom" class="btn btn-primary">Save</button><button id="btnCancelDraft" class="btn btn-ghost">Cancel edits</button></div>
+    <div class="survey-footer">
+      <button id="btnAttachFlyer" class="btn btn-ghost btn-sm" type="button">Attach open CoStar flyer (PDF)</button>
+      <div class="survey-footer-actions"><button id="btnSaveBottom" class="btn btn-primary">Save</button><button id="btnCancelDraft" class="btn btn-ghost">Cancel edits</button></div>
+    </div>
   </section>
 
   <!-- Screen: survey browser -->
