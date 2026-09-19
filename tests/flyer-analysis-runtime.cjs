@@ -20,6 +20,11 @@ function modal(n,area,extra=''){return `<section id="space"><p>${n} of 3 Spaces<
  const panel=await context.newPage();panel.on('pageerror',e=>errors.push(e.message));await panel.goto(`chrome-extension://${id}/panel.html?view=popout`);
 
  await panel.waitForFunction(()=>$('comp_address').value==='100 Fixture Way');
+ await costar.evaluate(()=>document.body.insertAdjacentHTML('beforeend','<h2>Sale Highlights</h2><div>Building 100% air-conditioned</div><h2>Transaction History</h2><div>Sale</div><div>3</div><div>Prior Sales</div><div>Sold Price</div><div>$1,825,000</div>'));
+ await panel.evaluate(()=>scanComp());
+ await panel.locator('#compIncludeHighlights').evaluate(el=>{for(let n=el.parentElement;n;n=n.parentElement)if(n.tagName==='DETAILS')n.open=true;});
+ await panel.locator('#compIncludeHighlights').check();assert.equal((await panel.locator('#comp_notes').inputValue()).trim(),'Sale Highlights\n• Building 100% air-conditioned');
+ results.push('Actual MV3 Include Highlights keeps the advertised building bullet and excludes transaction history/prior sold price');
  await worker.evaluate(()=>{
    sbGetSession=async()=>({access_token:'synthetic-fixture-token'});
    globalThis.analysisCalls=[];

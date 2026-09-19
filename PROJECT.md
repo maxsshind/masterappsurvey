@@ -1,9 +1,12 @@
-# Flyer analysis candidate1.4.8 — 2026-09-18 21:38 MST (America/Phoenix)
+# Flyer analysis candidate1.4.9 — 2026-09-18 21:38 MST (America/Phoenix)
 
 Task01a0b7db-a7e9-7651-8554-e51208268673; Codex isolated worktree
 `/Users/maxschumacher/.codex/worktrees/extension-flyer-analysis/extension`, branch
 `codex/extension-flyer-analysis`. Base1.4.7 owner commit4235323 merged intact.
 Includes every1.4.7 source/Power/layout/lease-default fix plus Analyze flyer review.
+Final scope guard1007b6e is deployed; coordinator96327d9 stops unrelated marketing
+section capture, verified with actual MV3 Include Highlights.1.4.8 retained as
+historical local candidate;1.4.9 supersedes it.
 
 Backend12d3178 deployed to https://www.sshteam.app/api/extension/flyer-analysis;
 production unauthorized401 and extension preflight204 verified. Same app checkout
@@ -11,15 +14,15 @@ sibling `master-app` carries the full implementation/documentation proposal.
 Model/signed-in installed-extension end-to-end behavior remains unverified; all
 extension checks use disposable fixtures and zero production record writes.
 
-Verified240 unit/transport tests,84 mounted browser scenarios (10 flyer), actual
+Verified269 unit/transport tests,84 mounted browser scenarios (10 flyer), actual
 MV3 worker transport and final extracted-package worker/smoke. Narrow320/390px
 review screenshots in output/review/flyer-review-*.png. Other inherited tests
 verified by release owner:6popouts,12suite groups,8property groups,5Sales groups.
 This effort separately verified the6popouts on its1.4.6-based feature before merge.
 
-Delivery `/Users/maxschumacher/Developer/chrome extensions/Master App Survey/masterappsurvey-v1.4.8.zip`
-and sibling `output/review/space-extension-1.4.8`.18files match source/ZIP/folder.
-113675bytes, SHA25693b78352ffbd512472fe88409a278aea52f78d4757e1bb7c8d84811d797c2c85.
+Delivery `/Users/maxschumacher/Developer/chrome extensions/Master App Survey/masterappsurvey-v1.4.9.zip`
+and sibling `output/review/space-extension-1.4.9`.18files match source/ZIP/folder.
+113884bytes, SHA2565601e8376200db17347e151e6633ed2d1702c9cf0029091f8a59b255eee000e2.
 No installed-file replacement/reload or Chrome Web Store submission. Preserve open
 draft before any in-place upgrade; keep the existing extension ID/storage.
 

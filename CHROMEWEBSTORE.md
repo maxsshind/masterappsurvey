@@ -1,5 +1,18 @@
 # Chrome Web Store — CoStar → Survey Pusher
 
+## 1.4.9 local candidate — 2026-09-18 — Offered-space safeguards and clean highlights
+
+- Includes the full1.4.8 flyer feature and tested1.4.7 property updates.
+- Sends Portion of site and Multi-tenant context with flyer analysis. An unnamed
+  partial offering, or multi-tenant offering without explicit whole-property
+  confirmation, requires a suite/space identity before analysis. Older analysis
+  requests missing scope flags are rejected; use1.4.9 for the new button.
+- Includes coordinator96327d: optional Sale Highlights/Notes stop at downstream
+  CoStar sections. Transaction History, tenants, market/loan/traffic information
+  cannot spill into notes. A legitimate 'Building 100% air-conditioned' bullet stays.
+-1.4.8 artifacts are retained as historical local candidates;1.4.9 supersedes them.
+  Installed files and open drafts remain unchanged. No Store submission.
+
 ## 1.4.8 local candidate — 2026-09-18 — Analyze flyer
 
 - Comp footer adds **Analyze flyer** beside Flyer. Attach a PDF, analyze, review
