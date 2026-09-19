@@ -26,11 +26,12 @@ and sibling `output/review/space-extension-1.4.9`.18files match source/ZIP/folde
 No installed-file replacement/reload or Chrome Web Store submission. Preserve open
 draft before any in-place upgrade; keep the existing extension ID/storage.
 
-Shared documentation: playbook, ops index/month and existing Surveys wiki mirror
-checked; live wiki unchecked. Proposed full batch is in sibling master-app
-`docs/EXTENSION_FLYER_ANALYSIS.md`. Await user approval before shared writes.
+Shared documentation approved and saved 2026-09-18 21:48 MST: both playbook
+references, live Surveys wiki/mirror and September ops entry/index verified.
+Wiki MD5 e084fe210c33790343ca47007f669284. Full record in sibling master-app
+`docs/EXTENSION_FLYER_ANALYSIS.md`. No documentation approval remains pending.
 Next: user saves/intentionally cancels active draft, then authorized in-place
-upgrade and live flyer check. Shared-doc approval is separate from code delivery.
+upgrade and live flyer check. Documentation save is complete; runtime delivery and installation remain separate.
 
 ---
 
