@@ -196,6 +196,7 @@
     </div></details>
     <details class="more mt-section" data-sec="flyer"><summary>Flyer and photo <span class="has-details"></span></summary><div class="fieldset mt6">
       <div class="fld"><label for="fFlyerUrl">Flyer URL</label><input id="fFlyerUrl" /></div><div class="fld"><label for="fPhotoUrl">Photo URL</label><input id="fPhotoUrl" /></div>
+      <button id="btnForgetBuildingFlyer" class="btn btn-ghost btn-sm hidden" type="button">Stop reusing this building flyer</button>
     </div></details>
     <details id="notes2Details" class="more mt-section" data-sec="notes"><summary>Additional client note <span class="has-details"></span></summary><div class="fieldset mt6">
       <div class="fld"><label for="fNotes2">Notes 2 (Client Visible)</label><textarea id="fNotes2" rows="2"></textarea></div>
@@ -206,6 +207,14 @@
       <div class="fld two"><label for="fOffices">Private offices</label><input id="fOffices" inputmode="numeric" /></div>
     </div></details>
     <div class="survey-footer">
+      <div class="flyer-tools">
+        <label for="fFlyerScope" class="sr-only">Flyer use</label>
+        <select id="fFlyerScope" aria-label="Flyer use"><option value="building">Building flyer</option><option value="space">This space only</option></select>
+        <a id="currentFlyerLink" class="hidden" target="_blank" rel="noopener">Open flyer</a>
+        <button id="btnRemoveFlyer" class="btn btn-ghost btn-sm hidden" type="button">Remove</button>
+      </div>
+      <p id="flyerScopeHint" class="field-hint"></p>
+      <div id="reuseFlyerRow" class="flyer-tools hidden"><select id="fSavedFlyer" aria-label="Saved flyer to reuse"></select><button id="btnReuseFlyer" class="btn btn-ghost btn-sm" type="button">Reuse flyer</button></div>
       <button id="btnAttachFlyer" class="btn btn-ghost btn-sm" type="button">Attach open CoStar flyer (PDF)</button>
       <div class="survey-footer-actions"><button id="btnSaveBottom" class="btn btn-primary">Save</button><button id="btnCancelDraft" class="btn btn-ghost">Cancel edits</button></div>
     </div>
@@ -483,6 +492,7 @@
   <script src="survey-fields.js"></script>
   <script src="survey-rent.js"></script>
   <script src="survey-spaces.js"></script>
+  <script src="survey-flyers.js"></script>
   <script src="layout.js"></script>
   <script src="panel.js"></script>
 </body>

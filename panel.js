@@ -187,7 +187,7 @@ async function onAuthed() {
   const auth = await bg("AUTH_STATUS");
   if (auth.ok && auth.connected) {
     if (state.accountId && state.accountId !== auth.accountId) {
-      surveyEditor.bundle = null; surveyEditor.archives = {}; surveyEditor.pending = null;
+      surveyEditor.bundle = null; surveyEditor.archives = {}; surveyEditor.buildingFlyers = {}; surveyEditor.pending = null;
       state.survey = null; state.props = []; state.mode = null; state.scraped = null;
     }
     state.accountId = auth.accountId; state.email = auth.email;
@@ -437,7 +437,7 @@ $("btnDisconnect").addEventListener("click", async () => {
   if (surveyEditor.saving) return;
   try { await persistSurveyDraft(); } catch { return; }
   await bg("AUTH_SIGN_OUT");
-  surveyEditor.bundle = null; surveyEditor.archives = {}; surveyEditor.pending = null;
+  surveyEditor.bundle = null; surveyEditor.archives = {}; surveyEditor.buildingFlyers = {}; surveyEditor.pending = null;
   state.accountId = null;
   state.authed = false;
   state.survey = null;
@@ -528,7 +528,7 @@ async function selectSurvey(survey, opts = {}) {
   const generation = ++surveyEditor.selectionGeneration;
   try { await persistSurveyDraft(); } catch { return; }
   if (generation !== surveyEditor.selectionGeneration) return;
-  surveyEditor.bundle = null; surveyEditor.archives = {}; surveyEditor.pending = null;
+  surveyEditor.bundle = null; surveyEditor.archives = {}; surveyEditor.buildingFlyers = {}; surveyEditor.pending = null;
   state.survey = survey;
   state.props = []; state.propsLookupOk = false;
   state.mode = null;
@@ -824,7 +824,7 @@ function renderSuggestions(row, d) {
 }
 
 // Survey drafts are account/survey scoped. A mounted editor belongs to exactly one draft.
-const surveyEditor = { selectionGeneration: 0, bundle: null, archives: {}, pending: null, saving: false, persistenceError: null, storageTail: Promise.resolve() };
+const surveyEditor = { selectionGeneration: 0, bundle: null, archives: {}, buildingFlyers: {}, flyerUploads: 0, pending: null, saving: false, persistenceError: null, storageTail: Promise.resolve() };
 const SURVEY_CHOICE_OPTIONS = {
   fTenancy: [['ST', 'Single tenant'], ['MT', 'Multi-tenant']],
   fAvailability: AVAILABILITY_OPTIONS.map(x => [x, x]),
@@ -890,7 +890,7 @@ async function persistSurveyDraft() {
   const key = surveyDraftKey();
   if (!key || !surveyEditor.bundle) return;
   surveyEditor.archives[surveyEditor.bundle.key] = structuredClone(surveyEditor.bundle);
-  const snapshot = structuredClone({ version: 1, activeKey: surveyEditor.bundle.key, bundles: surveyEditor.archives });
+  const snapshot = structuredClone({ version: 1, activeKey: surveyEditor.bundle.key, bundles: surveyEditor.archives, buildingFlyers: surveyEditor.buildingFlyers });
   const write = async () => {
     try { await chrome.storage.local.set({ [key]: snapshot }); surveyEditor.persistenceError = null; if ($('draftStatus')) $('draftStatus').textContent = 'Draft saved on this device'; }
     catch (e) { surveyEditor.persistenceError = e.message || 'Local storage unavailable'; showError($('formError'), 'Draft could not be saved on this device. Keep this panel open and retry. ' + surveyEditor.persistenceError); throw e; }
@@ -901,10 +901,10 @@ async function persistSurveyDraft() {
 }
 function queueSurveyDraft() { void persistSurveyDraft().catch(() => {}); }
 async function restoreSurveyWorkspace() {
-  surveyEditor.bundle = null; surveyEditor.archives = {}; surveyEditor.pending = null;
+  surveyEditor.bundle = null; surveyEditor.archives = {}; surveyEditor.buildingFlyers = {}; surveyEditor.pending = null;
   const key = surveyDraftKey(), scope = state.accountId + ':' + state.survey.id;
   if (key) {
-    try { const stored = (await chrome.storage.local.get(key))[key]; if (scope !== state.accountId + ':' + state.survey?.id) return; if (stored?.version === 1) { surveyEditor.archives = stored.bundles || {}; surveyEditor.bundle = surveyEditor.archives[stored.activeKey] || null; } }
+    try { const stored = (await chrome.storage.local.get(key))[key]; if (scope !== state.accountId + ':' + state.survey?.id) return; if (stored?.version === 1) { surveyEditor.archives = stored.bundles || {}; surveyEditor.buildingFlyers = stored.buildingFlyers || {}; surveyEditor.bundle = surveyEditor.archives[stored.activeKey] || null; } }
     catch (e) { surveyEditor.persistenceError = e.message; showError($('idleError'), 'Cannot restore saved drafts. ' + e.message); }
   }
   const pending = await bg('GET_SURVEY_PENDING', { surveyId: state.survey.id });
@@ -968,11 +968,12 @@ function mountSurveyDraft() {
   if (!surveyEditor.pending) applyNnnExpenseDefault(draft);
   state.pendingDup = surveyEditor.bundle.decision === 'unresolved';
   state.mode = draft.model.isNew ? 'insert' : 'update'; state.editingId = draft.model.isNew ? null : draft.model.baseline.id; state.baseline = draft.model.baseline;
+  if (!surveyEditor.pending && !surveyEditor.saving) SurveyFlyers.inherit(draft,surveyEditor.buildingFlyers);
   fillForm(draft.model.values); renderSpaceOption(); renderSurveyRent(); renderSurveyDraftTabs();
   $('formTitle').textContent = draft.model.isNew ? 'New offering' : 'Update this space';
   const label = surveyEditor.bundle.drafts.length > 1 ? `Save ${surveyEditor.bundle.drafts.length} spaces` : draft.model.isNew ? 'Add to survey' : 'Save changes';
   $('btnSave').textContent = $('btnSaveBottom').textContent = label;
-  setBanner(state.mode,draft.model.values); syncSurveyLock();
+  setBanner(state.mode,draft.model.values); syncSurveyLock(); renderSurveyFlyer();
   setTab('push'); showScreen('form');
   if (surveyEditor.bundle.decision === 'unresolved') showSurveyCandidates(findMatch(draft.source));
 }
@@ -1034,7 +1035,8 @@ function syncSurveyLock() {
   $('pendingSurvey').classList.toggle('hidden', !surveyEditor.pending);
   if (surveyEditor.pending) $('pendingSurveyText').textContent = 'This reviewed save is locked until its result is checked. Retrying uses the same spaces and IDs.';
   $('btnUnlockSurvey').classList.add('hidden');
-  if (state.pendingDup) $('btnSave').disabled = $('btnSaveBottom').disabled = true;
+  if (state.pendingDup || surveyEditor.flyerUploads) $('btnSave').disabled = $('btnSaveBottom').disabled = true;
+  if (surveyEditor.flyerUploads) $('btnAttachFlyer').disabled = true;
   if (!activeSurveyDraft()?.model.rentSupported) $('surveyPricing').querySelectorAll('input,button').forEach(el => { el.disabled = true; });
   const option = activeSurveyDraft()?.model.values.space_option;
   if (option && !['fixed','range'].includes(option.kind)) {
@@ -1134,6 +1136,8 @@ function addSurveySpace(combined = false, building = null) {
   const seed = SurveySpaces.availableSpaceSeed(source);
   if (combined) seed.suite_number = 'Combined: ';
   const draft = makeSurveyDraft(seed,true); draft.combined = combined;
+  const flyerBuilding = SurveyFlyers.identity(current);
+  if (!building && flyerBuilding) draft.flyerBuilding = flyerBuilding;
   if (building || !current.model.isNew) {
     const key = `spaces:${crypto.randomUUID()}`; surveyEditor.bundle = { key, active: 0, drafts: [draft] };
   } else { surveyEditor.bundle.drafts.push(draft); surveyEditor.bundle.active = surveyEditor.bundle.drafts.length-1; }
@@ -1152,7 +1156,7 @@ $('btnClearSurveyDrafts').addEventListener('click', async e => {
     const pending = await bg('GET_SURVEY_PENDING',{surveyId:state.survey.id});
     if (!pending.ok || pending.pending) return showError($('draftClearError'),'The current save state must be resolved before clearing drafts.');
     await surveyEditor.storageTail; await chrome.storage.local.remove(key);
-    surveyEditor.bundle = null; surveyEditor.archives = {}; state.mode = null; state.editingId = null; state.baseline = null;
+    surveyEditor.bundle = null; surveyEditor.archives = {}; surveyEditor.buildingFlyers = {}; state.mode = null; state.editingId = null; state.baseline = null;
     delete button.dataset.armed; button.textContent = 'Clear saved drafts for current survey'; hideError($('draftClearError')); toast('Local drafts cleared for this survey.');
   } catch (error) { showError($('draftClearError'),'Drafts could not be cleared: ' + error.message); }
 });
@@ -1227,6 +1231,7 @@ async function handleSurveySaveResult(res) {
 }
 async function save() {
   if (surveyEditor.saving || surveyEditor.pending || !activeSurveyDraft() || state.pendingDup) return;
+  if (surveyEditor.flyerUploads) return showError($('formError'),'Wait for the flyer upload to finish before saving.');
   if (!state.propsLookupOk) return showError($('formError'),'Survey lookup failed. Refresh the survey before saving.');
   const results = surveyEditor.bundle.drafts.map(d => {
     const result = SurveyFields.serializeDraft(d.model);
@@ -1326,6 +1331,10 @@ function recordSurveyInput(col,id,type) {
   if (type === 'bool') node.indeterminate = false;
   if (sameVal(value,d.model.values[col] ?? '')) return;
   d.model.values[col] = value;
+  if (col === 'flyer_url') {
+    d.flyerRevision = (d.flyerRevision || 0) + 1; delete d.flyerInherited;
+    if (!value) d.flyerMode = 'space';
+  }
   if (col === 'lease_type' && value === 'NNN' && d.model.rentSupported && d.model.rentDraft?.expenses) {
     d.model.rentDraft = SurveyRent.changeExpenseTreatment(d.model.rentDraft, 'additional');
     delete d.expenseTreatmentEdited;
@@ -1334,7 +1343,7 @@ function recordSurveyInput(col,id,type) {
     for (const sibling of surveyEditor.bundle.drafts) if (sibling !== d) sibling.model.values[col] = value;
   }
   if (SURVEY_CHOICE_OPTIONS[id]) surveyChoice(id,value);
-  updateBlockVisibility(); renderSurveyRent(); renderSurveyDraftTabs(); queueSurveyDraft();
+  updateBlockVisibility(); renderSurveyRent(); renderSurveyDraftTabs(); renderSurveyFlyer(); queueSurveyDraft();
 }
 for (const [col,[id,type]] of Object.entries(FIELDS)) {
   if (SURVEY_RENT_INPUTS[id] || id === 'fTotalLeaseRate') continue;
@@ -1388,26 +1397,104 @@ $('screen-form').querySelectorAll('[data-adopt-rent],[data-adopt-expenses]').for
 }));
 
 // Attach the open CoStar flyer PDF → upload to survey-files → fill Flyer URL.
+function renderSurveyFlyer() {
+  const draft = activeSurveyDraft(); if (!draft) return;
+  if (!surveyEditor.pending && !surveyEditor.saving) SurveyFlyers.inherit(draft,surveyEditor.buildingFlyers);
+  const id = SurveyFlyers.identity(draft), mode = SurveyFlyers.mode(draft,surveyEditor.buildingFlyers);
+  const url = draft.model.values.flyer_url, valid = SurveyFlyers.usableUrl(url);
+  if (document.activeElement !== $('fFlyerUrl')) $('fFlyerUrl').value = url || '';
+  $('fFlyerScope').value = id ? mode : 'space';
+  $('fFlyerScope').querySelector('[value="building"]').disabled = !id;
+  $('fFlyerScope').disabled = Boolean(surveyEditor.pending || surveyEditor.saving || !id);
+  $('currentFlyerLink').classList.toggle('hidden',!valid);
+  if (valid) $('currentFlyerLink').href = url; else $('currentFlyerLink').removeAttribute('href');
+  $('btnRemoveFlyer').classList.toggle('hidden',!url);
+  $('flyerScopeHint').textContent = id && mode === 'building' ? 'Attach once. New spaces here reuse this flyer.' : 'Flyer applies to this space only.';
+  const choices = SurveyFlyers.candidates(draft,state.props);
+  const shared = id && surveyEditor.buildingFlyers[id.key];
+  if (SurveyFlyers.usableUrl(shared?.url) && !choices.some(x=>x.url===shared.url)) choices.unshift({url:shared.url,label:'Saved building flyer'});
+  $('reuseFlyerRow').classList.toggle('hidden', Boolean(url) || !choices.length);
+  $('fSavedFlyer').innerHTML = choices.map((x,i)=>`<option value="${i}">${esc(x.label)}</option>`).join('');
+  $('fSavedFlyer')._choices = choices;
+  $('btnForgetBuildingFlyer').classList.toggle('hidden', !shared);
+  $('btnAttachFlyer').textContent = url ? 'Replace with open CoStar flyer (PDF)' : 'Attach open CoStar flyer (PDF)';
+  $('screen-form').style.paddingBottom = (document.querySelector('.survey-footer').offsetHeight + 18) + 'px';
+}
+function setSurveyFlyer(url, name) {
+  const draft = activeSurveyDraft(); if (!draft || surveyEditor.pending || surveyEditor.saving) return;
+  draft.flyerRevision = (draft.flyerRevision || 0) + 1;
+  draft.model.values.flyer_url = url; delete draft.flyerInherited;
+  draft.flyerMode = $('fFlyerScope').value;
+  if (draft.flyerMode === 'building') SurveyFlyers.remember(draft,surveyEditor.buildingFlyers,url,name);
+  renderSurveyFlyer(); surveyDetailsIndicators(); queueSurveyDraft();
+}
+$('fFlyerScope').addEventListener('change',()=>{
+  const d = activeSurveyDraft(); if (!d || surveyEditor.pending || surveyEditor.saving) return;
+  d.flyerRevision = (d.flyerRevision || 0) + 1; d.flyerMode = $('fFlyerScope').value;
+  delete d.flyerInherited;
+  if (d.flyerMode === 'building' && d.model.values.flyer_url) SurveyFlyers.remember(d,surveyEditor.buildingFlyers,d.model.values.flyer_url);
+  renderSurveyFlyer(); queueSurveyDraft();
+});
+$('btnReuseFlyer').addEventListener('click',()=>{
+  const choice = $('fSavedFlyer')._choices?.[Number($('fSavedFlyer').value)];
+  if (choice) setSurveyFlyer(choice.url,choice.label);
+});
+$('btnRemoveFlyer').addEventListener('click',()=>{
+  const d = activeSurveyDraft(); if (!d || surveyEditor.pending || surveyEditor.saving) return;
+  d.flyerMode = 'space'; d.flyerRevision = (d.flyerRevision || 0) + 1;
+  delete d.flyerInherited; d.model.values.flyer_url = null;
+  renderSurveyFlyer(); queueSurveyDraft();
+});
+$('btnForgetBuildingFlyer').addEventListener('click',()=>{
+  const d = activeSurveyDraft(), id = SurveyFlyers.identity(d);
+  if (!id || surveyEditor.pending || surveyEditor.saving) return;
+  delete surveyEditor.buildingFlyers[id.key]; d.flyerMode = 'space'; delete d.flyerInherited;
+  d.flyerRevision = (d.flyerRevision || 0) + 1;
+  renderSurveyFlyer(); queueSurveyDraft(); toast('Building flyer reuse stopped. Existing attachments are kept.');
+});
+$('fFlyerUrl').addEventListener('blur',()=>{
+  const d = activeSurveyDraft(); if (!d || surveyEditor.pending || surveyEditor.saving) return;
+  if (SurveyFlyers.mode(d,surveyEditor.buildingFlyers) === 'building') SurveyFlyers.remember(d,surveyEditor.buildingFlyers,d.model.values.flyer_url);
+  renderSurveyFlyer(); queueSurveyDraft();
+});
+new ResizeObserver(()=>{
+  $('screen-form').style.paddingBottom = (document.querySelector('.survey-footer').offsetHeight + 18) + 'px';
+}).observe(document.querySelector('.survey-footer'));
 $("btnAttachFlyer").addEventListener("click", async () => {
   if (!state.survey) return showError($("formError"), "Pick a survey first.");
-  const btn = $("btnAttachFlyer");
-  const target = activeSurveyDraft(), bundle = surveyEditor.bundle, workspaceKey = surveyDraftKey(), accountId = state.accountId, surveyId = state.survey.id;
-  hideError($("formError"));
-  setLoading(btn, true);
-  const res = await bg("ATTACH_FLYER", { surveyId }, { write: true });
-  setLoading(btn, false);
-  if (handleAuthFailure(res)) return;
-  if (!res.ok) return showError($("formError"), res.error);
-  target.model.values.flyer_url = res.url;
-  if (accountId === state.accountId && surveyId === state.survey?.id) {
-    surveyEditor.archives[bundle.key] = structuredClone(bundle);
-    if (activeSurveyDraft()?.id === target.id) { $("fFlyerUrl").value = res.url; surveyDetailsIndicators(); }
-    await persistSurveyDraft();
-  } else {
-    const stored = (await chrome.storage.local.get(workspaceKey))[workspaceKey] || {version:1,bundles:{}};
-    stored.bundles[bundle.key] = structuredClone(bundle); await chrome.storage.local.set({[workspaceKey]:stored});
+  if (surveyEditor.pending || surveyEditor.saving || surveyEditor.flyerUploads) return;
+  const btn = $("btnAttachFlyer"), target = activeSurveyDraft(); if (!target) return;
+  const bundle = surveyEditor.bundle, workspaceKey = surveyDraftKey(), accountId = state.accountId, surveyId = state.survey.id;
+  const id = SurveyFlyers.identity(target), address = SurveyFlyers.addressKey(target.model.values);
+  const mode = $('fFlyerScope').value, revision = target.flyerRevision || 0;
+  hideError($("formError")); surveyEditor.flyerUploads++; setLoading(btn,true); syncSurveyLock();
+  try {
+    const res = await bg("ATTACH_FLYER", { surveyId }, { write: true });
+    if (handleAuthFailure(res)) return;
+    if (!res.ok) return showError($("formError"), res.error);
+    if ((target.flyerRevision || 0) !== revision || SurveyFlyers.addressKey(target.model.values) !== address || SurveyFlyers.identity(target)?.key !== id?.key) {
+      toast('Flyer uploaded; your newer attachment choice was kept.'); return;
+    }
+    target.model.values.flyer_url = res.url; target.flyerMode = mode;
+    const sameWorkspace = accountId === state.accountId && surveyId === state.survey?.id;
+    if (sameWorkspace) {
+      if (mode === 'building') SurveyFlyers.remember(target,surveyEditor.buildingFlyers,res.url,res.name);
+      surveyEditor.archives[bundle.key] = structuredClone(bundle);
+      // A same-building sibling may have been opened during the upload.
+      if (activeSurveyDraft()) renderSurveyFlyer();
+      await persistSurveyDraft();
+    } else {
+      const stored = (await chrome.storage.local.get(workspaceKey))[workspaceKey] || {version:1,bundles:{}};
+      stored.buildingFlyers ||= {};
+      if (mode === 'building') SurveyFlyers.remember(target,stored.buildingFlyers,res.url,res.name);
+      stored.bundles[bundle.key] = structuredClone(bundle); await chrome.storage.local.set({[workspaceKey]:stored});
+    }
+    toast(`Flyer attached: <strong>${esc(res.name)}</strong> — remember to Save`);
+  } catch (error) {
+    showError($('formError'),'Flyer could not be saved to the draft: ' + error.message);
+  } finally {
+    surveyEditor.flyerUploads--; setLoading(btn,false); syncSurveyLock(); renderSurveyFlyer();
   }
-  toast(`Flyer attached: <strong>${esc(res.name)}</strong> — remember to Save`);
 });
 
 // ─── Survey browser ────────────────────────────────────────────────────────────

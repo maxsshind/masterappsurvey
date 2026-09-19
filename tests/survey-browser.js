@@ -18,7 +18,7 @@ async (page) => {
       if(m.type==='GET_SURVEY') return respond({ok:true,survey:{id:m.id,name:'Disposable Survey',survey_type:'lease_and_sale'}});
       if(m.type==='LIST_SURVEYS')return respond({ok:true,surveys:[{id:SURVEY,name:'Disposable Survey',survey_type:'lease_and_sale'}]});
       if(m.type==='LIST_SURVEY_PROPERTIES')return respond(fixture.lookupFail?{ok:false,error:'Lookup failed'}:{ok:true,properties:structuredClone(fixture.rows)});
-      if(m.type==='ATTACH_FLYER'){setTimeout(()=>respond({ok:true,url:'https://fixture.invalid/one.pdf',name:'Fixture flyer'}),100);return;}
+      if(m.type==='ATTACH_FLYER'){const url=fixture.flyerUrl||'https://fixture.invalid/one.pdf';setTimeout(()=>respond(fixture.flyerFail?{ok:false,error:'Fixture upload failed'}:{ok:true,url,name:'Fixture flyer'}),fixture.flyerDelay||100);return;}
       if(m.type==='AUTH_SIGN_OUT')return respond({ok:true});
       if(m.type==='READ_COSTAR')return respond({ok:true,data:structuredClone(fixture.scrape)});
       if(m.type==='GET_SURVEY_PENDING')return respond({ok:true,pending:fixture.pending});
@@ -197,7 +197,7 @@ async (page) => {
     await p.locator('#btnReviewLatest').click();assert.equal(await value('fNotes'),'Changed in web app');assert.ok(await p.evaluate(()=>Object.values(surveyEditor.archives).some(b=>b.key.startsWith('conflict:')&&b.drafts[0].model.values.notes==='Local proposed note')));
     results.push('Stale update locks and exposes current saved row for fresh review, retaining the old edited draft');
 
-    await fresh({tenancy:'MT',building_sf:40000,suite_number:'One',suite_size:'1000'});await p.locator('#btnAttachFlyer').click();await p.locator('#btnAddSpace').click();await p.waitForFunction(()=>surveyEditor.bundle.drafts[0].model.values.flyer_url);
+    await fresh({tenancy:'MT',building_sf:40000,suite_number:'One',suite_size:'1000'});await p.locator('#fFlyerScope').selectOption('space');await p.locator('#btnAttachFlyer').click();await p.locator('#btnAddSpace').click();await p.waitForFunction(()=>surveyEditor.bundle.drafts[0].model.values.flyer_url);
     assert.equal(await value('fFlyerUrl'),'');assert.equal(await p.evaluate(()=>surveyEditor.bundle.drafts[0].model.values.flyer_url),'https://fixture.invalid/one.pdf');
     results.push('Delayed flyer attaches to its original suite even after switching to a sibling');
 
@@ -309,6 +309,58 @@ async (page) => {
     await p.locator('#btnAddSpace').click();assert.equal(await value('fSuiteNumber'),'');assert.equal(await value('fSuiteSize'),'');assert.equal(await value('fMonthlyBase'),'');assert.equal(await value('fBuildingSf'),'31,600');
     assert.equal(await p.evaluate(()=>surveyEditor.bundle.drafts.length),2);await p.locator('#spaceDrafts [data-draft="0"]').click();assert.equal(await value('fSuiteSize'),'1,000–2,000 SF');
     results.push('Add captured divisible space preserves its range without inventing proposed area or rent; separate Blank space remains manual and preserves the captured sibling');
+
+    // Building flyer is chosen once; each subsequent offering saves the same URL.
+    const flyerBuilding={address:'500 Flyer Way',city:'Tempe',state:'AZ',tenancy:'MT',building_sf:10000,suite_size:'1000',internal_notes:'CoStar ID: 555555'};
+    await p.evaluate(()=>{surveyEditor.buildingFlyers={};fixture.rows=[];state.props=[];fixture.flyerUrl='https://fixture.invalid/building.pdf';});
+    await fresh({...flyerBuilding,suite_number:'1'});const attachCount=await p.evaluate(()=>fixture.requests.filter(r=>r.type==='ATTACH_FLYER').length);
+    assert.equal(await value('fFlyerScope'),'building');await p.locator('#btnAttachFlyer').click();assert.equal(await p.locator('#btnSave').isDisabled(),true);
+    await p.waitForFunction(()=>!surveyEditor.flyerUploads);assert.equal(await value('fFlyerUrl'),'https://fixture.invalid/building.pdf');
+    await p.locator('#btnAddSpace').click();assert.equal(await value('fFlyerUrl'),'https://fixture.invalid/building.pdf');await fill('fSuiteNumber','2');await fill('fSuiteSize','1200');
+    await p.locator('#btnSave').click();await p.waitForFunction(()=>!surveyEditor.saving&&!surveyEditor.pending);
+    assert.equal(await p.evaluate(()=>fixture.rows.length),2);assert.equal(await p.evaluate(()=>fixture.rows.every(r=>r.flyer_url==='https://fixture.invalid/building.pdf')),true);
+    await p.reload();await p.waitForFunction(()=>state.survey?.id);assert.equal(await value('fFlyerUrl'),'https://fixture.invalid/building.pdf');
+    await p.evaluate(()=>{fixture.scrape={costarId:'555555',street:'500 Flyer Way',city:'Tempe',state:'AZ',rba:'10000',selectedSpace:{scope:'space-details',identity:'third-space',suite:'3',availableSf:'1500',canPrefill:false}};});
+    await p.locator('#btnRefresh').click();await p.locator('#spaceCandidates [data-add="0"]').click();assert.equal(await value('fFlyerUrl'),'https://fixture.invalid/building.pdf');
+    await p.locator('#btnSave').click();await p.waitForFunction(()=>!surveyEditor.saving&&!surveyEditor.pending);assert.equal(await p.evaluate(()=>fixture.rows[2].flyer_url),'https://fixture.invalid/building.pdf');
+    assert.equal(await p.evaluate(()=>fixture.requests.filter(r=>r.type==='ATTACH_FLYER').length),attachCount+1);
+    results.push('One building PDF upload supplies manual and freshly captured next suites; each saved row retains URL after reload without reuploading');
+
+    await fresh({...flyerBuilding,suite_number:'Special'});await p.locator('#fFlyerScope').selectOption('space');await p.evaluate(()=>fixture.flyerUrl='https://fixture.invalid/special.pdf');
+    await p.locator('#btnAttachFlyer').click();await p.waitForFunction(()=>!surveyEditor.flyerUploads);assert.equal(await value('fFlyerUrl'),'https://fixture.invalid/special.pdf');
+    await p.locator('#btnAddSpace').click();assert.equal(await value('fFlyerUrl'),'https://fixture.invalid/building.pdf');
+    await p.locator('#spaceDrafts [data-draft="0"]').click();assert.equal(await value('fFlyerUrl'),'https://fixture.invalid/special.pdf');
+    await p.locator('#btnRemoveFlyer').click();assert.equal(await value('fFlyerUrl'),'');await p.reload();await p.waitForFunction(()=>state.survey?.id);assert.equal(await value('fFlyerUrl'),'');
+    await p.locator('#fFlyerScope').selectOption('building');assert.equal(await value('fFlyerUrl'),'https://fixture.invalid/building.pdf');
+    results.push('Suite-specific replacement and removal survive sibling switch/reload without altering building default; choosing Building flyer restores reuse');
+
+    await p.evaluate(()=>surveyEditor.buildingFlyers={});await fresh({...flyerBuilding,suite_number:'4'});
+    assert.equal(await p.locator('#reuseFlyerRow').isVisible(),true);const reuseUploads=await p.evaluate(()=>fixture.requests.filter(r=>r.type==='ATTACH_FLYER').length);
+    await p.locator('#btnReuseFlyer').click();assert.equal(await value('fFlyerUrl'),'https://fixture.invalid/building.pdf');
+    assert.equal(await p.evaluate(()=>fixture.requests.filter(r=>r.type==='ATTACH_FLYER').length),reuseUploads);
+    await p.locator('[data-sec="flyer"] > summary').click();await p.locator('#btnForgetBuildingFlyer').click();await p.locator('#btnAddSpace').click();assert.equal(await value('fFlyerUrl'),'');
+    assert.equal(await p.evaluate(()=>fixture.rows.every(r=>r.flyer_url==='https://fixture.invalid/building.pdf')),true);
+    results.push('Reuse a saved same-building flyer without opening its PDF or uploading; Stop reusing affects future defaults and leaves saved attachments intact');
+
+    await fresh({...flyerBuilding,address:'600 Delayed Way',suite_number:'A'});await p.evaluate(()=>{fixture.flyerDelay=600;fixture.flyerUrl='https://fixture.invalid/delayed.pdf';});
+    const delayedKey=await p.evaluate(()=>surveyEditor.bundle.key);await p.locator('#btnAttachFlyer').click();await fresh({...flyerBuilding,address:'700 Other Way',suite_number:'B'});
+    await p.waitForFunction(()=>!surveyEditor.flyerUploads);assert.equal(await value('fFlyerUrl'),'');assert.equal(await p.evaluate(key=>surveyEditor.archives[key].drafts[0].model.values.flyer_url,delayedKey),'https://fixture.invalid/delayed.pdf');
+    await fresh({...flyerBuilding,address:'600 Delayed Way',suite_number:'C'});assert.equal(await value('fFlyerUrl'),'https://fixture.invalid/delayed.pdf');
+    results.push('Delayed building upload stays with originating building while another is visible; new sibling reuses correct completed link');
+
+    await fresh({...flyerBuilding,address:'800 Reviewed Way',suite_number:'D'});if(!(await p.locator('#fFlyerUrl').isVisible()))await p.locator('[data-sec="flyer"] > summary').click();await p.locator('#btnAttachFlyer').click();
+    await p.locator('#fFlyerScope').selectOption('space');await fill('fFlyerUrl','https://fixture.invalid/manual.pdf');await p.waitForFunction(()=>!surveyEditor.flyerUploads);
+    assert.equal(await value('fFlyerUrl'),'https://fixture.invalid/manual.pdf');
+    await p.evaluate(()=>{fixture.flyerFail=true;fixture.flyerDelay=20;});await p.locator('#btnAttachFlyer').click();await p.waitForFunction(()=>!surveyEditor.flyerUploads);assert.equal(await value('fFlyerUrl'),'https://fixture.invalid/manual.pdf');assert.ok((await p.locator('#formError').innerText()).includes('Fixture upload failed'));
+    await p.evaluate(()=>fixture.flyerFail=false);
+    results.push('Newer manual attachment choice beats an in-flight upload; upload failure preserves existing flyer and unlocks Save');
+
+    await fresh({...flyerBuilding,address:'600 Delayed Way',suite_number:'Next'});assert.equal(await value('fFlyerUrl'),'https://fixture.invalid/delayed.pdf');
+    await p.evaluate(()=>{fixture.flyerDelay=600;fixture.flyerUrl='https://fixture.invalid/scope.pdf';});await p.locator('#btnAttachFlyer').click();const oldFlyerKey=await p.evaluate(()=>surveyDraftKey());
+    await p.evaluate(async()=>{await selectSurvey({id:'10000000-0000-4000-8000-000000000009',survey_type:'lease_and_sale',name:'Other survey'},{silent:true});});
+    await fresh({...flyerBuilding,address:'600 Delayed Way',suite_number:'Next'});await p.waitForFunction(()=>!surveyEditor.flyerUploads);assert.equal(await value('fFlyerUrl'),'');assert.equal(await p.evaluate(key=>Object.values(fixture.storage[key].buildingFlyers).some(x=>x.url==='https://fixture.invalid/scope.pdf'),oldFlyerKey),true);
+    await p.evaluate(async()=>{fixture.accountId='20000000-0000-4000-8000-000000000003';await onAuthed();});assert.equal(await p.evaluate(()=>Object.keys(surveyEditor.buildingFlyers).length),0);
+    results.push('Building flyer defaults are isolated by survey and signed-in account');
 
     for(const [width,height] of [[320,740],[390,844],[560,900]]){
       await p.setViewportSize({width,height});await fresh({tenancy:'ST',building_sf:10000});await p.evaluate(()=>window.scrollTo(0,0));
