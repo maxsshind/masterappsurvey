@@ -2892,7 +2892,20 @@ function initCompMode() {
   });
   ["comp_ptypes", "comp_sale_types"].forEach((containerId) => {
     const node = $(containerId);
-    if (node) node.addEventListener("change", () => { if (containerId === 'comp_ptypes') comp.propertyTypeEdited = true; syncCompReviewState(); });
+    if (node) node.addEventListener("change", (event) => {
+      if (containerId === 'comp_ptypes') {
+        comp.propertyTypeEdited = true;
+        // A deliberate ISF/IOS selection defaults the offer to including yard.
+        // Hydration, deselection and later manual yard overrides stay untouched.
+        if (event.target.checked && ['ISF', 'IOS'].includes(event.target.value)) {
+          const yard = $("comp_yard_included");
+          yard.value = "true";
+          comp.yardEdited = true;
+          setCompFieldSource("comp_yard_included", "Edited");
+        }
+      }
+      syncCompReviewState();
+    });
   });
   const IMPORT_TOGGLES = { compIncludeHighlights: "highlights", compIncludeSaleNotes: "notes" };
   Object.entries(IMPORT_TOGGLES).forEach(([id, which]) => {

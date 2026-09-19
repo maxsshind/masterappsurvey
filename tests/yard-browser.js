@@ -88,6 +88,37 @@ async (page) => {
       }
       await p.screenshot({ path: '/tmp/masterappsurvey-yard-default.png', fullPage: true });
       const saves = () => p.evaluate(() => fixture.requests.filter((r) => r.type === 'SAVE_COMP'));
+      for (const type of ['ISF', 'IOS']) {
+        await p.evaluate(async () => { resetCompForm(); await fillCompForm(fixture.scrape); });
+        const typeInput = p.locator(`#comp_ptypes label[title="${type}"]`);
+        await typeInput.click();
+        assert.equal(await yard.inputValue(), "true", `${type} selects Yard included`);
+        assert.equal(await yard.inputValue(), 'true');
+        assert.equal(await yard.locator("option:checked").textContent(), "Yes");
+        await p.locator('#compSave').click();
+        await p.waitForFunction(() => document.getElementById('compMsg').textContent.includes('Comp saved'));
+        assert.equal((await saves()).at(-1).request.p_comp.yard_included, true);
+        await chooseYard('false');
+        await typeInput.click();
+        assert.equal(await yard.inputValue(), 'false', 'Deselection preserves manual No');
+        await typeInput.click();
+        assert.equal(await yard.inputValue(), 'true', 'Selecting again applies the default');
+        await chooseYard('');
+        await p.locator('#comp_ptypes label[title="Class A"]').click();
+        assert.equal(await yard.inputValue(), '', 'Other type selection preserves manual Unknown');
+        await typeInput.click();
+        assert.equal(await yard.inputValue(), '', 'Removing type preserves Unknown');
+        await typeInput.click();
+        await typeInput.click();
+        assert.equal(await yard.inputValue(), 'true', 'Removing type does not erase Yes');
+      }
+      results.push('ISF and IOS select and save Yard included; manual overrides and deselection remain intact');
+      await p.evaluate(() => enterCompUpdate({ property_id: 'fixture-property', id: 'fixture-yard-type', address: fixture.scrape.street, property_type: 'ISF', yard_included: false }));
+      assert.equal(await yard.inputValue(), 'false', 'Loading saved ISF retains No');
+      await p.locator('#comp_ptypes label[title="IOS"]').click();
+      assert.equal(await p.evaluate(() => compUpdatePatch(compFormRecord()).yard_included), true, 'Type selection is included in existing-comp patch');
+      results.push('Saved ISF keeps its yard answer on load; deliberate IOS selection patches true');
+
       for (const [choice, value] of [['true', true], ['false', false], ['', null]]) {
         await p.evaluate(async () => { resetCompForm(); await fillCompForm(fixture.scrape); });
         await chooseYard(choice);
