@@ -66,7 +66,12 @@ async (page) => {
       const yard = p.getByLabel('Yard included', { exact: true });
       assert.equal(await yard.isVisible(), true, 'Yard visible in default and legacy custom layouts');
       assert.equal(await yard.inputValue(), '', 'New listing defaults Unknown');
-      assert.deepEqual(await yard.locator('option').allTextContents(), ['Unknown', 'Yes', 'No']);
+      assert.equal(await yard.getAttribute('type'),'checkbox');
+      assert.equal(await yard.evaluate(n=>n.indeterminate),true);
+      const chooseYard = async choice => {
+        if (!choice) await p.locator('[data-clear-comp-feature="yard_included"]').click();
+        else { await yard.check(); if(choice==='false') await yard.uncheck(); }
+      };
       if (prefs) {
         assert.deepEqual(await p.evaluate(() => fixture.storage.layout_prefs.comp), prefs.comp, 'Comp preferences unchanged');
         assert.equal(await p.evaluate(() => fixture.storage.layout_prefs.density), prefs.density, 'Density unchanged');
@@ -85,7 +90,7 @@ async (page) => {
       const saves = () => p.evaluate(() => fixture.requests.filter((r) => r.type === 'SAVE_COMP'));
       for (const [choice, value] of [['true', true], ['false', false], ['', null]]) {
         await p.evaluate(async () => { resetCompForm(); await fillCompForm(fixture.scrape); });
-        await yard.selectOption(choice);
+        await chooseYard(choice);
         await p.locator('#compSave').click();
         await p.waitForFunction(() => document.getElementById('compMsg').textContent.includes('Comp saved'));
         const request = (await saves()).at(-1);
@@ -113,7 +118,7 @@ async (page) => {
       results.push('Existing Yes/No/Unknown hydrate; unchanged refresh omits yard update');
 
       await p.evaluate(() => enterCompUpdate({ property_id: 'fixture-property', id: 'fixture-other', address: fixture.scrape.street, yard_included: true }));
-      await yard.selectOption('');
+      await chooseYard('');
       assert.ok((await p.locator('#compModeNote').innerText()).includes('yard included'));
       await p.evaluate(() => { fixture.candidates = [{ property_id: 'fixture-property', id: 'fixture-other', address: fixture.scrape.street, yard_included: true }]; });
       await p.locator('#compRescan').click();
@@ -132,7 +137,7 @@ async (page) => {
 
       // A manually selected No must survive a refresh and the first duplicate decision.
       await p.evaluate(() => resetCompForm());
-      await yard.selectOption('false');
+      await chooseYard('false');
       await p.evaluate(async () => {
         fixture.scrape.yard_area = true;
         fixture.scrape.yard_included = true; // Untrusted scrape field must not infer this offer's yard answer.
@@ -144,7 +149,7 @@ async (page) => {
       await p.evaluate(() => enterCompUpdate({ property_id: 'fixture-property', id: 'fixture-different-row', address: fixture.scrape.street, yard_included: null }));
       assert.equal(await yard.inputValue(), '', 'Switching DB records loads its own answer');
       assert.equal(await p.evaluate(() => comp.yardEdited), false);
-      await yard.selectOption('true');
+      await chooseYard('true');
       await p.evaluate(async () => {
         fixture.scrape = { ...fixture.scrape, costarId: 'fixture-b', street: '200 Fixture Way' };
         fixture.candidates = [];
@@ -155,14 +160,14 @@ async (page) => {
       results.push('Manual No preserved; different comp/listing resets; no acreage/class/survey yard inference');
 
       // Yard remains movable in the existing layout editor, with value and handlers intact.
-      await yard.selectOption('false');
+      await chooseYard('false');
       await p.evaluate(() => Layout.enterEdit('comp'));
       await p.locator('label[for="comp_yard_included"]').click();
       await p.locator('#lbMoveTo').selectOption('property');
       assert.equal(await yard.evaluate((node) => node.closest('[data-sec]').dataset.sec), 'property');
       await p.locator('#lbDone').click();
       await p.evaluate(() => showScreen('comp'));
-      await yard.selectOption('true');
+      await chooseYard('true');
       assert.equal(await p.evaluate(() => compFormRecord().yard_included), true);
       assert.equal(await p.evaluate(() => comp.yardEdited), true);
       results.push('Layout move preserves selector ID, value, and edit listener');

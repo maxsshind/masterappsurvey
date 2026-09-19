@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.4.7 local candidate — 2026-09-18 — Property controls and source capture
+
+- Yard is a native Yes/No/Unknown checkbox with the other four feature controls.
+  Features sit beside Property type on wide panels and stack below it on narrow
+  panels. Saved layout section/field IDs, moves, hidden states and drafts survive.
+- Power keeps entered specifications as text (up to4,000characters), independently
+  of Heavy power. Saves, lookup/readback, deliberate clears and pop-outs preserve it.
+- Blank untouched available lease SF defaults from Building SF only for lease
+  offerings without a selected suite and without either Multi-tenant or Portion
+  of site set to Yes. Its badge identifies the building default. Only that automatic
+  value follows building edits/toggles. Captured suite sizes, saved values, entered
+  values and deliberate blanks are preserved; unrelated updates omit lease area.
+- Building Location=Urban no longer ends fact capture early. Sale Highlights supply
+  advertised office SF when no selected suite is open. CoStar Property Mix is
+  completely excluded per Max's rule. The University fixture captures10,000officeSF,
+  17ftclearheight and600Apower; the6,285PropertyMixallocation is never used or warned
+  about. Ranges/invalid advertisedoffice stay unresolved. Suite scope stays isolated.
+- Includes previous suite switching, building flyer reuse, asking-price capture
+  and free-text clear-height ranges. PDF analysis is a separately owned follow-up.
+
+Verified237unit/transport tests,74mounted scenarios,6actualpop-outs,12MV3suite/flyer
+and8MV3property groups. The final extracted16-file package passes237units,8property,
+5Sales andMV3smoke; all files match tested source andZIP. Disposable fixtures only,
+zero external requests or business-record writes. Layout checked320/390/560/720px.
+This is a LOCAL package, not a Store submission or verified installed release.
+Read-only Chrome files showed1.4.5 at packaging; installed files/storage untouched.
+
+
 ## 1.4.6 local candidate — 2026-09-18 — Clear-height ranges and text
 
 - Clear height accepts reviewed ranges and descriptions such as `22-24'`, retaining

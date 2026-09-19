@@ -1,5 +1,21 @@
 # Chrome Web Store — CoStar → Survey Pusher
 
+## Current local candidate1.4.7
+
+ZIP: `/Users/maxschumacher/Developer/chrome extensions/Master App Survey/masterappsurvey-v1.4.7.zip`
+Extracted: `/Users/maxschumacher/Developer/chrome extensions/Master App Survey/output/review/space-extension-1.4.7`
+SHA256: `0d9d7d30e8ec1894d5bddc3be209a4ab47cfa58dd8167bd02a796a7c2b091f28`
+109,957bytes;16runtime/iconfiles match source,ZIPandfolder. SeeCHANGELOG for checks.
+
+Fresh read-only Chrome files: version1.4.5, ID`oigefkpjdbpbablcmnejkoaclonnhggp`,
+path`/Users/maxschumacher/Library/Application Support/Google/Chrome/Default/UnpackedExtensions/masterappsurvey-v1.4.5_klToDY`.
+These supersede older1.4.4observations. Installed capture/drafts were not touched.
+After Max saves/cancels any active edit, reverify the ID/path, back up runtime,
+copy verified candidate runtime files into that SAME installed folder and Reload
+that SAME extensioncard. Reload alone does not replace files. Do not Remove or
+Load unpacked as a new identity when preserving drafts. No Store upload occurred.
+
+
 Last updated: 2026-09-18
 
 ## 1.4.6 local candidate — 2026-09-18 — Clear-height ranges and text

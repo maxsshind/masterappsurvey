@@ -1,3 +1,34 @@
+# 1.4.7 completed local package — 2026-09-18 21:36 MST
+
+Owner/root, Codex isolatedworktree`/Users/maxschumacher/.codex/worktrees/survey-property-fields-20260918`,
+branch`codex/survey-property-fields-20260918`, based9fa71b8. User followups read from
+coordinating task01a0b7bd-bc4b-7041-8e52-e32965450063; that owner ownsapp/schema/SF/geocode.
+
+Implemented and verified: Yard grouped with features besidePropertytype540px+,
+stackednarrow; Power nullabletextmax4000 independentHeavyPower; protected/provenance-
+tracked leaseSFbuildingdefault; advertisedofficecapture and completePropertyMix
+exclusion; BuildingLocation=Urban prematureboundaryfixed.237units,74mounted,
+6actualpopouts,12suite/flyerMV3,8propertyMV3 pass. Extracted finalpackage237units,
+8propertygroups,5Salesgroups,MV3smoke pass. Source/ZIP/extracted16fileparityverified.
+Evidenceoutput/review/features-*; screenshotfeatures-320/390/560/720.png.
+No external requests or real-record writes in tests. Live power nullabletext and
+HeavyPower bool schema independently queried; noour schema/data/pinwrites.
+
+Deliveredcanonical`/Users/maxschumacher/Developer/chrome extensions/Master App Survey/masterappsurvey-v1.4.7.zip`
+and`output/review/space-extension-1.4.7`;109,957bytes;SHA256
+`0d9d7d30e8ec1894d5bddc3be209a4ab47cfa58dd8167bd02a796a7c2b091f28`.
+Freshreadonly installedfiles show1.4.5IDoigefkpjdbpbablcmnejkoaclonnhggp,
+Default/UnpackedExtensions/masterappsurvey-v1.4.5_klToDY. No installedreplace/reload
+orStore submission. Preserveactivecapture. InstructionsinCHROMEWEBSTORE.md.
+
+Next: sendfinalcodecommit to flyer task01a0b7db-a7e9-7651-8554-e51208268673 forits
+1.4.8integration (PDFmodules/backend remainits responsibility). It hasleaseorigin
+integrationready. Existing SalesmonitoralreadyPAUSED. Extension-onlysharedcandidate
+reference/wiki updates stillpending thisturn under prior explicitauthorization;
+no productionopsentry forlocaluninstalledpackage. Appowner ownssharedapp/SFdocs.
+
+---
+
 # Clear-height ranges — completed local 1.4.6 — 2026-09-18 21:16 MST
 
 Max's direct follow-up in coordinated task `01a0b7bd-bc4b-7041-8e52-e32965450063`

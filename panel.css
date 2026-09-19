@@ -240,7 +240,7 @@ h2 { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: #8B1538; }
 
 /* Property type: even grid of pills — wraps to ~2 tidy rows, never crowded. */
 #comp_ptypes.chip-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 5px;
+  display: grid; grid-column:1 / -1; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 5px;
 }
 #comp_ptypes.chip-grid label {
   min-width: 0; justify-content: center; padding: 6px 4px; font-size: 11px;
@@ -611,3 +611,15 @@ body:has(#screen-form:not(.hidden)) #toast { bottom: 64px; }
 .flyer-values, .flyer-evidence { display: block; margin-top: 5px; font-size: 13px; white-space: pre-wrap; }
 .flyer-evidence { color: #686879; font-size: 12px; }
 #compFlyerWarnings { font-size: 12px; overflow-wrap: anywhere; margin-top: 10px; }
+[data-sec="yard"] .fieldset > .field-hint { grid-column:1 / -1; }
+/* Pair only adjacent, visible sections. Custom order/hidden preferences still win. */
+@media (min-width: 540px) {
+  #screen-comp:not(.hidden):has(> [data-sec="ptype"]:not(.u-hidden) + [data-sec="yard"]:not(.u-hidden)) {
+    display:grid; grid-template-columns:minmax(0, .85fr) minmax(0, 1.15fr); column-gap:12px; align-items:start;
+  }
+  #screen-comp > * { grid-column:1 / -1; min-width:0; }
+  #screen-comp > [data-sec="ptype"]:has(+ [data-sec="yard"]:not(.u-hidden)) { grid-column:1; }
+  #screen-comp > [data-sec="ptype"]:not(.u-hidden) + [data-sec="yard"] { grid-column:2; }
+  #screen-comp [data-sec="ptype"] .chip-grid { display:grid; grid-column:1 / -1; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  #screen-comp [data-sec="ptype"] .chip-grid label { width:auto; min-width:0; }
+}
