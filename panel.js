@@ -341,8 +341,9 @@ function restorePopoutComp() {
   if (comp.pendingSave) return;
   Object.assign(comp, popoutHandoff.comp);
   comp.propertyFieldsEdited ||= {};
+  if (comp.propertyFieldsEdited.clear_height_ft) comp.propertyFieldsEdited.clear_height = true;
   for (const field of popoutHandoff.compControls) {
-    const node = $(field.id); if (!node) continue;
+    const node = $(field.id === 'comp_clear_height_ft' ? 'comp_clear_height' : field.id); if (!node) continue;
     node.value = field.value; node.checked = field.checked;
   }
   for (const [container, values] of Object.entries(popoutHandoff.compChecks)) {
@@ -2115,9 +2116,9 @@ function compMissingFields() {
 function compChangedFieldLabels() {
   if (comp.mode !== "update" || !comp.baseline) return [];
   const patch = compUpdatePatch(compFormRecord());
-  return Object.keys(patch)
+  return [...new Set(Object.keys(patch)
     .filter((key) => key !== "last_verified_at")
-    .map((key) => COMP_FIELD_LABELS[key] || key.replaceAll("_", " "));
+    .map((key) => COMP_FIELD_LABELS[key] || key.replaceAll("_", " ")))];
 }
 
 function syncCompModeUI() {
@@ -2346,7 +2347,7 @@ function enterCompUpdate(candidate) {
     $('comp_ptypes').querySelectorAll('input').forEach(n=>{n.checked=types.includes(n.value);});
   }
   if (comp.updateId && !sameDeal) comp.propertyFieldsEdited = {};
-  for (const field of CompPropertyFields.fields) if (!comp.propertyFieldsEdited[field]) setCompPropertyValue(field,candidate[field],'Saved');
+  for (const field of CompPropertyFields.fields) if (!comp.propertyFieldsEdited[field]) setCompPropertyValue(field,CompPropertyFields.rowValue(candidate,field),'Saved');
   syncCompFeatureChecks();
   if (!sameDeal || comp.originalPropertyId === undefined || (Object.hasOwn(candidate, "property_id") && candidate.property_id !== comp.originalPropertyId)) {
     comp.requestId = null;
@@ -2447,11 +2448,15 @@ function compUpdatePatch(rec) {
   const base = comp.baseline || {};
   const skip = new Set(["last_verified_at", "flyer_url", "internal_deal", "source", "yard_included", "property_id", "suite", "partial_site_override", "multi_tenant"]);
   const patch = {};
-  skip.add('property_type');
+  skip.add('property_type'); skip.add('clear_height_ft');
   if (comp.propertyTypeEdited && Object.hasOwn(rec,'property_type') && (base.property_type ?? null) !== rec.property_type) patch.property_type = rec.property_type;
   for (const field of CompPropertyFields.fields) {
     skip.add(field);
-    if (comp.propertyFieldsEdited?.[field] && Object.hasOwn(rec,field) && (base[field] ?? null) !== rec[field]) patch[field] = rec[field];
+    if (field === 'clear_height') {
+      if (comp.propertyFieldsEdited?.[field] && Object.hasOwn(rec,field) && ((base[field] ?? null) !== rec[field] || (base.clear_height_ft ?? null) !== rec.clear_height_ft)) {
+        patch.clear_height = rec.clear_height; patch.clear_height_ft = rec.clear_height_ft;
+      }
+    } else if (comp.propertyFieldsEdited?.[field] && Object.hasOwn(rec,field) && (base[field] ?? null) !== rec[field]) patch[field] = rec[field];
   }
   for (const field of ["suite", "partial_site_override", "multi_tenant"]) {
     if (comp.siteFieldsEdited?.[field] && (base[field] ?? null) !== rec[field]) patch[field] = rec[field];
@@ -2593,7 +2598,9 @@ async function restorePendingCompSave() {
   comp.mode = pending.request.p_comp_id ? "update" : "insert";
   comp.updateId = pending.request.p_comp_id;
   const draft = pending.draft || {};
-  for (const [id, value] of Object.entries(draft.fields || {})) if ($(id)) $(id).value = value;
+  for (const [id, value] of Object.entries(draft.fields || {})) {
+    const node=$(id === 'comp_clear_height_ft' ? 'comp_clear_height' : id); if(node)node.value=value;
+  }
   for (const [container, values] of [["comp_ptypes", draft.propertyTypes], ["comp_sale_types", draft.saleTypes]]) {
     const choices = container === 'comp_ptypes' ? CompPropertyFields.normalizePropertyTypes(values) : values || [];
     $(container).querySelectorAll("input").forEach((input) => { input.checked = choices.includes(input.value); });
@@ -2602,6 +2609,7 @@ async function restorePendingCompSave() {
   for (const field of ["baseline", "originalPropertyId", "propertyMode", "propertyId", "yardEdited", "siteFieldsEdited", "propertyFieldsEdited", "costarId", "sourceUrl", "flyerUrl"]) {
     if (Object.hasOwn(draft, field)) comp[field] = draft[field];
   }
+  if (comp.propertyFieldsEdited?.clear_height_ft) comp.propertyFieldsEdited.clear_height = true;
   syncCompFeatureChecks();
   setCompSaveLocked(true);
   setCompMsg("A previous save has no confirmed response. Retry pending save to recover it without creating a duplicate.", true);
@@ -2684,7 +2692,7 @@ async function saveComp() {
     const field = id.slice(5);
     if (Object.hasOwn(saved, field) && $(id)) $(id).value = saved[field] == null ? "" : String(saved[field]);
   }
-  for (const field of CompPropertyFields.fields) if (Object.hasOwn(saved,field)) setCompPropertyValue(field,saved[field],'Saved');
+  for (const field of CompPropertyFields.fields) if (Object.hasOwn(saved,field) || (field==='clear_height' && Object.hasOwn(saved,'clear_height_ft'))) setCompPropertyValue(field,CompPropertyFields.rowValue(saved,field),'Saved');
   comp.propertyFieldsEdited = {}; syncCompFeatureChecks();
   comp.propertyTypeEdited = false;
   closeCompPropertyChoice();

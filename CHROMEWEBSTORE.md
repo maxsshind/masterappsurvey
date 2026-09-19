@@ -2,6 +2,25 @@
 
 Last updated: 2026-09-18
 
+## 1.4.6 local candidate — 2026-09-18 — Clear-height ranges and text
+
+- Clear height accepts reviewed ranges and descriptions such as `22-24'`, retaining
+  the entered wording in `comps.clear_height` (up to 200 characters, outer trim).
+  A single explicit feet value can also populate the legacy numeric field; ranges
+  and prose leave `clear_height_ft` null instead of inventing a scalar.
+- Editing a height sends the text/numeric pair together. Clearing clears both;
+  unrelated updates omit both. Older numeric records still display and pending
+  numeric-only saves retry their exact original request. Existing height-field
+  layout customizations and pop-out edits survive the new text control.
+- Includes all1.4.5 property fields and prior suite/shared-flyer/Sales fixes.
+  Uses the coordinated app's new nullable text column and paired save contract.
+  No new permissions or hosts. Installed1.4.4 active draft stays untouched.
+
+Verified locally: 228 unit/transport checks, 68 mounted scenarios including 12
+property-field scenarios, 6 actual pop-outs and 5 real MV3 property-capture groups.
+The range is exercised through source capture, manual entry, save, authoritative
+readback, uncertain-response reload and pop-out. No production test records.
+
 ## 1.4.5 local candidate — 2026-09-18 — Property fields
 
 - Comp adds clear height (decimal feet or feet/inches input), office SF, available
@@ -34,20 +53,20 @@ Installed Chrome was independently observed as 1.4.4, with an active unsaved fly
 change for 2434 S 10th St. Do not reload until that edit is saved or intentionally
 canceled. This is a local tested package, not installed or submitted to the Store.
 
-### Updating the existing unpacked copy to 1.4.5
+### Updating the existing unpacked copy to 1.4.6
 
 1. Save or intentionally cancel the active Comp edit first. The last read-only
    check showed an unsaved flyer for 2434 S 10th St; reloading now would lose it.
 2. Verify the current installation. The observed 1.4.4 ID was
    `pnoophcbdjbdnpknbidojhiiecfmghhj`, at
    `/Users/maxschumacher/Library/Application Support/Google/Chrome/Default/UnpackedExtensions/masterappsurvey-v1.4.4_W1NaYy`.
-   Back up that folder, then copy the verified 1.4.5 runtime files into this same
+   Back up that folder, then copy the verified 1.4.6 runtime files into this same
    folder. Keep the directory/extension ID and Chrome storage. Do not remove it.
 3. In `chrome://extensions/`, Reload that existing extension card. Confirm version
-   1.4.5, reopen the panel, and check the Comp Property details fields. No test save
+   1.4.6, reopen the panel, and check the Comp Property details fields. No test save
    is needed. An open old panel must reload before the new controls appear.
 
-This procedure is prepared, not executed. Reload by itself does not install 1.4.5
+This procedure is prepared, not executed. Reload by itself does not install 1.4.6
 until its runtime files have replaced the existing folder's files. Do not load the
 new extracted folder as a second extension when preserving the current ID/drafts.
 

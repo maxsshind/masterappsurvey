@@ -19,14 +19,14 @@ function modal(n,area,extra=''){return `<section id="space"><p>${n} of 3 Spaces<
  const costar=await context.newPage();await costar.goto('https://product.costar.com/detail/all-properties/123456/summary');
  const panel=await context.newPage();panel.on('pageerror',e=>errors.push(e.message));await panel.goto(`chrome-extension://${id}/panel.html?view=popout`);
  await panel.waitForFunction(()=>$('comp_office_sf').value==='6,600');
- assert.equal(await panel.locator('#comp_clear_height_ft').inputValue(),'24.5');assert.equal(await panel.locator('#comp_year_built').inputValue(),'1980');
+ assert.equal(await panel.locator('#comp_clear_height').inputValue(),'24\'6"' );assert.equal(await panel.locator('#comp_year_built').inputValue(),'1980');
  assert.equal(await panel.locator('#comp_loading').inputValue(),'Docks: 10 ext; Truck wells: None; Drive-ins: 1 tot.');
  assert.equal(await panel.locator('#comp_has_truckwell_or_dock').isChecked(),true);assert.equal(await panel.locator('#comp_class_a_answer').innerText(),'No');
  assert.equal(await panel.locator('#comp_heavy_power_answer').innerText(),'Unknown');assert.equal(await panel.locator('#comp_has_rail_answer').innerText(),'Unknown');
  results.push('Real building DOM parses feet/inches, office SF, year and labeled loading; dock evidence confirms access while raw amps/railroad do not infer flags');
  await costar.evaluate(html=>document.body.insertAdjacentHTML('beforeend',html),modal(1,'1,200','<div>Office</div><div>100 SF</div><div>Docks</div><div>None</div><div>Truck Wells</div><div>None</div>'));
  await panel.evaluate(()=>scanComp());assert.equal(await panel.locator('#comp_suite').inputValue(),'1');assert.equal(await panel.locator('#comp_office_sf').inputValue(),'100');assert.equal(await panel.locator('#comp_lease_area').inputValue(),'1,200');
- assert.equal(await panel.locator('#comp_clear_height_ft').inputValue(),'');assert.equal(await panel.locator('#comp_has_truckwell_or_dock_answer').innerText(),'No');
+ assert.equal(await panel.locator('#comp_clear_height').inputValue(),'');assert.equal(await panel.locator('#comp_has_truckwell_or_dock_answer').innerText(),'No');
  results.push('Selected suite owns measurements/loading; building office/height/docks underneath cannot populate that suite');
  await panel.locator('#comp_status').selectOption('FOR LEASE');await panel.locator('#comp_sub_market').selectOption('North Airport');await panel.locator('#compSkipProperty').check();await panel.locator('#compSave').click();await panel.waitForFunction(()=>fixtureSaves.length===1&&!comp.saving);
  let saved=await panel.evaluate(()=>fixtureSaves[0].p_comp);assert.equal(saved.office_sf,100);assert.equal(saved.lease_area,1200);assert.equal(saved.has_truckwell_or_dock,false);assert.equal(saved.clear_height_ft,null);
@@ -37,5 +37,10 @@ function modal(n,area,extra=''){return `<section id="space"><p>${n} of 3 Spaces<
  await panel.evaluate(()=>scanComp());for(const f of ['office_sf','lease_area','loading','has_truckwell_or_dock'])assert.equal(await panel.locator('#comp_'+f).inputValue(),'');
  assert.match(await panel.locator('#compPropertySource').innerText(),/Divisible/);
  results.push('Divisible source keeps office/loading/access unallocated pending offered-portion review');
+
+ await costar.evaluate(()=>{document.querySelector('#space').remove();document.body.innerHTML=document.body.innerHTML.replace('24\'6"',"22-24'");});
+ await panel.evaluate(()=>scanComp());assert.equal(await panel.locator('#comp_clear_height').inputValue(),"22-24'");await panel.locator('#comp_sub_market').selectOption('North Airport');await panel.locator('#compSave').click();await panel.waitForFunction(()=>fixtureSaves.length===2&&!comp.saving);
+ saved=await panel.evaluate(()=>fixtureSaves.at(-1).p_comp);assert.equal(saved.clear_height,"22-24'");assert.equal(saved.clear_height_ft,null);assert.equal(await panel.locator('#comp_clear_height').inputValue(),"22-24'");
+ results.push('Real CoStar height range22-24\' survives DOM capture, reviewed save and authoritative readback exactly; numeric mirror is null');
  assert.deepEqual(errors,[]);assert.deepEqual(blocked,[]);console.log(JSON.stringify({result:'passed',results,errors,blocked},null,2));
 }finally{if(context)await context.close();fs.rmSync(profile,{recursive:true,force:true});}})().catch(e=>{console.error(e);process.exitCode=1;});
