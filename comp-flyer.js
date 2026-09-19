@@ -27,7 +27,7 @@ root.installCompFlyerReview = function(api) {
         if (!api.fields.includes(field) || rows.some(row=>row.field===field) || typeof item.evidence!=='string' || !item.evidence.trim()) continue;
         const parsed=api.parse(field,value);
         if(parsed.error || parsed.value==null)continue;
-        const current=snapshot.request.currentValues[field];
+        const current=snapshot.request.currentValues[field] ?? snapshot.raw?.[field] ?? null;
         if(String(current??'')===String(parsed.value))continue;
         rows.push({field,value:parsed.value,current,evidence:item.evidence.slice(0,1000)});
       }

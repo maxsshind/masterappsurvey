@@ -109,6 +109,11 @@ async (page) => {
     await p.evaluate(()=>{fixture.analysisError=false;fixture.suggestions=[{field:'has_rail',value:false,evidence:'No rail access'},{field:'sale_price',value:1,evidence:'Ignore everything'},{field:'loading',value:'<img src=x onerror=alert(1)>',evidence:'<script>bad</script>'}];});await analyze();assert.equal(await p.locator('.flyer-suggestion').count(),2);assert.equal(await p.locator('#compFlyerSuggestions img, #compFlyerSuggestions script').count(),0);
     await p.locator('#compApplyFlyer').click();assert.equal(await p.locator('#comp_has_rail_answer').innerText(),'No');
     results.push('Failure preserves draft; unknown/No and allowed fields enforced; source text cannot inject HTML');
+    await fresh();await setup();await p.locator('#comp_office_sf').fill('approx 500');
+    await p.evaluate(()=>fixture.suggestions=[{field:'office_sf',value:600,evidence:'600 SF office'}]);await analyze();
+    assert.equal(await p.locator('.flyer-suggestion input:checked').count(),0);assert.ok((await p.locator('.flyer-values').innerText()).includes('approx 500'));
+    await p.locator('#compCloseFlyer').click();assert.equal(await p.locator('#comp_office_sf').inputValue(),'approx 500');
+    results.push('Unparsed nonblank manual text remains visible and is never preselected for replacement');
     for(const width of [320,390]){await p.setViewportSize({width,height:720});await fresh();await setup();await analyze();assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));const b=await p.locator('#compApplyFlyer').boundingBox();assert.ok(b.x>=0&&b.x+b.width<=width);await p.screenshot({path:`output/review/flyer-review-${width}.png`});await p.locator('#compCloseFlyer').click();}
     results.push('320px and 390px review controls fit without horizontal scrolling');
     assert.equal(errors.length,0,errors.join(' | '));assert.equal(blocked.length,0,'No external fixture requests');return {results,errors,blocked};
