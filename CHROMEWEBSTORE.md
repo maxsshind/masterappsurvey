@@ -1,3 +1,11 @@
+## Release outcome — 2026-09-25T18:31:04.029259-07:00
+
+**1.4.16 pushed and submitted to Chrome Web Store.** Release source commit [0d18bba](https://github.com/maxsshind/masterappsurvey/commit/0d18bbac5d81c0a69e8b9db4bbb2908fa6a88f6b) verified on `main` and `codex/survey-offering-integrity`. ZIP123590bytes SHA256 `244c6f742f7a9a9009209710b902d32066bb4237a47d0dc212b9af7690dae747`; identical canonical-folder copy. Existing item `hohikcikmjiopimpigebcbdileipbhhc`: one upload HTTP200/SUCCESS at18:29:18MST; authenticated draft1.4.16 verified; one publish request HTTP200/statusOK at18:29:46MST. **Submitted for Google review; approval/public rollout not confirmed.** Public Store read was unavailable. Max confirms prior1.4.15 live. Installed extensions remain unchanged/unverified for1.4.16.
+
+Validation:327source+327package unit tests;108existing browser groups;15package acceptance groups covering payload/readback and visible320/390/840px controls;8native pop-outs;10actual packaged property-capture groups; packaged MV3 smoke. All writes were synthetic. No schema or production-record change. Release evidence `output/review/cws-1.4.16-*.json`, test evidence `output/review/offering-*`.
+
+---
+
 ## 1.4.16 — Independent offerings and safe partial updates
 
 Prepared 2026-09-25T18:27:31.621234-07:00. COMP uses separate **For Sale**, **For Lease**, and **Stage** controls. Both active offerings retain the canonical `FOR SALE/LEASE` value; Pending/Closed require one progressed side. Saved offering/stage remains unchanged until explicitly edited, with old/new review text. Availability comes from scoped source evidence or broker choice, independent of price/rent and Survey purpose. Deliberately cleared economics survive re-read, pending-save recovery and pop-out. Unknown tenancy/scope never supplies whole-building lease area. Required offering controls stay visible under saved layouts.

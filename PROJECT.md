@@ -1,8 +1,18 @@
+## Release outcome — 2026-09-25T18:31:04.029259-07:00
+
+**1.4.16 pushed and submitted to Chrome Web Store.** Release source commit [0d18bba](https://github.com/maxsshind/masterappsurvey/commit/0d18bbac5d81c0a69e8b9db4bbb2908fa6a88f6b) verified on `main` and `codex/survey-offering-integrity`. ZIP123590bytes SHA256 `244c6f742f7a9a9009209710b902d32066bb4237a47d0dc212b9af7690dae747`; identical canonical-folder copy. Existing item `hohikcikmjiopimpigebcbdileipbhhc`: one upload HTTP200/SUCCESS at18:29:18MST; authenticated draft1.4.16 verified; one publish request HTTP200/statusOK at18:29:46MST. **Submitted for Google review; approval/public rollout not confirmed.** Public Store read was unavailable. Max confirms prior1.4.15 live. Installed extensions remain unchanged/unverified for1.4.16.
+
+Validation:327source+327package unit tests;108existing browser groups;15package acceptance groups covering payload/readback and visible320/390/840px controls;8native pop-outs;10actual packaged property-capture groups; packaged MV3 smoke. All writes were synthetic. No schema or production-record change. Release evidence `output/review/cws-1.4.16-*.json`, test evidence `output/review/offering-*`.
+
+Shared docs: running ops log save authorized and completed in this effort; both reference guides and live Surveys/Comps wiki pages checked. Only the concise playbook/Surveys wiki proposal in `RELEASE_DOCUMENTATION_PROPOSAL.md` awaits approval. Existing unrelated local documentation edits in canonical folder are being retained while bringing runtime source current; final Git status will record them.
+
+---
+
 # Sale / lease integrity release — 2026-09-25, America/Phoenix
 
 Owner: Codex chat 01a0db44-4c72-7ba3-b561-d7a4f20d2c1f. Canonical project `/Users/maxschumacher/Developer/chrome extensions/Master App Survey`; isolated implementation `/Users/maxschumacher/.codex/worktrees/survey-offering-integrity/Master App Survey`, branch `codex/survey-offering-integrity`.
 
-Max confirms **1.4.15 is live on Chrome Web Store**, existing item `hohikcikmjiopimpigebcbdileipbhhc`. This supersedes historical candidate-only statements below. Implementation, Git push and existing Store update upload/submission authorized; installed extension changes and production business-record tests are not authorized. Shared documentation remains proposal-only pending approval.
+Max confirms **1.4.15 is live on Chrome Web Store**, existing item `hohikcikmjiopimpigebcbdileipbhhc`. This supersedes historical candidate-only statements below. Implementation, Git push and existing Store update upload/submission authorized; installed extension changes and production business-record tests are not authorized. Ops-log save explicitly authorized; playbook/wiki changes remain pending approval.
 
 - [x] Baseline reconciled: GitHub main `bf7cb4252220e668c479d2e39ee3fd433c1d5509`; all 19 ZIP files match; SHA256 `4060674f9e893304fb8014c864285baa1351fc4ef467807bb38041f8924b60aa`. Canonical checkout's unrelated edits preserved.
 - [x] F1/F3 saved status protection and independent offerings/stage tested.
@@ -11,13 +21,13 @@ Max confirms **1.4.15 is live on Chrome Web Store**, existing item `hohikcikmjio
 - [x] F5 unknown/suite/partial lease area remains unknown; confirmed whole premises tested.
 - [x] F6 Survey source availability and saved dual arrays tested independently.
 - [x] Full regressions and extracted-package visible controls verified.
-- [ ] Version, matching package, commit and Git push verified.
-- [ ] Existing Web Store item upload/submission and provider state verified.
-- [ ] Shared playbook, ops log, wiki checked; precise approval proposal surfaced.
+- [x] Version, matching package, commit and Git push verified.
+- [x] Existing Web Store item upload/submission and provider state verified.
+- [x] Shared playbook, ops log, wiki checked; precise approval proposal surfaced.
 
 Checkpoint 2026-09-25T18:27:31.621234-07:00: 327 source and extracted-package units passed; new mounted acceptance matrix passed, existing108 browser groups passed, native8 pop-outs passed. Package MV3 passed. CSS control-size polish and final layout regression being verified. Max separately authorized saving the ops log; playbook/wiki remain pending.
 
-In progress: source extraction delegated to source_offerings; isolated browser matrix to regression_matrix. Parent owns panel integration, release and independent verification. Next: run source/fixture checks, review all changes, package next version, push and guarded Store submission. No release actions yet.
+Implementation and release submission completed. Parent independently verified delegated code and test results. Next external event: Google review/publication; no installed-extension change was performed. No ongoing agent/browser work depends on this checkout after verification.
 
 Verified 2026-09-25T18:28:44.143525-07:00: **327 units on source and extracted ZIP; 108 existing browser groups; 15 new offering-integrity groups on extracted ZIP; 8 real native pop-outs; packaged MV3 smoke.** Synthetic records only, blocked remote requests, no installed-copy changes. Parent inspected320px controls. Final ZIP123590bytes SHA256 `244c6f742f7a9a9009209710b902d32066bb4237a47d0dc212b9af7690dae747`; all19 source/archive/extracted files match. Delivered ZIP to canonical project folder. Permissions/hosts/privacy practices unchanged; hosted privacy URL HTTP200. Evidence `output/review/offering-*`. GitHub main stillbf7cb42 before push. Preparing commit/push, then guarded existing-item upload → draft verification → submission.
 
