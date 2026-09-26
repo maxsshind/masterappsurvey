@@ -1,3 +1,20 @@
+# 1.4.16 workflow guidance — pending approval
+
+The shared ops-log save is explicitly authorized and will be completed with the verified release outcome. The following playbook/wiki edits are NOT authorized yet. Existing older proposals below remain historical and are not automatically approved.
+
+Destinations:
+- `/Users/maxschumacher/Library/CloudStorage/OneDrive-Rein&Grossoehme/max-playbook-and-knowledge/master-app/surveys-reference.md`, Chrome Extension section.
+- `/Users/maxschumacher/Library/CloudStorage/OneDrive-Rein&Grossoehme/max-playbook-and-knowledge/master-app/comps-data-reference.md`, extension capture paragraph (replace obsolete automatic building-area default wording).
+- Existing https://www.sshteam.app/wiki/surveys, extension guidance (live content checked).
+
+Proposed concise text:
+
+> In extension 1.4.16, choose For Sale and For Lease independently. In COMP, select a separate Stage; Pending or Closed requires one progressed side. Updates keep saved offerings and stage unless you change them. Missing price or rent does not remove availability, and the destination survey type does not determine a property's offerings. Confirm unresolved source availability before saving. Lease area stays unknown until the offered area is known; use whole-building SF only after confirming whole-premises scope. Deliberate price/rent clears survive re-read and save recovery.
+
+Scope this wording to1.4.16; Google review and installed rollout status belong in the release checkpoint/ops entry, not a claim that all installed copies already changed. No separate change is needed to the Comps and Properties wiki's already-correct independent-offering sentence. Both live wiki pages, both playbook references, and the running ops log were read. Re-read immediately before any approved save to preserve concurrent edits.
+
+---
+
 # Proposed shared updates — pending approval
 
 ## Playbook and existing Surveys wiki

@@ -1,3 +1,11 @@
+## 1.4.16 — Independent offerings and safe partial updates
+
+Prepared 2026-09-25T18:27:31.621234-07:00. COMP uses separate **For Sale**, **For Lease**, and **Stage** controls. Both active offerings retain the canonical `FOR SALE/LEASE` value; Pending/Closed require one progressed side. Saved offering/stage remains unchanged until explicitly edited, with old/new review text. Availability comes from scoped source evidence or broker choice, independent of price/rent and Survey purpose. Deliberately cleared economics survive re-read, pending-save recovery and pop-out. Unknown tenancy/scope never supplies whole-building lease area. Required offering controls stay visible under saved layouts.
+
+Release baseline **1.4.15 is publicly live per Max**; authenticated draft also confirmed1.4.15. This supersedes historical candidate-only descriptions below. Candidate1.4.16 has no new permissions, hosts, data recipients or schema changes. No business records or installed extensions changed. See PROJECT.md for final Git/package/Store state and verification. Existing Store listing assets/distribution retained; this is an existing-item code update.
+
+---
+
 ## 1.4.15 — Review all listing narrative fields (local extension)
 
 Automatically analyze Sale Notes/Highlights in Comp mode, with reviewable source quotations for24 supported backend fields. Office percentages use an exact offered-area denominator and a labeled calculation. All changes require selection and Apply; Save comp remains separate. Scoped suites, stale-form protection, enum/value validation, privacy disclosure and compact responsive review included. Backend endpoint /api/extension/listing-analysis is live at app commit019ce50; this ZIP is not installed or Store-submitted. See PROJECT.md for verification and production status.

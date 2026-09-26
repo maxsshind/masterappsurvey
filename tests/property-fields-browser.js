@@ -18,7 +18,7 @@ async (page) => {
     window.fixture = {
       storage: stored || { mode: 'comp' }, requests: [], scenario: 'exact', failLookup: false, failSave: false,
       delay: 0, writes: Number(sessionStorage.getItem('fixtureWrites') || 0), receipts: JSON.parse(sessionStorage.getItem('fixtureReceipts') || '{}'), candidates: [], property: '20000000-0000-4000-8000-000000000001',
-      scrape: { costarId: '123456', street: '100 Fixture Way', city: 'Phoenix', state: 'AZ', zip: '85040',
+      scrape: { sourceOfferings: ['sale','lease'], costarId: '123456', street: '100 Fixture Way', city: 'Phoenix', state: 'AZ', zip: '85040',
         submarket: 'North Airport', rba: '20000', acLot: '2', salePrice: '3000000', leaseRate: '1.20' },
     };
     const sync = () => sessionStorage.setItem('fixtureStore', JSON.stringify(fixture.storage));
@@ -83,8 +83,8 @@ async (page) => {
       assert.equal(await p.locator('#comp_'+field).evaluate(n=>n.indeterminate),true);
     }
     let payload=await save('Comp saved');
-    for(const field of fields)assert.equal(payload[field],field==='lease_area'?20000:null,'Untouched optional/default '+field);
-    results.push('Untouched facts remain null; lease area alone gets the labeled building default');
+    for(const field of fields)assert.equal(payload[field],null,'Untouched optional/default '+field);
+    results.push('Untouched facts remain null; unknown whole-premises scope never defaults lease area');
 
     await fresh();
     await p.evaluate(async()=>fillCompForm({...fixture.scrape,yearBuilt:'1980',propertyFacts:{clearHeight:'24\'6"',officeSf:'6,600 SF',loading:'Docks: 10 ext',docks:'10 ext',classA:'Yes',power:'200 amps',powerSource:'Sale highlights',railLine:'Union Pacific'}}));
@@ -95,7 +95,7 @@ async (page) => {
     assert.equal(await p.locator('#comp_heavy_power_answer').innerText(),'Unknown');
     assert.equal(await p.locator('#comp_has_rail_answer').innerText(),'Unknown');
     assert.equal(await p.locator('#comp_power').inputValue(),'200 amps');
-    await p.locator('#comp_status').selectOption('FOR LEASE');
+    await p.locator('#comp_for_sale').setChecked(false);await p.locator('#comp_for_lease').setChecked(true);await p.locator('#comp_stage').selectOption('ACTIVE');
     await p.locator('#comp_lease_area').fill('12000'); await p.locator('#comp_office_sf').fill('4500');
     await p.locator('#comp_clear_height').fill('18\'6"');
     await p.locator('#comp_power').fill('3,400 amps, 277/480V, 3-phase'); await p.locator('#comp_year_built').fill('2001'); await p.locator('#comp_loading').fill('2 docks; 1 grade-level door');
@@ -119,7 +119,7 @@ async (page) => {
     results.push('Unrelated updates omit all new facts; intentional zero/No/null clears survive authoritative readback');
 
     await fresh();
-    const baseline={id:'30000000-0000-4000-8000-000000000001',address:'100 Fixture Way',property_id:'20000000-0000-4000-8000-000000000001',clear_height_ft:32,office_sf:1500,lease_area:12000,year_built:1995,loading:'Truckwell',property_type:'ISF, Class C',class_a:false,heavy_power:true,has_rail:null,has_truckwell_or_dock:true};
+    const baseline={status:'FOR SALE/LEASE',id:'30000000-0000-4000-8000-000000000001',address:'100 Fixture Way',property_id:'20000000-0000-4000-8000-000000000001',clear_height_ft:32,office_sf:1500,lease_area:12000,year_built:1995,loading:'Truckwell',property_type:'ISF, Class C',class_a:false,heavy_power:true,has_rail:null,has_truckwell_or_dock:true};
     await p.evaluate(row=>{fixture.candidates=[row];enterCompUpdate(row);},baseline);
     assert.equal(await p.locator('#comp_ptypes input[value="Vintage"]').isChecked(),true);
     assert.equal(await p.locator('#comp_office_sf').inputValue(),'1,500'); assert.equal(await p.locator('#comp_heavy_power').isChecked(),true);
@@ -129,7 +129,7 @@ async (page) => {
     await p.evaluate(row=>enterCompUpdate({...row,id:'30000000-0000-4000-8000-000000000002',office_sf:700,heavy_power:false}),baseline);
     assert.equal(await p.locator('#comp_office_sf').inputValue(),'700'); assert.equal(await p.locator('#comp_heavy_power_answer').innerText(),'No');
     await p.locator('#compNewDeal').click();
-    for(const field of fields)assert.equal(await p.locator('#comp_'+field).inputValue(),field==='lease_area'?'20,000':'','Separate deal '+field);
+    for(const field of fields)assert.equal(await p.locator('#comp_'+field).inputValue(),'','Separate deal '+field);
     results.push('Saved facts hydrate; same-deal re-read preserves manual edits and clears; another row and separate deal cannot inherit them');
 
     await fresh(); await p.locator('#comp_office_sf').fill('3300'); await p.locator('#comp_notes').focus();
@@ -140,7 +140,7 @@ async (page) => {
     await fresh();
     const before=await p.evaluate(()=>fixture.requests.filter(r=>r.type==='SAVE_COMP').length);
     for(const [field,value] of [['clear_height','x'.repeat(201)],['office_sf','4,50'],['lease_area','0'],['year_built','2000s']]){
-      await p.locator('#comp_status').selectOption('FOR LEASE');
+      await p.locator('#comp_for_sale').setChecked(false);await p.locator('#comp_for_lease').setChecked(true);await p.locator('#comp_stage').selectOption('ACTIVE');
       if(field==='clear_height')await p.locator('#comp_'+field).evaluate((n,v)=>{n.value=v;n.dispatchEvent(new Event('input',{bubbles:true}));},value);
       else await p.locator('#comp_'+field).fill(value);
       await p.locator('#compSave').click();

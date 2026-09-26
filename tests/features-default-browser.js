@@ -18,7 +18,7 @@ async (page) => {
     window.fixture = {
       storage: stored || { mode: 'comp' }, requests: [], scenario: 'exact', failLookup: false, failSave: false,
       delay: 0, writes: Number(sessionStorage.getItem('fixtureWrites') || 0), receipts: JSON.parse(sessionStorage.getItem('fixtureReceipts') || '{}'), candidates: [], property: '20000000-0000-4000-8000-000000000001',
-      scrape: { costarId: '123456', street: '100 Fixture Way', city: 'Phoenix', state: 'AZ', zip: '85040',
+      scrape: { sourceOfferings: ['sale','lease'], costarId: '123456', street: '100 Fixture Way', city: 'Phoenix', state: 'AZ', zip: '85040',
         submarket: 'North Airport', rba: '20000', acLot: '2', salePrice: '3000000', leaseRate: '1.20' },
     };
     const sync = () => sessionStorage.setItem('fixtureStore', JSON.stringify(fixture.storage));
@@ -76,20 +76,24 @@ async (page) => {
     await p.goto('http://127.0.0.1:8783/panel.html');
     await p.waitForFunction(() => $('comp_address').value === '100 Fixture Way');
     const save=async()=>{await p.locator('#compSave').click();await p.waitForFunction(()=>$('compMsg').textContent.includes('Comp saved')||$('compMsg').textContent.includes('Comp updated'));return (await lastSave()).p_comp;};
-    await p.locator('#comp_status').selectOption('FOR LEASE');
+    await p.locator('#comp_for_sale').setChecked(false);await p.locator('#comp_for_lease').setChecked(true);await p.locator('#comp_stage').selectOption('ACTIVE');
+    assert.equal(await p.locator('#comp_lease_area').inputValue(),'');
+    await p.locator('#comp_multi_tenant').selectOption('false');assert.equal(await p.locator('#comp_lease_area').inputValue(),'');
+    await p.locator('#comp_partial_site_override').selectOption('false');
     assert.equal(await p.locator('#comp_lease_area').inputValue(),'20,000');
     assert.equal(await p.locator('#compLeaseDefaultHint').isVisible(),true);
     assert.ok((await p.locator('#comp_lease_area').locator('..').innerText()).includes('Building SF default'));
     await p.locator('#comp_building_sf').fill('31426');assert.equal(await p.locator('#comp_lease_area').inputValue(),'31,426');
     for(const field of ['multi_tenant','partial_site_override']){
       await p.locator('#comp_'+field).selectOption('true');assert.equal(await p.locator('#comp_lease_area').inputValue(),'');
-      await p.locator('#comp_'+field).selectOption('');assert.equal(await p.locator('#comp_lease_area').inputValue(),'31,426');
+      await p.locator('#comp_'+field).selectOption('');assert.equal(await p.locator('#comp_lease_area').inputValue(),'');
+      await p.locator('#comp_'+field).selectOption('false');assert.equal(await p.locator('#comp_lease_area').inputValue(),'31,426');
     }
-    await p.locator('#comp_status').selectOption('FOR SALE');assert.equal(await p.locator('#comp_lease_area').inputValue(),'');
-    await p.locator('#comp_status').selectOption('FOR SALE/LEASE');assert.equal(await p.locator('#comp_lease_area').inputValue(),'31,426');
+    await p.locator('#comp_for_sale').setChecked(true);await p.locator('#comp_for_lease').setChecked(false);await p.locator('#comp_stage').selectOption('ACTIVE');assert.equal(await p.locator('#comp_lease_area').inputValue(),'');
+    await p.locator('#comp_for_sale').setChecked(true);await p.locator('#comp_for_lease').setChecked(true);await p.locator('#comp_stage').selectOption('ACTIVE');assert.equal(await p.locator('#comp_lease_area').inputValue(),'31,426');
     let payload=await save();assert.equal(payload.lease_area,31426);
     await p.locator('#comp_building_sf').fill('35000');payload=await save();assert.equal(Object.hasOwn(payload,'lease_area'),false);assert.equal(await p.locator('#comp_lease_area').inputValue(),'31,426');
-    results.push('Untouched lease default follows Building SF and status; either site flag disables it; saved size never silently follows later building edits');
+    results.push('Confirmed whole-premises lease default follows Building SF and status; either true or unknown site flag disables it; saved size never silently follows later building edits');
     for(const value of ['1200','']){
       await fresh();await p.locator('#comp_lease_area').fill(value);
       await p.locator('#comp_building_sf').fill('40000');await p.locator('#comp_multi_tenant').selectOption('true');await p.locator('#comp_multi_tenant').selectOption('');
@@ -103,11 +107,11 @@ async (page) => {
     assert.equal(await p.locator('#comp_lease_area').inputValue(),'1,200');
     await p.evaluate(()=>fillCompForm({...fixture.scrape,selectedSpace:{identity:'suite-7',suite:'7'},propertyFacts:{}}));
     assert.equal(await p.locator('#comp_lease_area').inputValue(),'1,200');
-    await fresh();await p.evaluate(()=>enterCompUpdate({id:'test-existing',property_id:null,address:'100 Fixture Way',lease_area:null,power:'Saved 600A',multi_tenant:null}));
+    await fresh();await p.evaluate(()=>enterCompUpdate({status:'FOR SALE/LEASE',id:'test-existing',property_id:null,address:'100 Fixture Way',lease_area:null,power:'Saved 600A',multi_tenant:null}));
     await p.locator('#comp_building_sf').fill('30000');assert.equal(await p.locator('#comp_lease_area').inputValue(),'');
     assert.equal(await p.locator('#comp_power').inputValue(),'Saved 600A');
     results.push('Captured suite size survives missing source refresh; existing saved blank is never defaulted; Power hydrates');
-    await fresh('commitThenLose');await p.locator('#comp_power').fill('3,400 amps, 277/480V, 3-phase');await p.locator('#comp_yard_included').check();
+    await fresh('commitThenLose');await p.locator('#comp_multi_tenant').selectOption('false');await p.locator('#comp_partial_site_override').selectOption('false');await p.locator('#comp_power').fill('3,400 amps, 277/480V, 3-phase');await p.locator('#comp_yard_included').check();
     await p.locator('#compSave').click();await p.waitForFunction(()=>$('compMsg').textContent.includes('Retry pending save'));
     const pending=await lastSave();await p.reload();await p.waitForFunction(()=>$('compSave').textContent==='Retry pending save');
     assert.equal(await p.locator('#comp_power').inputValue(),'3,400 amps, 277/480V, 3-phase');assert.equal(await p.locator('#comp_yard_included').isChecked(),true);
@@ -123,12 +127,12 @@ async (page) => {
       await p.setViewportSize({width,height:1000});await p.evaluate(()=>Layout.apply('comp'));
       assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,width+'px overflow');
       const a=await p.locator('[data-sec="ptype"]').boundingBox(),b=await p.locator('[data-sec="yard"]').boundingBox();
-      if(width>=540){assert.ok(Math.abs(a.y-b.y)<2,'Same row');assert.ok(b.x>=a.x+a.width,'Features right of type');}
-      else assert.ok(b.y>=a.y+a.height,'Features stack below type');
+      if(width>=540&&width<680){assert.ok(Math.abs(a.y-b.y)<2,'Type and features share row');assert.ok(b.x>=a.x+a.width,'Features beside type');}
+      else {assert.ok(b.y>=a.y+a.height,'Features below type without overlap');if(width>=680)assert.equal(b.x,a.x,'Features share the type column');}
       for(const f of ['yard_included','class_a','heavy_power','has_rail','has_truckwell_or_dock'])assert.equal(await p.locator('#comp_'+f).evaluate(n=>n.closest('[data-sec]').dataset.sec),'yard');
       await p.locator('[data-sec="ptype"]').evaluate(n=>window.scrollTo(0,n.getBoundingClientRect().top+window.scrollY-65));await p.screenshot({path:'/tmp/masterappsurvey-features-'+width+'.png'});
     }
-    results.push('Yard and features share controls; type/features side by side560/720 and stacked390/320, no overflow');
+    results.push('Yard and features share controls; type/features beside each other at560, below type at720/390/320, no overflow');
     assert.equal(errors.length,0,'Runtime errors');assert.equal(blocked.length,0,'External requests');
     return {passed:results.length,results,errors,externalRequests:blocked};
   } finally {await context.close();}

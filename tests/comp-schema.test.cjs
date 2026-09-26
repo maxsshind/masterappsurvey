@@ -60,6 +60,8 @@ for (const [status, sale, lease] of cases) {
     if (liveColumns) for (const key of Object.keys(rec)) assert.ok(liveColumns.has(key), `Unknown live column: ${key}`);
 
     context.comp.baseline = { ...rec, status: 'SOLD', internal_deal: true, source: 'manual' };
+    assert.equal(Object.hasOwn(context.compUpdatePatch(rec), 'status'), false, 'Untouched status never reopens a saved deal');
+    context.comp.statusEdited = true;
     const patch = context.compUpdatePatch(rec);
     assert.equal(patch.status, status);
     for (const key of ['type', 'deal_type', 'internal_deal', 'source']) assert.equal(Object.hasOwn(patch, key), false);
@@ -108,10 +110,12 @@ test('duplicate lookup queries valid columns on both lookup paths', async () => 
   }
 });
 
-test('status dropdown exposes the five current on-market choices', () => {
-  const select = read('panel.html').match(/<select id="comp_status">([^]*?)<\/select>/)[1];
-  const values = [...select.matchAll(/value="([^"]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(values, cases.map(([status]) => status));
+test('independent offering controls and lifecycle retain canonical hidden status', () => {
+  const html = read('panel.html');
+  for (const side of ['sale','lease']) assert.match(html, new RegExp(`<input[^>]*(?:id="comp_for_${side}"[^>]*type="checkbox"|type="checkbox"[^>]*id="comp_for_${side}")`));
+  assert.match(html, /<input[^>]*(?:type="hidden"[^>]*id="comp_status"|id="comp_status"[^>]*type="hidden")/);
+  const select = html.match(/<select id="comp_stage">([^]*?)<\/select>/)[1];
+  assert.deepEqual([...select.matchAll(/value="([^"]+)"/g)].map(m => m[1]), ['ACTIVE', 'PENDING', 'CLOSED']);
 });
 
 test('yard inserts serialize Yes, No, and Unknown as true, false, and null', async () => {

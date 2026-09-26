@@ -18,7 +18,7 @@ async (page) => {
     window.fixture = {
       storage: stored || { mode: 'comp' }, requests: [], scenario: 'exact', failLookup: false, failSave: false,
       delay: 0, writes: Number(sessionStorage.getItem('fixtureWrites') || 0), receipts: JSON.parse(sessionStorage.getItem('fixtureReceipts') || '{}'), candidates: [], property: '20000000-0000-4000-8000-000000000001',
-      scrape: { costarId: '123456', street: '100 Fixture Way', city: 'Phoenix', state: 'AZ', zip: '85040',
+      scrape: { sourceOfferings: ['sale','lease'], costarId: '123456', street: '100 Fixture Way', city: 'Phoenix', state: 'AZ', zip: '85040',
         submarket: 'North Airport', rba: '20000', acLot: '2', salePrice: '3000000', leaseRate: '1.20' },
     };
     const sync = () => sessionStorage.setItem('fixtureStore', JSON.stringify(fixture.storage));
@@ -117,7 +117,8 @@ async (page) => {
     await fresh();await setup();await p.evaluate(()=>fixture.suggestions=[{field:'power',value:'3,400 amps, 277/480V, 3-phase',evidence:'3,400 amps, 277/480V, 3-phase'}]);await analyze();await p.locator('#compApplyFlyer').click();
     assert.equal(await p.locator('#comp_power').inputValue(),'3,400 amps, 277/480V, 3-phase');assert.equal(await p.locator('#comp_heavy_power_answer').innerText(),'Unknown');
     results.push('Explicit power specifications fill Power without inferring Heavy power');
-    await fresh();await setup();await p.locator('#comp_status').selectOption('FOR LEASE');
+    await fresh();await setup();await p.locator('#comp_for_sale').setChecked(false);await p.locator('#comp_for_lease').setChecked(true);await p.locator('#comp_stage').selectOption('ACTIVE');
+    await p.locator('#comp_multi_tenant').selectOption('false');await p.locator('#comp_partial_site_override').selectOption('false');assert.equal(await p.locator('#comp_lease_area').inputValue(),'20,000');
     await p.evaluate(()=>fixture.suggestions=[{field:'lease_area',value:6000,evidence:'Available suite: 6,000 SF'}]);await analyze();await p.locator('.flyer-suggestion input').check();await p.locator('#compApplyFlyer').click();
     assert.equal(await p.evaluate(()=>comp.leaseAreaOrigin),'source');assert.equal(await p.locator('#compLeaseDefaultHint').isVisible(),false);
     await p.locator('#comp_building_sf').fill('7500');assert.equal(await p.locator('#comp_lease_area').inputValue(),'6,000');

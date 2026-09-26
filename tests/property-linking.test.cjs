@@ -12,11 +12,13 @@ function load(context, source, name) {
 }
 function requestContext(overrides = {}) {
   const context = vm.createContext({
+    $: id => id === 'comp_status' ? { value: overrides.baseline?.status || 'FOR LEASE' } : null,
     crypto: { randomUUID: () => 'a0000000-0000-4000-8000-000000000001' },
     comp: { mode: 'insert', propertyMode: 'auto', originalPropertyId: null, propertyId: null,
       baseline: null, requestId: null, costarId: '123456', siteFieldsEdited: {}, ...overrides },
   });
   vm.runInContext(read('comp-property-fields.js'), context);
+  load(context, read('panel.js'), 'compStatusShows');
   load(context, read('panel.js'), 'compUpdatePatch');
   load(context, read('panel.js'), 'buildCompSaveRequest');
   return context;

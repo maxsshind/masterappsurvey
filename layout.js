@@ -13,7 +13,7 @@
   const PRICING_FIELDS = new Set(["fLeaseRate", "fMonthlyBase", "fOpexPsf", "fOpexTotal", "fTotalLeaseRate", "fRentPerAcre", "fRentAcre", "fOfferedAcres", "fExpenseTreatment", "fExpenseBasis", "fExpenseAmount"]);
   const SCREENS = { survey: "screen-form", comp: "screen-comp" };
   // Fields the forms can't function without — hide is a no-op for these.
-  const NON_HIDEABLE = new Set(["fAddress", "fForSale", "fForLease", "comp_address", "comp_status"]);
+  const NON_HIDEABLE = new Set(["fAddress", "fForSale", "fForLease", "comp_address", "comp_status", "comp_for_sale", "comp_for_lease", "comp_stage"]);
 
   const blank = () => ({ order: [], hiddenSecs: [], collapsedSecs: [], openDetails: [], hiddenFields: [], fieldMoves: {}, customSecs: [] });
   const defaults = () => ({ v: 1, surveyLayoutVersion: SURVEY_VERSION, density: "comfortable", survey: blank(), comp: blank() });
@@ -87,8 +87,8 @@
   const fldOf = (sk, key) => units(sk).find((unit) => fldKey(unit) === key);
   const screenPrefs = (sk) => ({ ...blank(), ...prefs[sk] });
   const editablePrefs = (sk) => (prefs[sk] = screenPrefs(sk));
-  const lockedSection = (sk, key) => sk === "survey" && SURVEY_TOP.includes(key);
-  const lockedField = (sk, key) => sk === "survey" && SURVEY_REQUIRED.has(key);
+  const lockedSection = (sk, key) => (sk === "survey" && SURVEY_TOP.includes(key)) || (sk === "comp" && sections(sk).some(section => section.dataset.sec === key && [...section.querySelectorAll('[data-layout-key], .fld')].some(unit => NON_HIDEABLE.has(fldKey(unit)))));
+  const lockedField = (sk, key) => NON_HIDEABLE.has(key) || (sk === "survey" && SURVEY_REQUIRED.has(key));
   const populatedNote = (sk, section) => sk === "survey" && section.dataset.sec === "notes" && section.dataset.hasDetails === "true";
   const toggleIn = (list, key, on) => {
     const out = list.filter((x) => x !== key);

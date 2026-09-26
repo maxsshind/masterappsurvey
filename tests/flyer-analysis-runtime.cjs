@@ -36,7 +36,7 @@ function modal(n,area,extra=''){return `<section id="space"><p>${n} of 3 Spaces<
    };
  });
  await panel.evaluate(()=>{
-   resetCompForm();fillCompForm({street:'100 Fixture Way',city:'Phoenix',state:'AZ',submarket:'North Airport',salePrice:'2600000'});
+   resetCompForm();fillCompForm({sourceOfferings:['sale'],street:'100 Fixture Way',city:'Phoenix',state:'AZ',submarket:'North Airport',salePrice:'2600000'});
    comp.flyerUrl='https://kavynghiailoduhulytq.supabase.co/storage/v1/object/public/survey-files/comps/flyers/fixture.pdf';
  });
  await panel.locator('#compAnalyzeFlyer').click();await panel.waitForFunction(()=>$('compFlyerReview').open);

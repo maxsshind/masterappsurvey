@@ -18,7 +18,7 @@ async (page) => {
     window.fixture = {
       storage: stored || { mode: 'comp' }, requests: [], scenario: 'exact', failLookup: false, failSave: false,
       delay: 0, writes: Number(sessionStorage.getItem('fixtureWrites') || 0), receipts: JSON.parse(sessionStorage.getItem('fixtureReceipts') || '{}'), candidates: [], property: '20000000-0000-4000-8000-000000000001',
-      scrape: { costarId: '123456', street: '100 Fixture Way', city: 'Phoenix', state: 'AZ', zip: '85040',
+      scrape: { sourceOfferings: ['sale','lease'], costarId: '123456', street: '100 Fixture Way', city: 'Phoenix', state: 'AZ', zip: '85040',
         submarket: 'North Airport', rba: '20000', acLot: '2', salePrice: '3000000', leaseRate: '1.20', saleHighlights: 'Fixture marketing highlights for a small industrial property.', saleNotes: 'Fixture sale description. ' .repeat(12) },
     };
     const sync = () => sessionStorage.setItem('fixtureStore', JSON.stringify(fixture.storage));
@@ -133,7 +133,7 @@ async (page) => {
     }
     results.push('320/390/585/720px: no horizontal overflow, readable fields, compact description retained near top, visible skip, sticky navigation expands each collapsed section');
     await fresh();
-    await p.locator('#comp_status').selectOption('FOR SALE/LEASE');
+    await p.locator('#comp_for_sale').setChecked(true);await p.locator('#comp_for_lease').setChecked(true);await p.locator('#comp_stage').selectOption('ACTIVE');
     await p.locator('#comp_land_area').fill('');
     await p.locator('#comp_building_sf').fill('');
     await p.locator('#comp_sale_price').fill('');

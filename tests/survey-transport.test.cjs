@@ -425,7 +425,7 @@ for (const monthly of ['26000', '0']) {
     const h = harness();
     h.c.state = { survey: { id: surveyId, survey_type: 'lease' } };
     const panel = fs.readFileSync(path.join(root, 'panel.js'), 'utf8');
-    for (const name of ['surveyReviewSource', 'surveySpaceLeaseType', 'scrapeInternalNotes', 'recordFromScrape', 'applyNnnExpenseDefault', 'makeSurveyDraft']) {
+    for (const name of ['sourceOfferings', 'surveyReviewSource', 'surveySpaceLeaseType', 'scrapeInternalNotes', 'recordFromScrape', 'applyNnnExpenseDefault', 'makeSurveyDraft']) {
       const fn = panel.match(new RegExp(`^function ${name}\\([^]*?^}`, 'm'));
       assert.ok(fn, `actual packaged panel function ${name} exists`);
       vm.runInContext(fn[0], h.c, { filename: `panel.js:${name}` });
@@ -461,7 +461,7 @@ for (const inline of [false, true]) {
     assert.equal(scraped.selectedSpace.canPrefill,false);assert.equal(scraped.selectedSpace.availableSf,null);
     const h=harness();h.c.state={survey:{id:surveyId,survey_type:'lease'}};
     const panel=fs.readFileSync(path.join(root,'panel.js'),'utf8');
-    for(const name of ['surveyReviewSource','surveySpaceLeaseType','scrapeInternalNotes','recordFromScrape','applyNnnExpenseDefault','makeSurveyDraft']) vm.runInContext(panel.match(new RegExp(`^function ${name}\\([^]*?^}`, 'm'))[0],h.c);
+    for(const name of ['sourceOfferings', 'surveyReviewSource','surveySpaceLeaseType','scrapeInternalNotes','recordFromScrape','applyNnnExpenseDefault','makeSurveyDraft']) vm.runInContext(panel.match(new RegExp(`^function ${name}\\([^]*?^}`, 'm'))[0],h.c);
     const record=h.c.recordFromScrape(scraped),draft=h.c.makeSurveyDraft(record,true,scraped);
     assert.equal(record.suite_size,'62,784–174,769 SF');assert.equal(record.suite_number,'1');
     assert.equal(record.space_option.proposed,'');assert.equal(record.office_sf,null);

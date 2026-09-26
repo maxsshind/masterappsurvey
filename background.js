@@ -41,8 +41,9 @@ async function readCoStar(options = {}) {
     target: { tabId: tab.id },
     // This function runs IN the CoStar tab. It reads ONLY the already-rendered
     // text the user is looking at — no network calls, no navigation.
-    args: [Boolean((tab.url || "").match(/\/listings\/for-sale\/detail\//))],
-    func: (isSalesListing = false) => {
+    args: [Boolean((tab.url || "").match(/\/listings\/for-sale\/detail\//)),
+      Boolean((tab.url || "").match(/\/listings\/for-lease\/detail\//))],
+    func: (isSalesListing = false, isLeaseListing = false) => {
       const txt = document.body.innerText || "";
       const lines = txt.split(/\n/).map((s) => s.trim()).filter(Boolean);
 
@@ -387,11 +388,49 @@ async function readCoStar(options = {}) {
         }
       }
 
+      // Offering evidence is independent of price/rent and client survey purpose.
+      // Read only current listing/header/availability labels, never nav, historical
+      // transactions, market estimates or marketing prose. Unknown remains [].
+      const sourceOfferingSet = new Set();
+      const offeringLabel = (line) => {
+        for (const part of line.split(/[•･·]/)) {
+          const label = part.trim();
+          if (/^For Sale\s*(?:\/|&|and)\s*(?:For )?Lease(?:\s*[>›»:]|$)/i.test(label)) {
+            sourceOfferingSet.add('sale'); sourceOfferingSet.add('lease');
+          } else if (/^For Sale(?:\s*[>›»:]|$)/i.test(label)) sourceOfferingSet.add('sale');
+          else if (/^For Lease(?:\s*[>›»:]|$)/i.test(label)) sourceOfferingSet.add('lease');
+        }
+      };
+      if (selectedSpace) {
+        // A single open leasing Space Details is its own offering. The sale of
+        // the underlying building is not evidence that this suite is for sale.
+        if (spaceHeadings.length === 1 && !/\bLease Status\s*(?:[:\n]\s*)?(?:Leased|Withdrawn|Off Market|Unavailable)\b/i.test(selectedFactSection || ''))
+          sourceOfferingSet.add('lease');
+      } else {
+        if (isSalesListing) sourceOfferingSet.add('sale');
+        if (isLeaseListing) sourceOfferingSet.add('lease');
+        const stops = /^(?:Building(?: Details)?|Property|Listing Details|Availabilities|Availability|Location|Transaction History|Sale History|Lease History|Tenants|Market Conditions|Demographics|Sale Notes|Sale Highlights|Lease Notes|Lease Highlights|Description|Property Description|Listing Description|Documents|External Links|Analytics|Amenities|Search|Recent Searches|Related Properties)(?:\s*[>›»:])?$/i;
+        // Start at the identified street: generic navigation before it is ignored.
+        const addressIndex = lines.findIndex(line => street && cleanStreet(line) === street);
+        if (addressIndex >= 0) {
+          for (const line of lines.slice(addressIndex + 1, addressIndex + 13)) {
+            if (stops.test(line)) break;
+            offeringLabel(line);
+          }
+        }
+        for (let i = addressIndex < 0 ? lines.length : addressIndex + 1; i < lines.length; i++) {
+          if (/^(?:Transaction History|Sale History|Lease History|Related Properties|Recent Searches)(?:\s*[>›»:])?$/i.test(lines[i])) break;
+          if (!/^(?:Availabilities|Availability|Listing Details)(?:\s*[>›»:])?$/i.test(lines[i])) continue;
+          for (let j = i + 1; j < lines.length && !stops.test(lines[j]); j++) offeringLabel(lines[j]);
+        }
+      }
+      const sourceOfferings = ['sale', 'lease'].filter(side => sourceOfferingSet.has(side));
+
       // Diagnostic: sample of the text actually seen, so we can tell whether the
       // scraper hit the right frame/tab when a scrape comes back empty.
       const _debug = { textLen: txt.length, sample: txt.slice(0, 400) };
       return {
-        street, city, state, zip, submarket, rba, acLot, salePrice, leaseRate,
+        street, city, state, zip, submarket, rba, acLot, salePrice, leaseRate, sourceOfferings,
         offeredSf: selectedFactSection === null
           ? (txt.match(/\bAvailable Size\s*\n?\s*((?:\d{1,3}(?:,\d{3})+|\d+))\s*SF\b/i)?.[1]?.replaceAll(',', '') || null)
           : selectedSpace?.availableRange ? null : selectedSpace?.availableSf || null,

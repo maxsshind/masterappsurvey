@@ -118,6 +118,7 @@
       <button id="btnUnlockSurvey" class="btn btn-ghost btn-sm hidden">Return to editing</button>
     </div>
     <div id="surveySource" class="hint" role="status"></div>
+    <small id="surveyOfferingHint" class="field-hint" aria-live="polite"></small>
     <div id="modeBanner" class="banner hidden"></div>
     <div id="dupChooser" class="hidden">
       <p id="dupText" class="hint">Choose the space to update, or add a separate offering.</p>
@@ -348,15 +349,16 @@
     <div class="sec" data-sec="property">
     <div class="section-label mt-section">Property</div>
     <div class="fieldset comp-essential">
-      <div class="fld">
-        <span>Status</span>
-        <select id="comp_status">
-          <option value="FOR SALE">FOR SALE</option>
-          <option value="FOR LEASE">FOR LEASE</option>
-          <option value="FOR SALE/LEASE">FOR SALE/LEASE</option>
-          <option value="PENDING SALE">PENDING SALE</option>
-          <option value="PENDING LEASE">PENDING LEASE</option>
-        </select>
+      <div class="fld" data-layout-key="comp_status">
+        <span>Offering</span>
+        <div class="survey-choices">
+          <label class="survey-choice"><input id="comp_for_sale" type="checkbox" /><span>For Sale</span></label>
+          <label class="survey-choice"><input id="comp_for_lease" type="checkbox" /><span>For Lease</span></label>
+        </div>
+        <input id="comp_status" type="hidden" value="" />
+        <label for="comp_stage">Stage</label>
+        <select id="comp_stage"><option value="ACTIVE">Active</option><option value="PENDING">Pending</option><option value="CLOSED">Closed</option></select>
+        <small id="compOfferingHint" class="field-hint" aria-live="polite">Confirm source availability or choose the offered sides.</small>
       </div>
       <div class="fld"><span>Address <a id="toggleCompPropName" class="name-toggle">+ Name</a></span><input id="comp_address" /></div>
       <div class="fld hidden" id="fldCompPropertyName"><span>Property Name</span><input id="comp_property_name" /></div>

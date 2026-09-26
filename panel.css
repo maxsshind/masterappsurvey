@@ -529,7 +529,7 @@ body.layout-editing #compFlyer, body.layout-editing #compRescan, body.layout-edi
 .survey-location { display: grid; grid-template-columns: minmax(0,1fr) 54px 74px; gap: 7px; width: 100%; }
 .survey-choices { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 4px; width: 100%; }
 .survey-choice { display: flex; gap: 5px; align-items: center; cursor: pointer; border: 1px solid #d9d9e5; border-radius: 5px; padding: 6px; font-size: 11px; line-height: 1.2; min-height: 32px; overflow-wrap: anywhere; background: #fff; }
-#screen-form .survey-choice input { width: 13px; height: 13px; min-height: 0; flex: 0 0 13px; margin: 0; accent-color: #8B1538; }
+#screen-form .survey-choice input, #screen-comp .survey-choice input { width: 13px; height: 13px; min-height: 0; flex: 0 0 13px; margin: 0; accent-color: #8B1538; }
 .survey-choice:has(input:checked) { background: #f9eaf0; border-color: #8B1538; color: #741532; }
 .survey-choice:has(input:focus-visible) { outline: 2px solid #8B1538; outline-offset: 2px; }
 .survey-choices .choice-clear { border: 0; background: transparent; font-size: 10px; color: #727483; text-decoration: underline; cursor: pointer; padding: 2px; grid-column: 1 / -1; justify-self: end; }

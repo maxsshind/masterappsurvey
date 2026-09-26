@@ -780,7 +780,6 @@ function scrapeInternalNotes(d) {
 
 // Build the blank/scrape-prefilled record for INSERT mode.
 function recordFromScrape(d) {
-  const surveyType = state.survey ? state.survey.survey_type : "lease";
   return {
     address: d.street || "",
     city: d.city || null,
@@ -797,9 +796,7 @@ function recordFromScrape(d) {
     ...(SurveySpaces.sourceRange(d.selectedSpace) ? { space_option: SurveySpaces.sourceRange(d.selectedSpace) } : {}),
     suite_number: d.selectedSpace?.suite || null,
     office_sf: d.selectedSpace?.availableRange ? null : d.selectedSpace?.officeSf ?? null,
-    for_sale_or_lease:
-      surveyType === "lease_and_sale" ? ["sale", "lease"] :
-      surveyType === "sale" ? ["sale"] : ["lease"],
+    for_sale_or_lease: sourceOfferings(d),
     internal_notes: scrapeInternalNotes(d),
   };
 }
@@ -879,7 +876,7 @@ function surveyChoice(id, value, scope = activeSurveyDraft()?.id || 'initial') {
 }
 function surveyReviewSource(source) {
   if (!source) return null;
-  return Object.fromEntries(['costarId','listingId','street','city','state','zip','sourceUrl','rba','acLot','leaseQuote','leaseQuoteRaw','leaseRate','selectedSpace','sourceTabId'].filter(k => source[k] !== undefined).map(k => [k,source[k]]));
+  return Object.fromEntries(['costarId','listingId','street','city','state','zip','sourceUrl','rba','acLot','leaseQuote','leaseQuoteRaw','leaseRate','selectedSpace','sourceTabId','sourceOfferings'].filter(k => source[k] !== undefined).map(k => [k,source[k]]));
 }
 function makeSurveyDraft(row, isNew, source = null) {
   source = surveyReviewSource(source);
@@ -996,6 +993,7 @@ function fillForm(row) {
   }
   const fsl = row.for_sale_or_lease || [];
   $('fForSale').checked = fsl.includes('sale'); $('fForLease').checked = fsl.includes('lease');
+  $('surveyOfferingHint').textContent = fsl.length ? 'Property availability is separate from the client survey type.' : 'Source availability is unresolved. Confirm For Sale and/or For Lease before saving.';
   updateBlockVisibility();
   $('notes2Details').open = Boolean(row.notes_2);
   $('notes2Details').dataset.hasDetails = String(Boolean(row.notes_2));
@@ -1436,6 +1434,7 @@ for (const [col,[id,type]] of Object.entries(FIELDS)) {
 for (const id of ['fForSale','fForLease']) $(id).addEventListener('change',() => {
   const d = activeSurveyDraft(); if (!d || surveyEditor.pending) return;
   d.model.values.for_sale_or_lease = [...($('fForSale').checked ? ['sale'] : []),...($('fForLease').checked ? ['lease'] : [])];
+  $('surveyOfferingHint').textContent = d.model.values.for_sale_or_lease.length ? 'Property availability is separate from the client survey type.' : 'Confirm For Sale and/or For Lease before saving.';
   updateBlockVisibility(); queueSurveyDraft();
 });
 for (const [id,[group,basis]] of Object.entries(SURVEY_RENT_INPUTS)) $(id).addEventListener('input',() => {
@@ -1623,6 +1622,8 @@ const comp = {
   mode: "insert",     // 'insert' | 'update'
   updateId: null,     // comps.id being updated
   baseline: null,     // DB row backing the form in update mode (dirty-diff base)
+  editedFields: {}, // explicit edits include intentional blanks
+  statusEdited: false,
   yardEdited: false,  // distinguishes intentional Unknown from an omitted scrape value
   siteFieldsEdited: {},
   propertyFieldsEdited: {},
@@ -1751,7 +1752,7 @@ function syncCompPowerFallback() {
 function syncCompLeaseDefault() {
   const hint = $('compLeaseDefaultHint');
   if (!comp.pendingSave && !comp.saving && comp.mode !== 'update' && !comp.propertyFieldsEdited.lease_area && !['manual','source','saved'].includes(comp.leaseAreaOrigin)) {
-    const eligible = compStatusShows().showLease && $('comp_multi_tenant').value !== 'true' && $('comp_partial_site_override').value !== 'true' && !comp.scrape?.selectedSpace;
+    const eligible = compStatusShows().showLease && $('comp_multi_tenant').value === 'false' && $('comp_partial_site_override').value === 'false' && !$('comp_suite').value.trim() && !comp.scrape?.selectedSpace;
     const parsed = CompPropertyFields.parse('lease_area',$('comp_building_sf').value);
     if (eligible && !parsed.error && parsed.value != null) {
       setCompPropertyValue('lease_area',parsed.value,'Building SF default'); comp.leaseAreaOrigin = 'building';
@@ -1943,13 +1944,39 @@ function mapLeaseFormat(leaseType) {
 
 function hasVal(v) { return v !== null && v !== undefined && String(v).trim() !== ""; }
 
+function sourceOfferings(d) {
+  return ['sale', 'lease'].filter(side => Array.isArray(d?.sourceOfferings) && d.sourceOfferings.includes(side));
+}
+
 function defaultCompStatus(d) {
-  const sale = hasVal(d.salePrice);
-  const lease = hasVal(d.leaseRate);
-  if (sale && lease) return "FOR SALE/LEASE";
-  if (sale) return "FOR SALE";
-  if (lease) return "FOR LEASE";
-  return "FOR SALE";
+  const sides = sourceOfferings(d);
+  return sides.length === 2 ? 'FOR SALE/LEASE' : sides[0] === 'sale' ? 'FOR SALE' : sides[0] === 'lease' ? 'FOR LEASE' : '';
+}
+
+// The wire value stays canonical; the broker controls offerings and stage separately.
+function hydrateCompStatus(status) {
+  $('comp_status').value = status || '';
+  $('comp_for_sale').checked = ['FOR SALE','FOR SALE/LEASE','PENDING SALE','SOLD'].includes(status);
+  $('comp_for_lease').checked = ['FOR LEASE','FOR SALE/LEASE','PENDING LEASE','LEASED'].includes(status);
+  $('comp_stage').value = /^PENDING /.test(status || '') ? 'PENDING' : ['SOLD','LEASED'].includes(status) ? 'CLOSED' : 'ACTIVE';
+}
+
+function compOfferingChange() {
+  const sale = $('comp_for_sale').checked, lease = $('comp_for_lease').checked;
+  const stage = $('comp_stage').value;
+  $('comp_status').value = stage === 'ACTIVE'
+    ? sale && lease ? 'FOR SALE/LEASE' : sale ? 'FOR SALE' : lease ? 'FOR LEASE' : ''
+    : sale === lease ? '' : stage === 'PENDING' ? (sale ? 'PENDING SALE' : 'PENDING LEASE') : (sale ? 'SOLD' : 'LEASED');
+  comp.statusEdited = true;
+  markCompFieldEdited('comp_status');
+  syncCompFieldVisibility();
+}
+
+function compOfferingIssue() {
+  if (!$('comp_for_sale').checked && !$('comp_for_lease').checked) return 'Confirm For Sale and/or For Lease. Source availability is unresolved.';
+  if ($('comp_stage').value !== 'ACTIVE' && $('comp_for_sale').checked && $('comp_for_lease').checked) return 'Pending or Closed requires one side. Choose the sale or lease being progressed.';
+  if (!$('comp_status').value) return 'Confirm the offering and stage before saving.';
+  return '';
 }
 
 // ─── Mode toggle (survey ↔ comp) ─────────────────────────────────────────────────
@@ -1988,6 +2015,7 @@ function enterCompMode() {
 function setCompField(id, value, source = "CoStar") {
   const node = $(id);
   if (!node) return;
+  if (comp.editedFields?.[id] || (id === "comp_status" && (comp.statusEdited || comp.mode === "update"))) return;
   const v = value == null ? "" : String(value);
   const prev = comp.lastFilled[id] ?? "";
   const cur = node.value;
@@ -1995,6 +2023,7 @@ function setCompField(id, value, source = "CoStar") {
   if (wasAutoFilled && cur !== "" && cur !== prev) return; // user edited this field — leave it
   if (v === "" && cur !== "") return;          // don't wipe a prior auto-value with an empty scrape
   node.value = v;
+  if (id === "comp_status") hydrateCompStatus(v);
   comp.lastFilled[id] = v;
   setCompFieldSource(id, v ? source : null);
 }
@@ -2002,6 +2031,9 @@ function setCompField(id, value, source = "CoStar") {
 function resetCompForm() {
   if (comp.pendingSave || comp.saving) return;
   comp.lastFilled = {};
+  comp.editedFields = {};
+  comp.statusEdited = false;
+  comp.previousOfferingSource = null;
   resetCompPropertyFields();
   comp.mode = "insert";
   comp.updateId = null;
@@ -2031,6 +2063,7 @@ function resetCompForm() {
     const wrap = n && n.closest(".fld");
     if (wrap) wrap.classList.remove("needs-review");
   });
+  hydrateCompStatus('');
   setNameToggle("toggleCompPropName", "fldCompPropertyName", false);
   compClearChecks("comp_ptypes");
   compClearChecks("comp_sale_types");
@@ -2082,7 +2115,11 @@ async function fillCompForm(d) {
   setCompField("comp_cap_rate", d.capRate);
   setCompField("comp_rent_psf", d.leaseRate); // already $/SF/month for Phoenix industrial
   setCompField("comp_lease_format", mapLeaseFormat(d.leaseType));
-  setCompField("comp_status", defaultCompStatus(d), "Derived");
+  const incomingSides = sourceOfferings(d);
+  const priorSides = newKey && newKey === oldKey ? sourceOfferings(comp.previousOfferingSource) : [];
+  const offeredSides = [...new Set([...priorSides, ...incomingSides])];
+  comp.previousOfferingSource = { sourceOfferings: offeredSides };
+  setCompField("comp_status", defaultCompStatus(comp.previousOfferingSource), "Source offering");
   setCompField("comp_list_date", todayISO(), "Today");
 
   // Notes stay blank — Max adds his own. (Dedup relies on address matching and the
@@ -2099,9 +2136,9 @@ async function fillCompForm(d) {
 // Show only the economics that match the status: sale statuses hide the lease
 // fields, lease statuses hide the sale fields; FOR SALE/LEASE shows both.
 function compStatusShows() {
-  const status = ($("comp_status") && $("comp_status").value) || "FOR SALE";
-  const showSale = status !== "FOR LEASE" && status !== "PENDING LEASE";
-  const showLease = status === "FOR LEASE" || status === "FOR SALE/LEASE" || status === "PENDING LEASE";
+  const status = ($('comp_status') && $('comp_status').value) || '';
+  const showSale = ['FOR SALE','FOR SALE/LEASE','PENDING SALE','SOLD'].includes(status) || (!status && !!$('comp_for_sale')?.checked);
+  const showLease = ['FOR LEASE','FOR SALE/LEASE','PENDING LEASE','LEASED'].includes(status) || (!status && !!$('comp_for_lease')?.checked);
   return { status, showSale, showLease };
 }
 
@@ -2134,6 +2171,7 @@ function setCompNeedsReview(id, needsReview) {
 
 function compMissingFields() {
   const missing = [];
+  if (compOfferingIssue()) missing.push({ id: "comp_for_sale", label: "offering / stage" });
   const { showSale, showLease } = compStatusShows();
   const value = (id) => {
     const node = $(id);
@@ -2172,10 +2210,12 @@ function syncCompModeUI() {
     return;
   }
   const changed = compChangedFieldLabels();
+  const statusChange = compUpdatePatch(compFormRecord()).status;
   note.innerHTML = `<strong>Updating ${esc((comp.baseline && comp.baseline.address) || "existing comp")}</strong><br>` +
     (changed.length
       ? `Will change: ${esc(changed.join(", "))}.`
       : "No field changes yet; saving will refresh the verified date.");
+  if (statusChange) note.innerHTML += `<br><strong>Offering / stage: ${esc(comp.baseline.status || 'Unknown')} → ${esc(statusChange)}</strong>`;
   note.classList.remove("hidden");
 }
 
@@ -2184,7 +2224,7 @@ function syncCompReviewState() {
   syncCompPowerFallback();
   syncCompFeatureChecks();
   syncCompLeaseDefault();
-  const tracked = ["comp_address", "comp_sub_market", "comp_building_sf", "comp_sale_price", "comp_rent_psf"];
+  const tracked = ["comp_for_sale", "comp_address", "comp_sub_market", "comp_building_sf", "comp_sale_price", "comp_rent_psf"];
   tracked.forEach((id) => setCompNeedsReview(id, false));
   const missing = compMissingFields();
   missing.forEach((item) => setCompNeedsReview(item.id, true));
@@ -2199,17 +2239,21 @@ function syncCompReviewState() {
     summary.title = missing.length ? `Missing ${missing.map((item) => item.label).join(", ")}` : "";
   }
   const save = $("compSave");
-  const blocksSave = missing.some((item) => item.id === "comp_address" || item.id === "comp_sub_market");
+  const offeringIssue = compOfferingIssue();
+  $("compOfferingHint").textContent = offeringIssue || "Both may be active. Pending and Closed apply to one side.";
+  const blocksSave = !!offeringIssue || missing.some((item) => item.id === "comp_address" || item.id === "comp_sub_market");
   if (save) {
     save.disabled = comp.saving || (!comp.pendingSave && blocksSave) || !IS_EXTENSION_CONTEXT;
     save.title = !IS_EXTENSION_CONTEXT
       ? "Open this panel from the installed extension to save a comp"
-      : blocksSave ? "Address and an official submarket are required" : "";
+      : blocksSave ? offeringIssue || "Address and an official submarket are required" : "";
   }
   syncCompModeUI();
 }
 
 function markCompFieldEdited(id) {
+  comp.editedFields ||= {};
+  comp.editedFields[id] = true;
   const node = $(id);
   if (!node) return;
   if (id === "comp_notes") {
@@ -2383,7 +2427,22 @@ function hideCompMatch() {
 function enterCompUpdate(candidate) {
   if (comp.pendingSave || comp.saving) return;
   const sameDeal = comp.mode === "update" && comp.updateId === candidate.id;
-  if (comp.updateId && !sameDeal) comp.propertyTypeEdited = false;
+  if (!sameDeal) {
+    comp.statusEdited = false;
+    delete comp.editedFields?.comp_status;
+    hydrateCompStatus(candidate.status);
+  } else if (!comp.statusEdited) hydrateCompStatus(candidate.status);
+  // A one-sided or unpriced source does not withdraw another saved offering.
+  // Saved economics fill absent source values; manual clears remain intentional.
+  for (const field of ['sale_price','rent_psf','cap_rate','lease_format']) {
+    const id = 'comp_' + field;
+    if (!comp.editedFields?.[id] && !$(id).value.trim()) {
+      $(id).value = candidate[field] == null ? '' : String(candidate[field]);
+      comp.lastFilled[id] = $(id).value;
+      setCompFieldSource(id, candidate[field] == null ? null : 'Saved');
+    }
+  }
+  if (comp.updateId && !sameDeal) { comp.propertyTypeEdited = false; comp.editedFields = {}; }
   if (!comp.propertyTypeEdited) {
     const types = CompPropertyFields.normalizePropertyTypes(candidate.property_type);
     $('comp_ptypes').querySelectorAll('input').forEach(n=>{n.checked=types.includes(n.value);});
@@ -2426,7 +2485,7 @@ function enterCompUpdate(candidate) {
   }
   hideCompMatch();
   setCompMsg("");
-  syncCompReviewState();
+  syncCompFieldVisibility();
 }
 
 // ─── Save ──────────────────────────────────────────────────────────────────────
@@ -2491,6 +2550,17 @@ function compUpdatePatch(rec) {
   const base = comp.baseline || {};
   const skip = new Set(["last_verified_at", "flyer_url", "internal_deal", "source", "yard_included", "property_id", "suite", "partial_site_override", "multi_tenant"]);
   const patch = {};
+  skip.add('status');
+  if (comp.statusEdited && rec.status && base.status !== rec.status) patch.status = rec.status;
+  const economics = compStatusShows();
+  for (const field of ['sale_price','rent_psf','cap_rate','lease_format']) {
+    const shown = ['sale_price','cap_rate'].includes(field) ? economics.showSale : economics.showLease;
+    if (!shown) { skip.add(field); continue; }
+    if (comp.editedFields?.['comp_' + field] && (base[field] ?? null) !== rec[field]) patch[field] = rec[field];
+  }
+  // A deliberate price clear also clears its derived price/SF, never the offering.
+  if (economics.showSale && comp.editedFields?.comp_sale_price && rec.sale_price === null && (base.price_psf ?? null) !== null) patch.price_psf = null;
+  if (!economics.showSale) skip.add('price_psf');
   skip.add('property_type'); skip.add('clear_height_ft');
   if (comp.propertyTypeEdited && Object.hasOwn(rec,'property_type') && (base.property_type ?? null) !== rec.property_type) patch.property_type = rec.property_type;
   for (const field of CompPropertyFields.fields) {
@@ -2620,6 +2690,8 @@ function compDraftSnapshot() {
     propertyTypes: compChecked("comp_ptypes"), saleTypes: compChecked("comp_sale_types"),
     baseline: comp.baseline, originalPropertyId: comp.originalPropertyId,
     propertyMode: comp.propertyMode, propertyId: comp.propertyId,
+    editedFields: comp.editedFields, statusEdited: comp.statusEdited,
+    offeringControls: { sale: $("comp_for_sale").checked, lease: $("comp_for_lease").checked, stage: $("comp_stage").value },
     yardEdited: comp.yardEdited, siteFieldsEdited: comp.siteFieldsEdited, propertyFieldsEdited: comp.propertyFieldsEdited,
     propertyTypeEdited: comp.propertyTypeEdited,
     leaseAreaOrigin: comp.leaseAreaOrigin,
@@ -2651,11 +2723,18 @@ async function restorePendingCompSave() {
     $(container).querySelectorAll("input").forEach((input) => { input.checked = choices.includes(input.value); });
   }
   comp.propertyTypeEdited = draft.propertyTypeEdited || false;
-  for (const field of ["baseline", "originalPropertyId", "propertyMode", "propertyId", "yardEdited", "siteFieldsEdited", "propertyFieldsEdited", "leaseAreaOrigin", "powerFallbackDismissed", "costarId", "sourceUrl", "flyerUrl"]) {
+  for (const field of ["editedFields", "statusEdited", "baseline", "originalPropertyId", "propertyMode", "propertyId", "yardEdited", "siteFieldsEdited", "propertyFieldsEdited", "leaseAreaOrigin", "powerFallbackDismissed", "costarId", "sourceUrl", "flyerUrl"]) {
     if (Object.hasOwn(draft, field)) comp[field] = draft[field];
   }
   if (comp.propertyFieldsEdited?.clear_height_ft) comp.propertyFieldsEdited.clear_height = true;
+  hydrateCompStatus($('comp_status').value);
+  if (draft.offeringControls) {
+    $('comp_for_sale').checked = draft.offeringControls.sale;
+    $('comp_for_lease').checked = draft.offeringControls.lease;
+    $('comp_stage').value = draft.offeringControls.stage;
+  }
   syncCompFeatureChecks();
+  syncCompFieldVisibility();
   setCompSaveLocked(true);
   setCompMsg("A previous save has no confirmed response. Retry pending save to recover it without creating a duplicate.", true);
 }
@@ -2680,6 +2759,8 @@ async function saveComp() {
   if (comp.saving) return;
   const rec = compFormRecord();
   if (!comp.pendingSave) {
+    const offeringIssue = compOfferingIssue();
+    if (offeringIssue) return setCompMsg(offeringIssue, true);
     const issue = compPropertyValues().issues[0];
     if (issue) { setCompNeedsReview('comp_'+issue.field,true); $('comp_'+issue.field).focus(); return setCompMsg(issue.message,true); }
     if (!rec.address) return setCompMsg("Address is required.", true);
@@ -2738,6 +2819,8 @@ async function saveComp() {
     if (Object.hasOwn(saved, field) && $(id)) $(id).value = saved[field] == null ? "" : String(saved[field]);
   }
   for (const field of CompPropertyFields.fields) if (Object.hasOwn(saved,field) || (field==='clear_height' && Object.hasOwn(saved,'clear_height_ft'))) setCompPropertyValue(field,CompPropertyFields.rowValue(saved,field),'Saved');
+  comp.editedFields = {}; comp.statusEdited = false;
+  hydrateCompStatus(saved.status);
   comp.propertyFieldsEdited = {}; comp.leaseAreaOrigin = 'saved'; syncCompFeatureChecks();
   comp.propertyTypeEdited = false;
   closeCompPropertyChoice();
@@ -2870,11 +2953,7 @@ function initCompMode() {
   }
   const save = $("compSave"); if (save) save.addEventListener("click", saveComp);
   const rescan = $("compRescan"); if (rescan) rescan.addEventListener("click", () => scanComp());
-  const statusSel = $("comp_status");
-  if (statusSel) statusSel.addEventListener("change", () => {
-    markCompFieldEdited("comp_status");
-    syncCompFieldVisibility();
-  });
+  for (const id of ['comp_for_sale','comp_for_lease','comp_stage']) $(id).addEventListener('change', compOfferingChange);
   COMP_INPUT_IDS.forEach((id) => {
     if (id === "comp_status") return;
     const node = $(id);
@@ -2974,6 +3053,7 @@ function initLocalPreview() {
   showScreen("comp");
 
   const sample = {
+    sourceOfferings: ["sale", "lease"],
     street: "128 W Boxelder",
     city: "Chandler",
     state: "AZ",

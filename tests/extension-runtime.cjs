@@ -16,7 +16,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     const worker=context.serviceWorkers()[0] || await context.waitForEvent('serviceworker');
     const id=new URL(worker.url()).host;
     const manifest=await worker.evaluate(()=>chrome.runtime.getManifest());
-    assert.equal(manifest.manifest_version,3); assert.equal(manifest.version,'1.4.15');
+    assert.equal(manifest.manifest_version,3); assert.equal(manifest.version,'1.4.16');
     assert.equal(await worker.evaluate(()=>typeof SurveyFields.serializeDraft),'function');
     assert.equal(await worker.evaluate(()=>typeof SurveyRent.calculateSurveyRent),'function');
     assert.equal(await worker.evaluate(()=>typeof SurveySpaces.createBatchRequest),'function');

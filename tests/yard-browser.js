@@ -34,7 +34,7 @@ async (page) => {
       window.fixture = {
         storage: { mode: 'comp', ...(prefs ? { layout_prefs: prefs } : {}) },
         requests: [], candidates: [], failSave: false,
-        scrape: { costarId: 'fixture-a', street: '100 Fixture Way', city: 'Phoenix', state: 'AZ', zip: '85040',
+        scrape: { sourceOfferings: ['sale','lease'], costarId: 'fixture-a', street: '100 Fixture Way', city: 'Phoenix', state: 'AZ', zip: '85040',
           submarket: 'North Airport', rba: '20000', acLot: '2', salePrice: '3000000', leaseRate: '1.20' },
       };
       window.chrome = {
@@ -52,7 +52,7 @@ async (page) => {
           else if (message.type === 'READ_COSTAR') respond({ ok: true, data: structuredClone(window.fixture.scrape) });
           else if (message.type === 'SEARCH_COMPS') respond({ ok: true, comps: structuredClone(window.fixture.candidates) });
           else if (message.type === 'SAVE_COMP') {
-            respond(window.fixture.failSave ? { ok: false, error: 'Fixture save failure', saveRejected: true } : { ok: true, status: 'saved', comp: { ...message.request.p_comp, id: message.request.p_comp_id || 'fixture-saved', property_id: message.request.p_expected_property_id || 'fixture-property' } });
+            respond(window.fixture.failSave ? { ok: false, error: 'Fixture save failure', saveRejected: true } : { ok: true, status: 'saved', comp: { ...(message.request.p_comp_id ? comp.baseline : {}), ...message.request.p_comp, id: message.request.p_comp_id || 'fixture-saved', property_id: message.request.p_expected_property_id || 'fixture-property' } });
           } else respond({ ok: false, error: `Unexpected fixture message: ${message.type}` });
         } },
       };
@@ -78,7 +78,7 @@ async (page) => {
         assert.equal(await p.evaluate(() => fixture.storage.layout_prefs.surveyLayoutVersion), 3, 'Survey migration applied');
         assert.deepEqual(await p.evaluate(() => fixture.storage.layout_prefs_survey_v2_backup), prefs, 'Exact prior preferences backed up');
         assert.equal(await p.locator('#comp_building_sf').evaluate((node) => node.closest('[data-sec]').dataset.sec), 'c1');
-        assert.equal(await p.locator('#screen-comp [data-sec="property"]').evaluate((node) => node.classList.contains('u-hidden')), true);
+        assert.equal(await p.locator('#screen-comp [data-sec="property"]').evaluate((node) => node.classList.contains('u-hidden')), false, 'Offering controls remain reviewable despite saved hidden property section');
         assert.equal(await p.locator('#screen-comp [data-sec="yard"]').evaluate((node) => node.classList.contains('sec-collapsed')), false);
         await p.screenshot({ path: '/tmp/masterappsurvey-yard-legacy.png', fullPage: true });
         assert.deepEqual(errors, [], 'No legacy-layout runtime errors');
@@ -113,7 +113,7 @@ async (page) => {
         assert.equal(await yard.inputValue(), 'true', 'Removing type does not erase Yes');
       }
       results.push('ISF and IOS select and save Yard included; manual overrides and deselection remain intact');
-      await p.evaluate(() => enterCompUpdate({ property_id: 'fixture-property', id: 'fixture-yard-type', address: fixture.scrape.street, property_type: 'ISF', yard_included: false }));
+      await p.evaluate(() => enterCompUpdate({ status: 'FOR SALE/LEASE', property_id: 'fixture-property', id: 'fixture-yard-type', address: fixture.scrape.street, property_type: 'ISF', yard_included: false }));
       assert.equal(await yard.inputValue(), 'false', 'Loading saved ISF retains No');
       await p.locator('#comp_ptypes label[title="IOS"]').click();
       assert.equal(await p.evaluate(() => compUpdatePatch(compFormRecord()).yard_included), true, 'Type selection is included in existing-comp patch');
@@ -135,7 +135,7 @@ async (page) => {
       for (const saved of [true, false, null]) {
         await p.evaluate(async (saved) => {
           resetCompForm();
-          fixture.candidates = [{ property_id: 'fixture-property', id: 'fixture-existing', address: fixture.scrape.street, yard_included: saved }];
+          fixture.candidates = [{ status: 'FOR SALE/LEASE', property_id: 'fixture-property', id: 'fixture-existing', address: fixture.scrape.street, yard_included: saved }];
           await fillCompForm(fixture.scrape);
         }, saved);
         await p.locator('#compMatchUpdate').click();
@@ -148,10 +148,10 @@ async (page) => {
       }
       results.push('Existing Yes/No/Unknown hydrate; unchanged refresh omits yard update');
 
-      await p.evaluate(() => enterCompUpdate({ property_id: 'fixture-property', id: 'fixture-other', address: fixture.scrape.street, yard_included: true }));
+      await p.evaluate(() => enterCompUpdate({ status: 'FOR SALE/LEASE', property_id: 'fixture-property', id: 'fixture-other', address: fixture.scrape.street, yard_included: true }));
       await chooseYard('');
       assert.ok((await p.locator('#compModeNote').innerText()).includes('yard included'));
-      await p.evaluate(() => { fixture.candidates = [{ property_id: 'fixture-property', id: 'fixture-other', address: fixture.scrape.street, yard_included: true }]; });
+      await p.evaluate(() => { fixture.candidates = [{ status: 'FOR SALE/LEASE', property_id: 'fixture-property', id: 'fixture-other', address: fixture.scrape.street, yard_included: true }]; });
       await p.locator('#compRescan').click();
       await p.locator('#compMatchUpdate').click();
       assert.equal(await yard.inputValue(), '', 'Intentional Unknown survives refresh and duplicate re-selection');
@@ -177,7 +177,7 @@ async (page) => {
       await p.locator('#compMatchUpdate').click();
       assert.equal(await yard.inputValue(), 'false');
       assert.equal(await p.evaluate(() => compUpdatePatch(compFormRecord()).yard_included), false);
-      await p.evaluate(() => enterCompUpdate({ property_id: 'fixture-property', id: 'fixture-different-row', address: fixture.scrape.street, yard_included: null }));
+      await p.evaluate(() => enterCompUpdate({ status: 'FOR SALE/LEASE', property_id: 'fixture-property', id: 'fixture-different-row', address: fixture.scrape.street, yard_included: null }));
       assert.equal(await yard.inputValue(), '', 'Switching DB records loads its own answer');
       assert.equal(await p.evaluate(() => comp.yardEdited), false);
       await chooseYard('true');

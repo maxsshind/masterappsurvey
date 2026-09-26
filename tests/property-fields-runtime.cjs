@@ -50,6 +50,7 @@ function modal(n,area,extra=''){return `<section id="space"><p>${n} of 3 Spaces<
  await worker.evaluate(()=>chrome.storage.local.set({mode:'comp'}));
  await context.addInitScript(()=>{if(!location.href.startsWith('chrome-extension:'))return;window.fixtureSaves=[];const original=chrome.runtime.sendMessage.bind(chrome.runtime);chrome.runtime.sendMessage=(m,cb)=>{
   if(m.type==='AUTH_STATUS')return cb({ok:true,connected:true,accountId:'20000000-0000-4000-8000-000000000001',email:'fixture@example.invalid'});
+  if(m.type==='ANALYZE_COMP_LISTING')return cb({ok:true,suggestions:[],warnings:[]});
   if(m.type==='SEARCH_COMPS')return cb({ok:true,comps:[]});
   if(m.type==='SAVE_COMP'){fixtureSaves.push(structuredClone(m.request));return cb({ok:true,status:'saved',comp:{...m.request.p_comp,id:m.request.p_comp_id||'10000000-0000-4000-8000-000000000001',property_id:null}});}
   return original(m,cb);
@@ -66,7 +67,7 @@ function modal(n,area,extra=''){return `<section id="space"><p>${n} of 3 Spaces<
  await panel.evaluate(()=>scanComp());assert.equal(await panel.locator('#comp_suite').inputValue(),'1');assert.equal(await panel.locator('#comp_office_sf').inputValue(),'100');assert.equal(await panel.locator('#comp_lease_area').inputValue(),'1,200');
  assert.equal(await panel.locator('#comp_clear_height').inputValue(),'');assert.equal(await panel.locator('#comp_has_truckwell_or_dock_answer').innerText(),'No');
  results.push('Selected suite owns measurements/loading; building office/height/docks underneath cannot populate that suite');
- await panel.locator('#comp_status').selectOption('FOR LEASE');await panel.locator('#comp_sub_market').selectOption('North Airport');await panel.locator('#compSkipProperty').check();await panel.locator('#compSave').click();await panel.waitForFunction(()=>fixtureSaves.length===1&&!comp.saving);
+ await panel.locator('#comp_for_sale').uncheck();await panel.locator('#comp_for_lease').check();await panel.locator('#comp_stage').selectOption('ACTIVE');await panel.locator('#comp_sub_market').selectOption('North Airport');await panel.locator('#compSkipProperty').check();await panel.locator('#compSave').click();await panel.waitForFunction(()=>fixtureSaves.length===1&&!comp.saving);
  let saved=await panel.evaluate(()=>fixtureSaves[0].p_comp);assert.equal(saved.office_sf,100);assert.equal(saved.lease_area,1200);assert.equal(saved.has_truckwell_or_dock,false);assert.equal(saved.clear_height_ft,null);
  await costar.evaluate(html=>{document.querySelector('#space').outerHTML=html;},modal(2,'2,400'));
  await panel.evaluate(()=>scanComp());assert.equal(await panel.evaluate(()=>comp.mode),'insert');assert.equal(await panel.locator('#comp_suite').inputValue(),'2');assert.equal(await panel.locator('#comp_office_sf').inputValue(),'');assert.equal(await panel.locator('#comp_has_truckwell_or_dock_answer').innerText(),'Unknown');
@@ -77,7 +78,7 @@ function modal(n,area,extra=''){return `<section id="space"><p>${n} of 3 Spaces<
  results.push('Divisible source keeps office/loading/access unallocated pending offered-portion review');
 
  await costar.evaluate(()=>{document.querySelector('#space').remove();document.body.innerHTML=document.body.innerHTML.replace('24\'6"',"22-24'");});
- await panel.evaluate(()=>scanComp());assert.equal(await panel.locator('#comp_clear_height').inputValue(),"22-24'");await panel.locator('#comp_sub_market').selectOption('North Airport');await panel.locator('#compSave').click();await panel.waitForFunction(()=>fixtureSaves.length===2&&!comp.saving);
+ await panel.evaluate(()=>scanComp());assert.equal(await panel.locator('#comp_clear_height').inputValue(),"22-24'");await panel.locator('#comp_for_sale').check();await panel.locator('#comp_for_lease').uncheck();await panel.locator('#comp_sub_market').selectOption('North Airport');await panel.locator('#compSave').click();await panel.waitForFunction(()=>fixtureSaves.length===2&&!comp.saving);
  saved=await panel.evaluate(()=>fixtureSaves.at(-1).p_comp);assert.equal(saved.clear_height,"22-24'");assert.equal(saved.clear_height_ft,null);assert.equal(await panel.locator('#comp_clear_height').inputValue(),"22-24'");
  results.push('Real CoStar height range22-24\' survives DOM capture, reviewed save and authoritative readback exactly; numeric mirror is null');
 

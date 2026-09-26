@@ -8,7 +8,7 @@ async (page) => {
   await context.addInitScript(() => {
     const SURVEY='10000000-0000-4000-8000-000000000001', ACCOUNT='20000000-0000-4000-8000-000000000001';
     const restored=JSON.parse(sessionStorage.getItem('surveyFixture') || 'null');
-    window.fixture=restored || {storage:{mode:'survey',last_survey_id:SURVEY},rows:[],pending:null,requests:[],scenario:'ok',writes:0,scrape:{costarId:'123456',street:'100 Fixture Way',city:'Phoenix',state:'AZ',rba:'40000',acLot:'10',leaseRate:'18',leaseQuote:{rawText:'$18/SF/YR',amountText:'18',basis:'sf',period:'annual'}}};
+    window.fixture=restored || {storage:{mode:'survey',last_survey_id:SURVEY},rows:[],pending:null,requests:[],scenario:'ok',writes:0,scrape:{sourceOfferings:['lease'],costarId:'123456',street:'100 Fixture Way',city:'Phoenix',state:'AZ',rba:'40000',acLot:'10',leaseRate:'18',leaseQuote:{rawText:'$18/SF/YR',amountText:'18',basis:'sf',period:'annual'}}};
     const sync=()=>sessionStorage.setItem('surveyFixture',JSON.stringify(fixture));
     window.chrome={windows:{getCurrent:cb=>cb({type:'normal'}),create:()=>{}},storage:{local:{
       get:async()=>structuredClone(fixture.storage),set:async value=>{if(fixture.storageFail)throw new Error('Fixture storage unavailable');Object.assign(fixture.storage,structuredClone(value));sync();},remove:async keys=>{[].concat(keys).forEach(k=>delete fixture.storage[k]);sync();}
@@ -79,7 +79,7 @@ async (page) => {
     // Selected-space monthly quote: header/body rent must never supply the offer.
     await p.evaluate(()=>{
       surveyEditor.bundle=null;surveyEditor.archives={};
-      fixture.scrape={costarId:'7654321',street:'100 Fixture Way',city:'Phoenix',state:'AZ',rba:'380569',acLot:'14.09',leaseRate:'0.65',leaseType:'NNN',
+      fixture.scrape={sourceOfferings:['lease'],costarId:'7654321',street:'100 Fixture Way',city:'Phoenix',state:'AZ',rba:'380569',acLot:'14.09',leaseRate:'0.65',leaseType:'NNN',
         leaseQuote:{rawText:'Space Details · Available 40,000 SF · Rent $0.65 · Rent/Mo $26,000 · Services Triple Net',period:'monthly',basis:'total',amountText:'26000',reviewed:false},
         selectedSpace:{scope:'space-details',identity:'partial-1st|40000|sublet',canPrefill:true,monthlyRent:'26000',availableSf:'40000',officeSf:'3200',rentPsf:'0.65',floor:'Partial 1st',suite:null,serviceType:'Triple Net'}};
       state.scraped=structuredClone(fixture.scrape);matchAndShowForm();
@@ -114,7 +114,7 @@ async (page) => {
     assert.equal(await value('fMonthlyBase'),'12345');assert.equal(await value('fLeaseRate'),'1.1');
     results.push('Ambiguous selected quotes stay unadopted; opening saved rows never replaces their existing rent');
     // Restore the unrelated existing regression fixture.
-    await p.evaluate(()=>{fixture.scrape={costarId:'123456',street:'100 Fixture Way',city:'Phoenix',state:'AZ',rba:'40000',acLot:'10',leaseRate:'18',leaseQuote:{rawText:'$18/SF/YR',amountText:'18',basis:'sf',period:'annual'}};});
+    await p.evaluate(()=>{fixture.scrape={sourceOfferings:['lease'],costarId:'123456',street:'100 Fixture Way',city:'Phoenix',state:'AZ',rba:'40000',acLot:'10',leaseRate:'18',leaseQuote:{rawText:'$18/SF/YR',amountText:'18',basis:'sf',period:'annual'}};});
     await fresh({tenancy:'ST',building_sf:10000});await fill('fMonthlyBase','10000');await choose('fLeaseType','NNN');
     assert.equal(await p.locator('#fExpenseTreatment input:checked').inputValue(),'additional');assert.ok(await p.locator('#expenseAmounts').isVisible());
     assert.equal(await value('fOpexTotal'),'');assert.equal(await value('fTotalLeaseRate'),'');
@@ -255,7 +255,7 @@ async (page) => {
     // Reproduce saving Yard 3, then reading Suite 7 at the same CoStar property.
     await p.evaluate(()=>{
       surveyEditor.pending=null;surveyEditor.bundle=null;surveyEditor.archives={};fixture.rows=[];state.props=[];
-      fixture.scenario='ok';fixture.scrape={costarId:'231512',street:'1139 E Curry Rd',city:'Tempe',state:'AZ',zip:'85281',rba:'31600',acLot:'1.7',
+      fixture.scenario='ok';fixture.scrape={sourceOfferings:['lease'],costarId:'231512',street:'1139 E Curry Rd',city:'Tempe',state:'AZ',zip:'85281',rba:'31600',acLot:'1.7',
         selectedSpace:{scope:'space-details',identity:'yard-3',suite:'Yard 3',availableSf:'1310',officeSf:null,canPrefill:true,monthlyRent:'470',serviceType:'Modified Gross'}};
       state.scraped=structuredClone(fixture.scrape);matchAndShowForm();
     });
@@ -321,7 +321,7 @@ async (page) => {
     await p.locator('#btnSave').click();await p.waitForFunction(()=>!surveyEditor.saving&&!surveyEditor.pending);
     assert.equal(await p.evaluate(()=>fixture.rows.length),2);assert.equal(await p.evaluate(()=>fixture.rows.every(r=>r.flyer_url==='https://fixture.invalid/building.pdf')),true);
     await p.reload();await p.waitForFunction(()=>state.survey?.id);assert.equal(await value('fFlyerUrl'),'https://fixture.invalid/building.pdf');
-    await p.evaluate(()=>{fixture.scrape={costarId:'555555',street:'500 Flyer Way',city:'Tempe',state:'AZ',rba:'10000',selectedSpace:{scope:'space-details',identity:'third-space',suite:'3',availableSf:'1500',canPrefill:false}};});
+    await p.evaluate(()=>{fixture.scrape={sourceOfferings:['lease'],costarId:'555555',street:'500 Flyer Way',city:'Tempe',state:'AZ',rba:'10000',selectedSpace:{scope:'space-details',identity:'third-space',suite:'3',availableSf:'1500',canPrefill:false}};});
     await p.locator('#btnRefresh').click();await p.waitForFunction(()=>surveyReadsInFlight===0);await p.locator('#spaceCandidates [data-add="0"]').click();assert.equal(await value('fFlyerUrl'),'https://fixture.invalid/building.pdf');
     await p.locator('#btnSave').click();await p.waitForFunction(()=>!surveyEditor.saving&&!surveyEditor.pending);assert.equal(await p.evaluate(()=>fixture.rows[2].flyer_url),'https://fixture.invalid/building.pdf');
     assert.equal(await p.evaluate(()=>fixture.requests.filter(r=>r.type==='ATTACH_FLYER').length),attachCount+1);

@@ -1,3 +1,28 @@
+# Sale / lease integrity release — 2026-09-25, America/Phoenix
+
+Owner: Codex chat 01a0db44-4c72-7ba3-b561-d7a4f20d2c1f. Canonical project `/Users/maxschumacher/Developer/chrome extensions/Master App Survey`; isolated implementation `/Users/maxschumacher/.codex/worktrees/survey-offering-integrity/Master App Survey`, branch `codex/survey-offering-integrity`.
+
+Max confirms **1.4.15 is live on Chrome Web Store**, existing item `hohikcikmjiopimpigebcbdileipbhhc`. This supersedes historical candidate-only statements below. Implementation, Git push and existing Store update upload/submission authorized; installed extension changes and production business-record tests are not authorized. Shared documentation remains proposal-only pending approval.
+
+- [x] Baseline reconciled: GitHub main `bf7cb4252220e668c479d2e39ee3fd433c1d5509`; all 19 ZIP files match; SHA256 `4060674f9e893304fb8014c864285baa1351fc4ef467807bb38041f8924b60aa`. Canonical checkout's unrelated edits preserved.
+- [x] F1/F3 saved status protection and independent offerings/stage tested.
+- [x] F2 source evidence independent of economics tested.
+- [x] F4 intentional blanks survive reread/restoration and reviewed patches.
+- [x] F5 unknown/suite/partial lease area remains unknown; confirmed whole premises tested.
+- [x] F6 Survey source availability and saved dual arrays tested independently.
+- [x] Full regressions and extracted-package visible controls verified.
+- [ ] Version, matching package, commit and Git push verified.
+- [ ] Existing Web Store item upload/submission and provider state verified.
+- [ ] Shared playbook, ops log, wiki checked; precise approval proposal surfaced.
+
+Checkpoint 2026-09-25T18:27:31.621234-07:00: 327 source and extracted-package units passed; new mounted acceptance matrix passed, existing108 browser groups passed, native8 pop-outs passed. Package MV3 passed. CSS control-size polish and final layout regression being verified. Max separately authorized saving the ops log; playbook/wiki remain pending.
+
+In progress: source extraction delegated to source_offerings; isolated browser matrix to regression_matrix. Parent owns panel integration, release and independent verification. Next: run source/fixture checks, review all changes, package next version, push and guarded Store submission. No release actions yet.
+
+Verified 2026-09-25T18:28:44.143525-07:00: **327 units on source and extracted ZIP; 108 existing browser groups; 15 new offering-integrity groups on extracted ZIP; 8 real native pop-outs; packaged MV3 smoke.** Synthetic records only, blocked remote requests, no installed-copy changes. Parent inspected320px controls. Final ZIP123590bytes SHA256 `244c6f742f7a9a9009209710b902d32066bb4237a47d0dc212b9af7690dae747`; all19 source/archive/extracted files match. Delivered ZIP to canonical project folder. Permissions/hosts/privacy practices unchanged; hosted privacy URL HTTP200. Evidence `output/review/offering-*`. GitHub main stillbf7cb42 before push. Preparing commit/push, then guarded existing-item upload → draft verification → submission.
+
+---
+
 ## All-field listing narrative review — 2026-09-18T23:00:26.554650-07:00
 
 User requested Sale Notes and Highlights as preferred evidence for every supported field, including office percentages. Local extension 1.4.15 automatically submits scoped narrative text after a Comp read and shows a nonmodal Review listing button. 24 backend fields cover specs, site flags, types, scope and economics; unsupported useful facts appear as warnings. All changes start unselected and apply to the draft only. Existing raw description import remains optional. Stale form/suite/account results cannot apply. Percentage denominator is exact scraped offered SF, invalidated for manually changed suite/portion. Suite sources exclude underlying Sale Notes. No page-wide text sent.

@@ -18,7 +18,7 @@ async (page) => {
     window.fixture = {
       storage: stored || { mode: 'comp' }, requests: [], scenario: 'exact', failLookup: false, failSave: false,
       delay: 0, writes: Number(sessionStorage.getItem('fixtureWrites') || 0), receipts: JSON.parse(sessionStorage.getItem('fixtureReceipts') || '{}'), candidates: [], property: '20000000-0000-4000-8000-000000000001',
-      scrape: { costarId: '123456', street: '100 Fixture Way', city: 'Phoenix', state: 'AZ', zip: '85040',
+      scrape: { sourceOfferings: ['sale','lease'], costarId: '123456', street: '100 Fixture Way', city: 'Phoenix', state: 'AZ', zip: '85040',
         submarket: 'North Airport', rba: '20000', acLot: '2', salePrice: '3000000', leaseRate: '1.20' },
     };
     const sync = () => sessionStorage.setItem('fixtureStore', JSON.stringify(fixture.storage));
@@ -45,7 +45,7 @@ async (page) => {
                 { id: '20000000-0000-4000-8000-000000000002', address: '102 Fixture Way', city: 'Phoenix', state: 'AZ', building_sf: 8000, land_area: 1 }], message: 'Choose the building for this deal.' });
             if (!fixture.receipts[r.p_request_id]) {
               fixture.writes++;
-              fixture.receipts[r.p_request_id] = { ok: true, status: 'saved', comp: { ...(fixture.candidates.find(c => c.id === r.p_comp_id) || {}),
+              fixture.receipts[r.p_request_id] = { ok: true, status: 'saved', comp: { ...(fixture.candidates.find(c => c.id === r.p_comp_id) || (r.p_comp_id ? comp.baseline : {})),
                 ...r.p_comp, id: r.p_comp_id || `10000000-0000-4000-8000-${String(fixture.writes).padStart(12, '0')}`,
                 property_id: r.p_property_mode === 'skip' ? null : r.p_property_mode === 'existing' ? r.p_property_id : r.p_expected_property_id || fixture.property } };
             }
@@ -77,7 +77,7 @@ async (page) => {
     assert.ok(await p.getByText('Skip property link for now', { exact: true }).isVisible());
     assert.equal(await p.evaluate(() => fixture.requests.filter(r => r.type === 'SAVE_COMP').length), 0, 'Typing/reading never creates a property');
     for (const status of ['FOR SALE', 'FOR LEASE', 'FOR SALE/LEASE', 'PENDING SALE', 'PENDING LEASE']) {
-      await fresh(); await p.locator('#comp_status').selectOption(status); await p.locator('#compSave').click();
+      await fresh(); await p.locator('#comp_stage').selectOption('ACTIVE'); await p.locator('#comp_for_sale').setChecked(status.includes('SALE')); await p.locator('#comp_for_lease').setChecked(status.includes('LEASE')); await p.locator('#comp_stage').selectOption(status.startsWith('PENDING') ? 'PENDING' : 'ACTIVE'); await p.locator('#compSave').click();
       await p.waitForFunction(() => document.getElementById('compMsg').textContent.includes('Comp saved'));
       const r = await lastSave(); assert.equal(r.p_property_mode, 'auto'); assert.equal(r.p_comp.status, status);
       assert.ok((await p.locator('#compOpenProperty').getAttribute('href')).includes('/properties/20000000'));
@@ -115,7 +115,7 @@ async (page) => {
 
     for (const internal of [true, false]) {
       await fresh();
-      await p.evaluate(internal => enterCompUpdate({ id: '30000000-0000-4000-8000-000000000001', address: fixture.scrape.street,
+      await p.evaluate(internal => enterCompUpdate({ status: 'FOR SALE/LEASE', id: '30000000-0000-4000-8000-000000000001', address: fixture.scrape.street,
         property_id: fixture.property, internal_deal: internal, source: internal ? 'manual' : 'costar', yard_included: true, suite: 'A', partial_site_override: true, multi_tenant: true }), internal);
       await p.locator('#compChangeProperty').click(); await p.locator('#compCancelProperty').click();
       assert.equal(await p.evaluate(() => comp.propertyMode), 'preserve');
@@ -185,7 +185,7 @@ async (page) => {
     results.push('Incomplete saved response cannot erase identity; exact retry recovers its property link');
 
     await fresh();
-    await p.evaluate(() => enterCompUpdate({ id: '30000000-0000-4000-8000-000000000001', address: fixture.scrape.street, property_id: fixture.property }));
+    await p.evaluate(() => enterCompUpdate({ status: 'FOR SALE/LEASE', id: '30000000-0000-4000-8000-000000000001', address: fixture.scrape.street, property_id: fixture.property }));
     await p.locator('#compSkipProperty').check();
     assert.ok((await p.locator('#compPropertyStatus').innerText()).includes('remove the property link'));
     await p.locator('#compSkipProperty').uncheck(); assert.equal(await p.evaluate(() => comp.propertyMode), 'preserve');
